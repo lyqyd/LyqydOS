@@ -1,0 +1,8 @@
+local processTable = {}
+
+while true do
+	event = {coroutine.yield()}
+
+	term.redirect(processTable[curr].window.redirect)
+	coroutine.resume(processTable[curr].thread, unpack(event))
+end
