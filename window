@@ -61,13 +61,21 @@ local window = {
 			return nil, "Must Specify X and Y!"
 		end
 	end,
-	resize = function(self, _w, _h)
+	resize = function(self, w, h)
 		if _w and _h then
 			local w = tonumber(w)
 			local h = tonumber(h)
 			if w >= 5 and h >= 3 then
 				self.w = w
 				self.h = h
+				self:draw()
+				return true
+			else
+				return nil, "Size Too Small"
+			end
+		else
+			return nil, "Must Specify Width and Height!"
+		end
 	end,
 	draw = function(self)
 		term.redirect(self.target)
