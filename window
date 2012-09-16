@@ -61,6 +61,14 @@ local window = {
 			return nil, "Must Specify X and Y!"
 		end
 	end,
+	resize = function(self, _w, _h)
+		if _w and _h then
+			local w = tonumber(w)
+			local h = tonumber(h)
+			if w >= 5 and h >= 3 then
+				self.w = w
+				self.h = h
+	end,
 	draw = function(self)
 		term.redirect(self.target)
 		local top = nil
@@ -102,7 +110,7 @@ function new(w, h, x, y, caption)
 		cursorBlink = false,
 		target = term.native,
 		w = tonumber(w) or 19,
-		h = tonumber(h) or 6,
+		h = tonumber(h) or 8,
 		x = tonumber(x) or 1,
 		y = tonumber(y) or 1,
 		z = nil,
