@@ -1,68 +1,76 @@
-local function newRedirect(windowTable)
-	local redirect = {
-		write = function(text)
-			local pos = windowTable.cursorX
-			if windowTable.cursorX < 1 then
-				text = string.sub(text, math.abs(windowTable.cursorX) + 2)
-				windowTable.cursorX = 1
+local function newRedirect(_windowTable)
+	local redirect = {windowTable = _windowTable}
+	redirect.write = function(text)
+		local pos = redirect.windowTable.cursorX
+		if redirect.windowTable.cursorX < 1 then
+			text = string.sub(text, math.abs(redirect.windowTable.cursorX) + 2)
+			redirect.windowTable.cursorX = 1
+		end
+		redirect.windowTable.buffer[redirect.windowTable.cursorY] = string.sub(redirect.windowTable.buffer[redirect.windowTable.cursorY], math.min(1, redirect.windowTable.cursorX - 1), redirect.windowTable.cursorX - 1)..text..string.sub(redirect.windowTable.buffer[redirect.windowTable.cursorY], redirect.windowTable.cursorX + string.len(text) - 1, redirect.windowTable.w - 2)
+		redirect.windowTable.cursorX = pos + string.len(text)
+		redirect.windowTable:draw()
+	end
+	redirect.clear = function()
+		for i=1, redirect.windowTable.h - 2 do
+			redirect.windowTable.buffer[i] = string.rep(" ", redirect.windowTable.w - 2)
+		end
+		redirect.windowTable:draw()
+	end
+	redirect.clearLine = function()
+		redirect.windowTable.buffer[redirect.windowTable.cursorY] = string.rep(" ", redirect.windowTable.w - 2)
+		redirect.windowTable:draw()
+	end
+	redirect.getCursorPos = function()
+		return redirect.windowTable.cursorX, redirect.windowTable.cursorY
+	end
+	redirect.setCursorPos = function(x, y)
+		redirect.windowTable.cursorX = tonumber(x)
+		redirect.windowTable.cursorY = tonumber(y)
+		redirect.windowTable:draw()
+	end
+	redirect.setCursorBlink = function(b)
+		redirect.windowTable.cursorBlink = b
+		redirect.windowTable:draw()
+	end
+	redirect.getSize = function()
+		return redirect.windowTable.w - 2, redirect.windowTable.h - 2
+	end
+	redirect.scroll = function(n)
+		for i=1, redirect.windowTable.h - 3 do
+			if redirect.windowTable.buffer[i + n] then
+				redirect.windowTable.buffer[i] = redirect.windowTable.buffer[i + n]
 			end
-			windowTable.buffer[windowTable.cursorY] = string.sub(windowTable.buffer[windowTable.cursorY], math.min(1, windowTable.cursorX - 1), windowTable.cursorX - 1)..text..string.sub(windowTable.buffer[windowTable.cursorY], windowTable.cursorX + string.len(text) - 1, windowTable.w - 2)
-			windowTable.cursorX = pos + string.len(text)
-			windowTable:draw()
-		end,
-		clear = function()
-			for i=1, windowTable.h - 2 do
-				windowTable.buffer[i] = string.rep(" ", windowTable.w - 2)
-			end
-			windowTable:draw()
-		end,
-		clearLine = function()
-			windowTable.buffer[windowTable.cursorY] = string.rep(" ", windowTable.w - 2)
-			windowTable:draw()
-		end,
-		getCursorPos = function()
-			return windowTable.cursorX, windowTable.cursorY
-		end,
-		setCursorPos = function(x, y)
-			windowTable.cursorX = tonumber(x)
-			windowTable.cursorY = tonumber(y)
-			windowTable:draw()
-		end,
-		setCursorBlink = function(b)
-			windowTable.cursorBlink = b
-			windowTable:draw()
-		end,
-		getSize = function()
-			return windowTable.w - 2, windowTable.h - 2
-		end,
-		scroll = function(n)
-			for i=1, windowTable.h - 3 do
-				if windowTable.buffer[i + n] then
-					windowTable.buffer[i] = windowTable.buffer[i + n]
-				end
-			end
-			for i=1,n do
-				windowTable.buffer[windowTable.h - (1 + n)] = string.rep(" ", windowTable.w - 2)
-			end
-			windowTable:draw()
-		end,
-	}
+		end
+		for i=1,n do
+			redirect.windowTable.buffer[redirect.windowTable.h - (1 + n)] = string.rep(" ", redirect.windowTable.w - 2)
+		end
+		redirect.windowTable:draw()
+	end
 	return redirect
 end
 
 local window = {
 	move = function(self, x, y)
 		if x and y then
-			self.x = tonumber(x)
-			self.y = tonumber(y)
+			local xlim, ylim = self.target.getSize()
+			if (x < 1 or x + self.w - 1 > xlim) and (y < 1 or y + self.h - 1 > ylim) then
+				return nil, "Location ouf of bounds!"
+			end
+			if x >= 1 and x + self.w - 1 <= xlim then
+				self.x = x
+			end
+			if y >= 1 and y + self.h - 1 <= ylim then
+				self.y = y
+			end
 			self:draw()
+			if self.target.move then self.target.move() end
 			return true
 		else
 			return nil, "Must Specify X and Y!"
 		end
 	end,
 	resize = function(self, w, h)
-		if _w and _h then
+		if w and h then
 			local w = tonumber(w)
 			local h = tonumber(h)
 			if w >= 5 and h >= 3 then
@@ -78,31 +86,36 @@ local window = {
 		end
 	end,
 	draw = function(self)
-		term.redirect(self.target)
-		local top = nil
-		if self.caption then
-			if string.len(self.caption) > self.w - 4 then
-				top = "+-"..string.sub(self.caption, 1, self.w - 4)
+		if not self.target.render then
+			term.redirect(self.target)
+			term.clear()
+			local top = nil
+			if self.caption then
+				if string.len(self.caption) > self.w - 4 then
+					top = "+-"..string.sub(self.caption, 1, self.w - 4)
+				else
+					top = "+-"..self.caption
+				end
+				top = top..string.rep("-", self.w - (string.len(top) + 1)).."+"
 			else
-				top = "+-"..self.caption
+				top = "+"..string.rep("-", self.w - 2).."+"
 			end
-			top = top..string.rep("-", self.w - (string.len(top) + 1)).."+"
+			term.setCursorPos(self.x, self.y)
+			term.write(top)
+			for i=1, self.h - 2 do
+				term.setCursorPos(self.x, self.y + i)
+				term.write("|"..string.sub(self.buffer[i], 1, self.w - 2))
+				term.setCursorPos(self.x + self.w - 1, self.y + i)
+				term.write("|")
+			end
+			term.setCursorPos(self.x, self.y + self.h - 1)
+			term.write("+"..string.rep("-", self.w - 2).."+")
+			term.setCursorPos(self.x + self.cursorX, self.y + self.cursorY)
+			term.setCursorBlink(self.cursorBlink)
+			term.restore()
 		else
-			top = "+"..string.rep("-", self.w - 2).."+"
+			self.target.render(self)
 		end
-		term.setCursorPos(self.x, self.y)
-		term.write(top)
-		for i=1, self.h - 2 do
-			term.setCursorPos(self.x, self.y + i)
-			term.write("|"..string.sub(self.buffer[i], 1, self.w - 2))
-			term.setCursorPos(self.x + self.w - 1, self.y + i)
-			term.write("|")
-		end
-		term.setCursorPos(self.x, self.y + self.h - 1)
-		term.write("+"..string.rep("-", self.w - 2).."+")
-		term.setCursorPos(self.x + self.cursorX, self.y + self.cursorY)
-		term.setCursorBlink(self.cursorBlink)
-		term.restore()
 	end,
 }
 
@@ -110,20 +123,31 @@ local wmetatable = {
 	__index = window,
 }
 
-function new(w, h, x, y, caption)
+function new(w, h, x, y, caption, target)
 	local win = {
 		buffer = {},
 		cursorX = 1,
 		cursorY = 1,
 		cursorBlink = false,
-		target = term.native,
+		target = target or term.native,
 		w = tonumber(w) or 19,
 		h = tonumber(h) or 8,
 		x = tonumber(x) or 1,
 		y = tonumber(y) or 1,
-		z = nil,
 		caption = caption or nil,
 	}
+	local xlim, ylim = win.target.getSize()
+	--x and y bounding for initial window.
+	if win.x < 1 then
+		win.x = 1
+	elseif win.x + win.w - 1 > xlim then
+		win.x = xlim - win.w + 1
+	end
+	if win.y < 1 then
+		win.y = 1
+	elseif win.y + win.h - 1 > ylim then
+		win.y = ylim - win.h + 1
+	end
 	win.redirect = newRedirect(win)
 	for i=1, win.h-2 do
 		win.buffer[i] = string.rep(" ", win.w - 2)

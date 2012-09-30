@@ -1,0 +1,154 @@
+local function newRedirect(_compTable, _buffer)
+	local redirect = {
+		buffer = _buffer,
+		compTable = _compTable
+	}
+	redirect.write = function(text)
+		local pos = redirect.buffer.cursorX
+		if redirect.buffer.cursorX < 1 then
+			text = string.sub(text, math.abs(redirect.buffer.cursorX) + 2)
+			redirect.buffer.cursorX = 1
+		end
+		redirect.buffer[redirect.buffer.cursorY] = string.sub(redirect.buffer[redirect.buffer.cursorY], math.min(1, redirect.buffer.cursorX - 1), redirect.buffer.cursorX - 1)..text..string.sub(redirect.buffer[redirect.buffer.cursorY], redirect.buffer.cursorX + string.len(text) - 1, redirect.compTable.x)
+		redirect.buffer.cursorX = pos + string.len(text)
+		redirect.compTable:draw()
+	end
+	redirect.clear = function()
+		for i=1, redirect.compTable.y do
+			redirect.buffer[i] = string.rep(" ", redirect.compTable.x)
+		end
+		redirect.compTable:draw()
+	end
+	redirect.clearLine = function()
+		redirect.buffer[redirect.buffer.cursorY] = string.rep(" ", redirect.compTable.x)
+		redirect.compTable:draw()
+	end
+	redirect.getCursorPos = function()
+		return redirect.buffer.cursorX, redirect.buffer.cursorY
+	end
+	redirect.setCursorPos = function(x, y)
+		redirect.buffer.cursorX = tonumber(x)
+		redirect.buffer.cursorY = tonumber(y)
+		redirect.compTable:draw("cursor")
+	end
+	redirect.setCursorBlink = function(b)
+		redirect.buffer.cursorBlink = b
+		redirect.compTable:draw("cursor")
+	end
+	redirect.getSize = function()
+		return redirect.compTable.x, redirect.compTable.y
+	end
+	redirect.scroll = function(n)
+		for i=1, redirect.compTable.y - 1 do
+			if redirect.buffer[i + n] then
+				redirect.buffer[i] = redirect.buffer[i + n]
+			end
+		end
+		for i=1,n do
+			redirect.buffer[redirect.compTable.y - (1 + n)] = string.rep(" ", redirect.compTable.x)
+		end
+		redirect.compTable:draw()
+	end
+	redirect.move = function()
+		redirect.compTable:draw()
+	end
+	redirect.render = function(win)
+		for i=1, #redirect.buffer do
+			if i == win.y then
+				if win.caption then
+					local caption = string.sub(win.caption, 1, win.w - 4)
+					redirect.buffer[i] = string.rep(" ", win.x - 1).."+-"..caption..string.rep("-", win.w - (string.len(caption) + 3)).."+"..string.rep(" ", redirect.compTable.x - (win.x + win.w - 1))
+				else
+					redirect.buffer[i] = string.rep(" ", win.x - 1).."+"..string.rep("-", win.w - 2).."+"..string.rep(" ", redirect.compTable.x - (win.x + win.w - 1))
+				end
+			elseif i > win.y and i < win.y + win.h - 1 then
+				redirect.buffer[i] = string.rep(" ", win.x - 1).."|"..string.sub(win.buffer[i - win.y], 1, win.w - 2).."|"..string.rep(" ", redirect.compTable.x - (win.x + win.w - 1))
+			elseif i == win.y + win.h - 1 then
+				redirect.buffer[i] = string.rep(" ", win.x - 1).."+"..string.rep("-", win.w - 2).."+"..string.rep(" ", redirect.compTable.x - (win.x + win.w - 1))
+			else
+				redirect.buffer[i] = string.rep(" ", redirect.compTable.x)
+			end
+		end
+		redirect.buffer.cursorX = win.x + win.cursorX
+		redirect.buffer.cursorY = win.y + win.cursorY
+		redirect.buffer.cursorBlink = win.cursorBlink
+		redirect.compTable:draw()
+	end
+	return redirect
+end
+
+local compositor = {
+	newBuffer = function(self)
+		local buffer = {cursorX = 1, cursorY = 1, cursorBlink = false}
+		for i=1, self.y do
+			buffer[i] = string.rep(" ", self.x)
+		end
+		table.insert(self.bufferStack, buffer)
+		return newRedirect(self, buffer)
+	end,
+	draw = function(self, mode, ...)
+		args = {...}
+		term.redirect(self.target)
+		term.setCursorBlink(false)
+		if mode ~= "cursor" then
+			local finalBuffer = {}
+			for i=1, self.y do
+				finalBuffer[i] = string.rep(" ", self.x)
+			end
+			for i=1, #self.bufferStack do
+				for j=1, self.y do
+					local start, finish
+					_, start = string.find(self.bufferStack[i][j], "^%s*%S")
+					if start then
+						finish, _ = string.find(self.bufferStack[i][j], "%S%s*$")
+						--if not finish then finish = self.x end
+						finalBuffer[j] = string.sub(string.sub(finalBuffer[j], math.min(1, start - 1), start - 1)..string.sub(self.bufferStack[i][j], start, finish)..string.sub(finalBuffer[j], finish + 1, self.x), 1, self.x)
+					end
+				end
+			end
+			for i=1, self.y do
+				term.setCursorPos(1,i)
+				term.write(finalBuffer[i])
+			end
+		end
+		term.setCursorPos(self.bufferStack[#self.bufferStack].cursorX, self.bufferStack[#self.bufferStack].cursorY)
+		term.setCursorBlink(self.bufferStack[#self.bufferStack].cursorBlink)
+		term.restore()
+	end,
+	toFront = function(self, redirTarget)
+		local pos = #self.bufferStack
+		for i = 1, #self.bufferStack do
+			if self.bufferStack[i] == redirTarget.buffer then
+				pos = i
+				break
+			end
+		end
+		if pos < #self.bufferStack then
+			tempbuffer = self.bufferStack[pos]
+			for i = pos, #self.bufferStack - 1 do
+				self.bufferStack[i] = self.bufferStack[i + 1]
+			end
+			self.bufferStack[#self.bufferStack] = tempbuffer
+			self:draw()
+		end
+	end,
+}
+
+local cmetatable = {
+	__index = compositor,
+}
+
+function new(target)
+	local comp = {
+		bufferStack = {},
+		target = target or term.native,
+	}
+	--win.redirect = newRedirect(win)
+	setmetatable( comp, cmetatable )
+	if comp.target.getSize() then
+		comp.x, comp.y = comp.target.getSize()
+	else
+		return nil
+	end
+	return comp
+end
