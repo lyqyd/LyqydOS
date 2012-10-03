@@ -1,8 +1,23 @@
 local processTable = {}
 
+local windowCompositor = compositor.new()
+
 while true do
 	event = {coroutine.yield()}
 
 	term.redirect(processTable[curr].window.redirect)
-	coroutine.resume(processTable[curr].thread, unpack(event))
+	passback = {coroutine.resume(processTable[curr].thread, unpack(event))}
+	term.restore()
+	if coroutine.status(processTable[curr].thread) = "dead" then
+		if processTable[curr].window then
+			processTable[curr].window:destroy()
+		end
+	end
+	if not passback[1] then
+		if passback[2] then
+			print(passback[2])
+		else
+			print("Program Terminated Unexpectedly!")
+		end
+	end
 end
