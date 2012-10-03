@@ -117,6 +117,12 @@ local window = {
 			self.target.render(self)
 		end
 	end,
+	destroy = function(self)
+		if self.target.compTable then
+			self.target.compTable:removeWindow(self)
+		end
+		self = nil
+	end,
 }
 
 local wmetatable = {
