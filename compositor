@@ -115,20 +115,33 @@ local compositor = {
 		term.setCursorBlink(self.bufferStack[#self.bufferStack].cursorBlink)
 		term.restore()
 	end,
-	toFront = function(self, redirTarget)
-		local pos = #self.bufferStack
+	toFront = function(self, win)
+		local pos = nil
 		for i = 1, #self.bufferStack do
-			if self.bufferStack[i] == redirTarget.buffer then
+			if self.bufferStack[i] == win.target.buffer then
 				pos = i
 				break
 			end
 		end
-		if pos < #self.bufferStack then
+		if pos and pos < #self.bufferStack then
 			tempbuffer = self.bufferStack[pos]
 			for i = pos, #self.bufferStack - 1 do
 				self.bufferStack[i] = self.bufferStack[i + 1]
 			end
 			self.bufferStack[#self.bufferStack] = tempbuffer
+			self:draw()
+		end
+	end,
+	removeWindow = function(self, win)
+		local pos = nil
+		for i = 1, #self.bufferStack do
+			if self.bufferStack[i] == win.target.buffer then
+				pos = i
+				break
+			end
+		end
+		if pos then
+			table.remove(self.bufferStack, pos)
 			self:draw()
 		end
 	end,
