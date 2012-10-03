@@ -74,7 +74,30 @@ local window = {
 			local w = tonumber(w)
 			local h = tonumber(h)
 			if w >= 5 and h >= 3 then
+				--adjust buffer horizontal size, but don't bother adjusting things below the new window bottom if smaller
+				if w < self.w then
+					for i=1, math.min(#self.buffer, h - 2) do
+						--w less two because the window border is part of the size, but not the buffer.
+						self.buffer[i] = string.sub(self.buffer[i],1,w - 2)
+					end
+				elseif w > self.w then
+					for i=1, math.min(#self.buffer, h - 2) do
+						--no need for width subtractions, since we are adjusting based on the difference between the two.
+						self.buffer[i] = self.buffer[i]..string.rep(" ", w - self.w)
+					end
+				end
 				self.w = w
+				--adjust buffer vertical size
+				if h < self.h then
+					for i=1,self.h - h do
+						--remove the last entry to trim the buffer.
+						table.remove(self.buffer)
+					end
+				elseif h > self.h then
+					for i=self.h, h do
+						table.insert(self.buffer, string.rep(" ", self.w - 2))
+					end
+				end
 				self.h = h
 				self:draw()
 				return true
