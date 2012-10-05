@@ -73,6 +73,10 @@ local window = {
 		if w and h then
 			local w = tonumber(w)
 			local h = tonumber(h)
+			local xlim, ylim = self.target.getSize()
+			if self.x + w - 1 > xlim or self.y + h - 1 > ylim then
+				return nil, "window sized out of bounds"
+			end
 			if w >= 5 and h >= 3 then
 				--adjust buffer horizontal size, but don't bother adjusting things below the new window bottom if smaller
 				if w < self.w then
