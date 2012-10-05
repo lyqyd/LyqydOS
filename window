@@ -54,7 +54,7 @@ local window = {
 		if x and y then
 			local xlim, ylim = self.target.getSize()
 			if (x < 1 or x + self.w - 1 > xlim) and (y < 1 or y + self.h - 1 > ylim) then
-				return nil, "Location ouf of bounds!"
+				return nil, "location out of bounds"
 			end
 			if x >= 1 and x + self.w - 1 <= xlim then
 				self.x = x
@@ -66,7 +66,7 @@ local window = {
 			if self.target.move then self.target.move() end
 			return true
 		else
-			return nil, "Must Specify X and Y!"
+			return nil, "must specify x and y"
 		end
 	end,
 	resize = function(self, w, h)
@@ -102,10 +102,10 @@ local window = {
 				self:draw()
 				return true
 			else
-				return nil, "Size Too Small"
+				return nil, "size too small"
 			end
 		else
-			return nil, "Must Specify Width and Height!"
+			return nil, "must specify width and height"
 		end
 	end,
 	draw = function(self)
