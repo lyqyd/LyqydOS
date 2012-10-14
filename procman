@@ -1,13 +1,107 @@
 local processTable = {}
+local activeProcess = nil
 
 local windowCompositor = compositor.new()
 
+local function nextWindow(default)
+	local nextBuf = windowCompositor.bufferStack[#windowCompositor.bufferStack]
+	local nextActive = default
+	for tNum, tInfo in ipairs(processTable) do
+		if tInfo and tInfo.window then
+			if tInfo.window.target.buffer == nextBuf then
+				nextActive = tNum
+			end
+		end
+	end
+	return nextActive
+end
+
+local function checkWindow(proc)
+	if coroutine.status(proc.thread) == "dead" then
+		if proc.window then
+			proc.window:destroy()
+		end
+		return false
+	end
+	return true
+end
+
 while true do
 	event = {coroutine.yield()}
+	if event[1] == "key" and event[2] == 61 then
+		--window switching menu
+		local pList, menuList
+		for tNum, tInfo in ipairs(processTable) do
+			if tInfo.window then
+				table.insert(pList, tNum)
+				table.insert(menuList, tInfo.window.caption)
+			end
+		end
+		table.insert(menuList, "Cancel")
+		local menuWin = window.new(25,17,1,1,"Select Window",windowCompositor:newBuffer())
+		term.redirect(menuWin.redirect)
+		local selection = menu.select(menuList)
+		term.restore()
+		menuWin:destroy()
+		if windowList[selection] then
+			activeProcess = pList[selection]
+			windowCompositor:toFront(processTable[activeProcess].window)
+		end
+	elseif event[1] == "key" and event[4] == 61 then
+		--window controls menu
+		if processTable[activeProcess].window then
+			local menuWin = window.new(15,4,3,3,"Action Menu",windowCompositor:newBuffer())
+			term.redirect(menuWin.redirect)
+			local winAction = menu.select({"Resize Window", "Move Window", "Close Window", "Cancel"})
+			term.restore()
+			menuWin:destroy()
+			if winAction == 1 then
+				--figure out how to resize windows. :-/
+			elseif winAction == 3 then
+				processTable[activeProcess].window:destroy()
+				processTable[activeProcess] = false
+				--determine next active window.
+				activeProcess = nextWindow(1)
+				if activeProcess == 1 then windowCompositor:toFront(processTable[activeProcess].window) end
+			end
+		end
+	else
+		local redir = false
+		if processTable[activeProcess].window then
+			term.redirect(processTable[activeProcess].window.redirect)
+			redir = true
+		end
+		passback = {coroutine.resume(processTable[activeProcess].thread, unpack(event))}
+		if redir then term.restore() end
+		if not checkWindow(processTable[activeProcess]) then
+			activeProcess = nextWindow(1)
+			if activeProcess == 1 then windowCompositor:toFront(processTable[activeProcess].window) end
+		end
 
-	term.redirect(processTable[curr].window.redirect)
-	passback = {coroutine.resume(processTable[curr].thread, unpack(event))}
-	term.restore()
+		if event[1] ~= "key" and event[1] ~= "char" and event[1] ~= "click" then
+			for tNum, tInfo in ipairs(processTable) do
+				if tInfo then
+					for k, eType in ipairs(tInfo.listening) do
+						if event[1] == eType then
+							local redir = false
+							if processTable[tNum].window then
+								term.redirect(processTable[tNum].window.redirect)
+								redir = true
+							end
+							passback = {coroutine.resume(processTable[tNum].thread, unpack(event))}
+							if redir then term.restore() end
+							if coroutine.status(processTable[tNum].thread) = "dead" then
+								if processTable[tNum].window then
+									processTable[tNum].window:destroy()
+								end
+							end
+							break
+						end
+					end
+				end
+			end
+		end
+
 	if coroutine.status(processTable[curr].thread) = "dead" then
 		if processTable[curr].window then
 			processTable[curr].window:destroy()
