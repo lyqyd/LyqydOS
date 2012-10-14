@@ -1,0 +1,70 @@
+local function drawMenu(menuTable, cursor, offset)
+	local xlim, ylim = term.getSize()
+	if xlim < 3 or (ylim < 3 and #menuTable > 2) then
+		return nil, "Not enough space to draw menu!"
+	end
+	term.clear()
+	offset = offset or 1
+	term.setCursorPos(3, 1)
+	if offset > 1 then
+		term.write("/\\")
+	else
+		term.write(string.sub(menuTable[1], 1, xlim - 2))
+	end
+	for i=1, math.min(ylim - 2,#menuTable - 1) do
+		term.setCursorPos(3, i + 1)
+		term.write(string.sub(menuTable[offset + i], 1, xlim - 2))
+	end
+	if #menuTable >= ylim then
+		term.setCursorPos(3, ylim)
+		if #menuTable > offset + ylim - 1 then
+			term.write("\\/")
+		else
+			term.write(string.sub(menuTable[#menuTable], 1, xlim - 2))
+		end
+	end
+	term.setCursorPos(1, cursor - offset + 1)
+	term.write(">")
+end
+
+function select(menuTable)
+	local cursor, offset = 1, 1
+	drawMenu(menuTable, cursor, offset)
+	while true do
+		e, p1 = os.pullEvent()
+		if e == "key" then
+			--up
+			if p1 == 200 then
+				if cursor - offset + 1 > 2 or (cursor > 1 and offset ==  1) then
+					term.setCursorPos(1, cursor - offset + 1)
+					term.write(" ")
+					cursor = cursor - 1
+					term.setCursorPos(1, cursor - offset + 1)
+					term.write(">")
+				elseif cursor - offset + 1 == 2 and offset > 1 then
+					offset = offset - 1
+					cursor = cursor - 1
+					drawMenu(menuTable, cursor, offset)
+				end
+			--down
+			elseif p1 == 208 then
+				_, ylim = term.getSize()
+				if cursor < #menuTable and (cursor - offset + 1 < ylim - 1 or #menuTable <= ylim or (cursor == #menuTable - 1 and cursor - offset + 1 == ylim - 1)) then
+					term.setCursorPos(1, cursor - offset + 1)
+					term.write(" ")
+					cursor = cursor + 1
+					term.setCursorPos(1, cursor - offset + 1)
+					term.write(">")
+				elseif cursor < #menuTable and cursor - offset + 1 == ylim - 1 then
+					offset = offset + 1
+					cursor = cursor + 1
+					drawMenu(menuTable, cursor, offset)
+				end
+			elseif p1 == 28 then
+				return cursor
+			end
+		elseif e == "window_resize" then
+			drawMenu(menuTable, cursor, offset)
+		end
+	end
+end
