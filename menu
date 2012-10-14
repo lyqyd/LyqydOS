@@ -31,7 +31,7 @@ function select(menuTable)
 	local cursor, offset = 1, 1
 	drawMenu(menuTable, cursor, offset)
 	while true do
-		e, p1 = os.pullEvent()
+		local e, p1, p2, p3 = os.pullEvent()
 		if e == "key" then
 			--up
 			if p1 == 200 then
@@ -62,6 +62,23 @@ function select(menuTable)
 				end
 			elseif p1 == 28 then
 				return cursor
+			end
+		elseif e == "click" and p3 == 1 then
+			if p2 <= #menuTable then
+				_, ylim = term.getSize()
+				if offset > 1 and p2 == 1 then
+					--scroll up.
+					offset = offset - 1
+					cursor = offset + 1
+					drawMenu(menuTable, cursor, offset)
+				elseif offset + ylim - 1 < #menuTable and p2 == ylim then
+					--scroll down.
+					offset = offset + 1
+					cursor = offset + ylim - 2
+					drawMenu(menuTable, cursor, offset)
+				else
+					return p2 + offset - 1
+				end
 			end
 		elseif e == "window_resize" then
 			drawMenu(menuTable, cursor, offset)
