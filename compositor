@@ -17,7 +17,7 @@ local function newRedirect(_compTable, _buffer)
 	end
 	redirect.clear = function()
 		for i=1, redirect.compTable.y do
-			redirect.buffer[i] = string.rep(" ", redirect.compTable.x)
+			redirect.buffer.text[i] = string.rep(" ", redirect.compTable.x)
 			redirect.buffer.textColor[i] = string.rep(redirect.buffer.curTextColor, redirect.compTable.x)
 			redirect.buffer.backColor[i] = string.rep(redirect.buffer.curBackColor, redirect.compTable.x)
 		end
@@ -66,8 +66,8 @@ local function newRedirect(_compTable, _buffer)
 		if clr and clr <= 32768 and clr >= 1 then
 			if redirect.compTable.target.isColor() then
 				redirect.buffer.curTextColor = string.format("%x", math.floor(math.log(clr) / math.log(2)))
-			elseif clr = 1 then
-				redirect.buffer.curTextColor = "0"
+			elseif clr == 1 or clr == 32768 then
+				redirect.buffer.curTextColor = string.format("%x", math.floor(math.log(clr) / math.log(2)))
 			else
 				return nil, "Colour not supported"
 			end
@@ -78,8 +78,8 @@ local function newRedirect(_compTable, _buffer)
 		if clr and clr <= 32768 and clr >= 1 then
 			if redirect.compTable.target.isColor() then
 				redirect.buffer.curBackColor = string.format("%x", math.floor(math.log(clr) / math.log(2)))
-			elseif clr = 32768 then
-				redirect.buffer.curBackColor = "f"
+			elseif clr == 32768 or clr == 1 then
+				redirect.buffer.curBackColor = string.format("%x", math.floor(math.log(clr) / math.log(2)))
 			else
 				return nil, "Colour not supported"
 			end
@@ -161,11 +161,22 @@ local compositor = {
 			end
 			for i=1, self.y do
 				term.setCursorPos(1,i)
-				for j=1,self.x do
-					term.setTextColor(2 ^ tonumber(string.sub(finalBuffer.textColor[i], j, j), 16))
-					term.setBackgroundColor(2 ^ tonumber(string.sub(finalBuffer.backColor[i], j, j), 16))
-					term.write(string.sub(finalBuffer.text[i], j, j))
+				if finalBuffer.text[i] ~= self.currentBuffer.text[i] or finalBuffer.textColor[i] ~= self.currentBuffer.textColor[i] or finalBuffer.backColor[i] ~= self.currentBuffer.backColor[i] then
+					local lineEnd = false
+					local offset = 1
+					while not lineEnd do
+						local textColorString = string.match(string.sub(finalBuffer.textColor[i], offset), string.sub(finalBuffer.textColor[i], offset, offset).."*")
+						local backColorString = string.match(string.sub(finalBuffer.backColor[i], offset), string.sub(finalBuffer.backColor[i], offset, offset).."*")
+						term.setTextColor(2 ^ tonumber(string.sub(textColorString, 1, 1), 16))
+						term.setBackgroundColor(2 ^ tonumber(string.sub(backColorString, 1, 1), 16))
+						term.write(string.sub(finalBuffer.text[i], offset, offset + math.min(#textColorString, #backColorString) - 1))
+						offset = offset + math.min(#textColorString, #backColorString)
+						if offset > self.x then lineEnd = true end
+					end
 				end
+				self.currentBuffer.text[i] = finalBuffer.text[i]
+				self.currentBuffer.textColor[i] = finalBuffer.textColor[i]
+				self.currentBuffer.backColor[i] = finalBuffer.backColor[i]
 			end
 		end
 		term.setCursorPos(self.bufferStack[#self.bufferStack].cursorX, self.bufferStack[#self.bufferStack].cursorY)
@@ -212,6 +223,7 @@ function new(target)
 	local comp = {
 		bufferStack = {},
 		target = target or term.native,
+		currentBuffer = {text = {}, textColor = {}, backColor = {}}
 	}
 	--win.redirect = newRedirect(win)
 	setmetatable( comp, cmetatable )
@@ -219,6 +231,11 @@ function new(target)
 		comp.x, comp.y = comp.target.getSize()
 	else
 		return nil
+	end
+	for i=1, comp.y do
+		comp.currentBuffer.text[i] = string.rep(" ", comp.x)
+		comp.currentBuffer.textColor[i] = string.rep("0", comp.x)
+		comp.currentBuffer.backColor[i] = string.rep("f", comp.x)
 	end
 	return comp
 end

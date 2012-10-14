@@ -10,7 +10,7 @@ local function newRedirect(_windowTable)
 		redirect.windowTable.buffer.textColor[redirect.windowTable.cursorY] = string.sub(redirect.windowTable.buffer.textColor[redirect.windowTable.cursorY], math.min(1, redirect.windowTable.cursorX - 1), redirect.windowTable.cursorX - 1)..string.rep(redirect.windowTable.buffer.curTextColor, #text)..string.sub(redirect.windowTable.buffer.textColor[redirect.windowTable.cursorY], redirect.windowTable.cursorX + string.len(text) - 1, redirect.windowTable.w - 2)
 		redirect.windowTable.buffer.backColor[redirect.windowTable.cursorY] = string.sub(redirect.windowTable.buffer.backColor[redirect.windowTable.cursorY], math.min(1, redirect.windowTable.cursorX - 1), redirect.windowTable.cursorX - 1)..string.rep(redirect.windowTable.buffer.curBackColor, #text)..string.sub(redirect.windowTable.buffer.backColor[redirect.windowTable.cursorY], redirect.windowTable.cursorX + string.len(text) - 1, redirect.windowTable.w - 2)
 		redirect.windowTable.cursorX = pos + string.len(text)
-		redirect.windowTable:draw(redirect.windowTable.cursorY)
+		redirect.windowTable:draw()
 	end
 	redirect.clear = function()
 		for i=1, redirect.windowTable.h - 2 do
@@ -24,7 +24,7 @@ local function newRedirect(_windowTable)
 		redirect.windowTable.buffer.text[redirect.windowTable.cursorY] = string.rep(" ", redirect.windowTable.w - 2)
 		redirect.windowTable.buffer.textColor[redirect.windowTable.cursorY] = string.rep(redirect.windowTable.buffer.curTextColor, redirect.windowTable.w - 2)
 		redirect.windowTable.buffer.backColor[redirect.windowTable.cursorY] = string.rep(redirect.windowTable.buffer.curBackColor, redirect.windowTable.w - 2)
-		redirect.windowTable:draw(redirect.windowTable.cursorY)
+		redirect.windowTable:draw()
 	end
 	redirect.getCursorPos = function()
 		return redirect.windowTable.cursorX, redirect.windowTable.cursorY
@@ -60,8 +60,8 @@ local function newRedirect(_windowTable)
 		if clr and clr <= 32768 and clr >= 1 then
 			if redirect.windowTable.target.isColor() then
 				redirect.windowTable.buffer.curTextColor = string.format("%x", math.floor(math.log(clr) / math.log(2)))
-			elseif clr = 1 then
-				redirect.windowTable.buffer.curTextColor = "0"
+			elseif clr == 1 or clr == 32768 then
+				redirect.windowTable.buffer.curTextColor = string.format("%x", math.floor(math.log(clr) / math.log(2)))
 			else
 				return nil, "Colour not supported"
 			end
@@ -72,8 +72,8 @@ local function newRedirect(_windowTable)
 		if clr and clr <= 32768 and clr >= 1 then
 			if redirect.windowTable.target.isColor() then
 				redirect.windowTable.buffer.curBackColor = string.format("%x", math.floor(math.log(clr) / math.log(2)))
-			elseif clr = 32768 then
-				redirect.windowTable.buffer.curBackColor = "f"
+			elseif clr == 32768 or clr == 1 then
+				redirect.windowTable.buffer.curBackColor = string.format("%x", math.floor(math.log(clr) / math.log(2)))
 			else
 				return nil, "Colour not supported"
 			end
@@ -164,13 +164,6 @@ local window = {
 			term.setCursorPos(self.x + self.cursorX, self.y + self.cursorY)
 			term.setCursorBlink(self.cursorBlink)
 			term.restore()
-		elseif type(mode) == "number" then
-			term.redirect(self.target)
-			term.setCursorPos(self.x, self.y + mode)
-			term.write("|"..string.sub(self.buffer.text[mode], 1, self.w - 2).."|")
-			term.setCursorPos(self.x + self.cursorX, self.y + self.cursorY)
-			term.setCursorBlink(self.cursorBlink)
-			term.restore()
 		else
 			if not self.target.render then
 				term.redirect(self.target)
@@ -251,7 +244,9 @@ function new(w, h, x, y, caption, target)
 	end
 	win.redirect = newRedirect(win)
 	for i=1, win.h-2 do
-		win.buffer[i] = string.rep(" ", win.w - 2)
+		win.buffer.text[i] = string.rep(" ", win.w - 2)
+		win.buffer.textColor[i] = string.rep("0", win.w - 2)
+		win.buffer.backColor[i] = string.rep("f", win.w - 2)
 	end
 	setmetatable( win, wmetatable )
 	return win
