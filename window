@@ -6,9 +6,9 @@ local function newRedirect(_windowTable)
 			text = string.sub(text, math.abs(redirect.windowTable.cursorX) + 2)
 			redirect.windowTable.cursorX = 1
 		end
-		redirect.windowTable.buffer.text[redirect.windowTable.cursorY] = string.sub(redirect.windowTable.buffer.text[redirect.windowTable.cursorY], math.min(1, redirect.windowTable.cursorX - 1), redirect.windowTable.cursorX - 1)..text..string.sub(redirect.windowTable.buffer.text[redirect.windowTable.cursorY], redirect.windowTable.cursorX + string.len(text) - 1, redirect.windowTable.w - 2)
-		redirect.windowTable.buffer.textColor[redirect.windowTable.cursorY] = string.sub(redirect.windowTable.buffer.textColor[redirect.windowTable.cursorY], math.min(1, redirect.windowTable.cursorX - 1), redirect.windowTable.cursorX - 1)..string.rep(redirect.windowTable.buffer.curTextColor, #text)..string.sub(redirect.windowTable.buffer.textColor[redirect.windowTable.cursorY], redirect.windowTable.cursorX + string.len(text) - 1, redirect.windowTable.w - 2)
-		redirect.windowTable.buffer.backColor[redirect.windowTable.cursorY] = string.sub(redirect.windowTable.buffer.backColor[redirect.windowTable.cursorY], math.min(1, redirect.windowTable.cursorX - 1), redirect.windowTable.cursorX - 1)..string.rep(redirect.windowTable.buffer.curBackColor, #text)..string.sub(redirect.windowTable.buffer.backColor[redirect.windowTable.cursorY], redirect.windowTable.cursorX + string.len(text) - 1, redirect.windowTable.w - 2)
+		redirect.windowTable.buffer.text[redirect.windowTable.cursorY] = string.sub(redirect.windowTable.buffer.text[redirect.windowTable.cursorY], math.min(1, redirect.windowTable.cursorX - 1), redirect.windowTable.cursorX - 1)..text..string.sub(redirect.windowTable.buffer.text[redirect.windowTable.cursorY], redirect.windowTable.cursorX + string.len(text), redirect.windowTable.w - 2)
+		redirect.windowTable.buffer.textColor[redirect.windowTable.cursorY] = string.sub(redirect.windowTable.buffer.textColor[redirect.windowTable.cursorY], math.min(1, redirect.windowTable.cursorX - 1), redirect.windowTable.cursorX - 1)..string.rep(redirect.windowTable.buffer.curTextColor, #text)..string.sub(redirect.windowTable.buffer.textColor[redirect.windowTable.cursorY], redirect.windowTable.cursorX + string.len(text), redirect.windowTable.w - 2)
+		redirect.windowTable.buffer.backColor[redirect.windowTable.cursorY] = string.sub(redirect.windowTable.buffer.backColor[redirect.windowTable.cursorY], math.min(1, redirect.windowTable.cursorX - 1), redirect.windowTable.cursorX - 1)..string.rep(redirect.windowTable.buffer.curBackColor, #text)..string.sub(redirect.windowTable.buffer.backColor[redirect.windowTable.cursorY], redirect.windowTable.cursorX + string.len(text), redirect.windowTable.w - 2)
 		redirect.windowTable.cursorX = pos + string.len(text)
 		redirect.windowTable:draw()
 	end
@@ -101,7 +101,6 @@ local window = {
 				self.y = y
 			end
 			self:draw()
-			if self.target.move then self.target.move() end
 			return true
 		else
 			return nil, "must specify x and y"

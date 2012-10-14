@@ -9,11 +9,11 @@ local function newRedirect(_compTable, _buffer)
 			text = string.sub(text, math.abs(redirect.buffer.cursorX) + 2)
 			redirect.buffer.cursorX = 1
 		end
-		redirect.buffer.text[redirect.buffer.cursorY] = string.sub(redirect.buffer.text[redirect.buffer.cursorY], math.min(1, redirect.buffer.cursorX - 1), redirect.buffer.cursorX - 1)..text..string.sub(redirect.buffer.text[redirect.buffer.cursorY], redirect.buffer.cursorX + string.len(text) - 1, redirect.compTable.x)
-		redirect.buffer.textColor[redirect.buffer.cursorY] = string.sub(redirect.buffer.textColor[redirect.buffer.cursorY], math.min(1, redirect.buffer.cursorX - 1), redirect.buffer.cursorX - 1)..string.rep(redirect.buffer.curTextColor, #text)..string.sub(redirect.buffer.textColor[redirect.buffer.cursorY], redirect.buffer.cursorX + string.len(text) - 1, redirect.compTable.x)
-		redirect.buffer.backColor[redirect.buffer.cursorY] = string.sub(redirect.buffer.backColor[redirect.buffer.cursorY], math.min(1, redirect.buffer.cursorX - 1), redirect.buffer.cursorX - 1)..string.rep(redirect.buffer.curBackColor, #text)..string.sub(redirect.buffer.backColor[redirect.buffer.cursorY], redirect.buffer.cursorX + string.len(text) - 1, redirect.compTable.x)
+		redirect.buffer.text[redirect.buffer.cursorY] = string.sub(redirect.buffer.text[redirect.buffer.cursorY], math.min(1, redirect.buffer.cursorX - 1), redirect.buffer.cursorX - 1)..text..string.sub(redirect.buffer.text[redirect.buffer.cursorY], redirect.buffer.cursorX + string.len(text), redirect.compTable.x)
+		redirect.buffer.textColor[redirect.buffer.cursorY] = string.sub(redirect.buffer.textColor[redirect.buffer.cursorY], math.min(1, redirect.buffer.cursorX - 1), redirect.buffer.cursorX - 1)..string.rep(redirect.buffer.curTextColor, #text)..string.sub(redirect.buffer.textColor[redirect.buffer.cursorY], redirect.buffer.cursorX + string.len(text), redirect.compTable.x)
+		redirect.buffer.backColor[redirect.buffer.cursorY] = string.sub(redirect.buffer.backColor[redirect.buffer.cursorY], math.min(1, redirect.buffer.cursorX - 1), redirect.buffer.cursorX - 1)..string.rep(redirect.buffer.curBackColor, #text)..string.sub(redirect.buffer.backColor[redirect.buffer.cursorY], redirect.buffer.cursorX + string.len(text), redirect.compTable.x)
 		redirect.buffer.cursorX = pos + string.len(text)
-		redirect.compTable:draw(redirect.buffer.cursorY)
+		redirect.compTable:draw()
 	end
 	redirect.clear = function()
 		for i=1, redirect.compTable.y do
@@ -27,7 +27,7 @@ local function newRedirect(_compTable, _buffer)
 		redirect.buffer[redirect.buffer.cursorY] = string.rep(" ", redirect.compTable.x)
 		redirect.buffer.textColor[redirect.buffer.cursorY] = string.rep(redirect.buffer.curTextColor, redirect.compTable.x)
 		redirect.buffer.backColor[redirect.buffer.cursorY] = string.rep(redirect.buffer.curBackColor, redirect.compTable.x)
-		redirect.compTable:draw(redirect.buffer.cursorY)
+		redirect.compTable:draw()
 	end
 	redirect.getCursorPos = function()
 		return redirect.buffer.cursorX, redirect.buffer.cursorY
@@ -57,9 +57,6 @@ local function newRedirect(_compTable, _buffer)
 			redirect.buffer.textColor[redirect.compTable.y - (1 + n)] = string.rep(redirect.buffer.curTextColor, redirect.compTable.x)
 			redirect.buffer.backColor[redirect.compTable.y - (1 + n)] = string.rep(redirect.buffer.curBackColor, redirect.compTable.x)
 		end
-		redirect.compTable:draw()
-	end
-	redirect.move = function()
 		redirect.compTable:draw()
 	end
 	redirect.setTextColor = function(clr)
