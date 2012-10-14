@@ -9,19 +9,25 @@ local function newRedirect(_compTable, _buffer)
 			text = string.sub(text, math.abs(redirect.buffer.cursorX) + 2)
 			redirect.buffer.cursorX = 1
 		end
-		redirect.buffer[redirect.buffer.cursorY] = string.sub(redirect.buffer[redirect.buffer.cursorY], math.min(1, redirect.buffer.cursorX - 1), redirect.buffer.cursorX - 1)..text..string.sub(redirect.buffer[redirect.buffer.cursorY], redirect.buffer.cursorX + string.len(text) - 1, redirect.compTable.x)
+		redirect.buffer.text[redirect.buffer.cursorY] = string.sub(redirect.buffer.text[redirect.buffer.cursorY], math.min(1, redirect.buffer.cursorX - 1), redirect.buffer.cursorX - 1)..text..string.sub(redirect.buffer.text[redirect.buffer.cursorY], redirect.buffer.cursorX + string.len(text) - 1, redirect.compTable.x)
+		redirect.buffer.textColor[redirect.buffer.cursorY] = string.sub(redirect.buffer.textColor[redirect.buffer.cursorY], math.min(1, redirect.buffer.cursorX - 1), redirect.buffer.cursorX - 1)..string.rep(redirect.buffer.curTextColor, #text)..string.sub(redirect.buffer.textColor[redirect.buffer.cursorY], redirect.buffer.cursorX + string.len(text) - 1, redirect.compTable.x)
+		redirect.buffer.backColor[redirect.buffer.cursorY] = string.sub(redirect.buffer.backColor[redirect.buffer.cursorY], math.min(1, redirect.buffer.cursorX - 1), redirect.buffer.cursorX - 1)..string.rep(redirect.buffer.curBackColor, #text)..string.sub(redirect.buffer.backColor[redirect.buffer.cursorY], redirect.buffer.cursorX + string.len(text) - 1, redirect.compTable.x)
 		redirect.buffer.cursorX = pos + string.len(text)
-		redirect.compTable:draw()
+		redirect.compTable:draw(redirect.buffer.cursorY)
 	end
 	redirect.clear = function()
 		for i=1, redirect.compTable.y do
 			redirect.buffer[i] = string.rep(" ", redirect.compTable.x)
+			redirect.buffer.textColor[i] = string.rep(redirect.buffer.curTextColor, redirect.compTable.x)
+			redirect.buffer.backColor[i] = string.rep(redirect.buffer.curBackColor, redirect.compTable.x)
 		end
 		redirect.compTable:draw()
 	end
 	redirect.clearLine = function()
 		redirect.buffer[redirect.buffer.cursorY] = string.rep(" ", redirect.compTable.x)
-		redirect.compTable:draw()
+		redirect.buffer.textColor[redirect.buffer.cursorY] = string.rep(redirect.buffer.curTextColor, redirect.compTable.x)
+		redirect.buffer.backColor[redirect.buffer.cursorY] = string.rep(redirect.buffer.curBackColor, redirect.compTable.x)
+		redirect.compTable:draw(redirect.buffer.cursorY)
 	end
 	redirect.getCursorPos = function()
 		return redirect.buffer.cursorX, redirect.buffer.cursorY
@@ -40,33 +46,74 @@ local function newRedirect(_compTable, _buffer)
 	end
 	redirect.scroll = function(n)
 		for i=1, redirect.compTable.y - 1 do
-			if redirect.buffer[i + n] then
-				redirect.buffer[i] = redirect.buffer[i + n]
+			if redirect.buffer.text[i + n] then
+				redirect.buffer.text[i] = redirect.buffer.text[i + n]
+				redirect.buffer.textColor[i] = redirect.buffer.textColor[i + n]
+				redirect.buffer.backColor[i] = redirect.buffer.backColor[i + n]
 			end
 		end
 		for i=1,n do
-			redirect.buffer[redirect.compTable.y - (1 + n)] = string.rep(" ", redirect.compTable.x)
+			redirect.buffer.text[redirect.compTable.y - (1 + n)] = string.rep(" ", redirect.compTable.x)
+			redirect.buffer.textColor[redirect.compTable.y - (1 + n)] = string.rep(redirect.buffer.curTextColor, redirect.compTable.x)
+			redirect.buffer.backColor[redirect.compTable.y - (1 + n)] = string.rep(redirect.buffer.curBackColor, redirect.compTable.x)
 		end
 		redirect.compTable:draw()
 	end
 	redirect.move = function()
 		redirect.compTable:draw()
 	end
+	redirect.setTextColor = function(clr)
+		if clr and clr <= 32768 and clr >= 1 then
+			if redirect.compTable.target.isColor() then
+				redirect.buffer.curTextColor = string.format("%x", math.floor(math.log(clr) / math.log(2)))
+			elseif clr = 1 then
+				redirect.buffer.curTextColor = "0"
+			else
+				return nil, "Colour not supported"
+			end
+		end
+	end
+	redirect.setTextColour = redirect.setTextColor
+	redirect.setBackgroundColor = function(clr)
+		if clr and clr <= 32768 and clr >= 1 then
+			if redirect.compTable.target.isColor() then
+				redirect.buffer.curBackColor = string.format("%x", math.floor(math.log(clr) / math.log(2)))
+			elseif clr = 32768 then
+				redirect.buffer.curBackColor = "f"
+			else
+				return nil, "Colour not supported"
+			end
+		end
+	end
+	redirect.setBackgroundColour = redirect.setBackgroundColor
+	redirect.isColor = function()
+		return redirect.compTable.target.isColor()
+	end
+	redirect.isColour = redirect.isColor
 	redirect.render = function(win)
-		for i=1, #redirect.buffer do
+		for i=1, #redirect.buffer.text do
 			if i == win.y then
 				if win.caption then
 					local caption = string.sub(win.caption, 1, win.w - 4)
-					redirect.buffer[i] = string.rep(" ", win.x - 1).."+-"..caption..string.rep("-", win.w - (string.len(caption) + 3)).."+"..string.rep(" ", redirect.compTable.x - (win.x + win.w - 1))
+					redirect.buffer.text[i] = string.rep(" ", win.x - 1).."+-"..caption..string.rep("-", win.w - (string.len(caption) + 3)).."+"..string.rep(" ", redirect.compTable.x - (win.x + win.w - 1))
 				else
-					redirect.buffer[i] = string.rep(" ", win.x - 1).."+"..string.rep("-", win.w - 2).."+"..string.rep(" ", redirect.compTable.x - (win.x + win.w - 1))
+					redirect.buffer.text[i] = string.rep(" ", win.x - 1).."+"..string.rep("-", win.w - 2).."+"..string.rep(" ", redirect.compTable.x - (win.x + win.w - 1))
 				end
+				redirect.buffer.textColor[i] = string.rep("0", redirect.compTable.x)
+				redirect.buffer.backColor[i] = string.rep("f", redirect.compTable.x)
 			elseif i > win.y and i < win.y + win.h - 1 then
-				redirect.buffer[i] = string.rep(" ", win.x - 1).."|"..string.sub(win.buffer[i - win.y], 1, win.w - 2).."|"..string.rep(" ", redirect.compTable.x - (win.x + win.w - 1))
+				redirect.buffer.text[i] = string.rep(" ", win.x - 1).."|"..string.sub(win.buffer.text[i - win.y], 1, win.w - 2).."|"..string.rep(" ", redirect.compTable.x - (win.x + win.w - 1))
+				--initial -1 isn't necessary, to catch leading window decoration, trailing edge uses -2 to pick up the window decoration as well.
+				redirect.buffer.textColor[i] = string.rep("0", win.x)..string.sub(win.buffer.textColor[i - win.y], 1, win.w - 2)..string.rep("0", redirect.compTable.x - (win.x + win.w - 2))
+				redirect.buffer.backColor[i] = string.rep("f", win.x)..string.sub(win.buffer.backColor[i - win.y], 1, win.w - 2)..string.rep("f", redirect.compTable.x - (win.x + win.w - 2))
 			elseif i == win.y + win.h - 1 then
-				redirect.buffer[i] = string.rep(" ", win.x - 1).."+"..string.rep("-", win.w - 2).."+"..string.rep(" ", redirect.compTable.x - (win.x + win.w - 1))
+				redirect.buffer.text[i] = string.rep(" ", win.x - 1).."+"..string.rep("-", win.w - 2).."+"..string.rep(" ", redirect.compTable.x - (win.x + win.w - 1))
+				redirect.buffer.textColor[i] = string.rep("0", redirect.compTable.x)
+				redirect.buffer.backColor[i] = string.rep("f", redirect.compTable.x)
 			else
-				redirect.buffer[i] = string.rep(" ", redirect.compTable.x)
+				redirect.buffer.text[i] = string.rep(" ", redirect.compTable.x)
+				redirect.buffer.textColor[i] = string.rep("0", redirect.compTable.x)
+				redirect.buffer.backColor[i] = string.rep("f", redirect.compTable.x)
 			end
 		end
 		redirect.buffer.cursorX = win.x + win.cursorX
@@ -79,9 +126,11 @@ end
 
 local compositor = {
 	newBuffer = function(self)
-		local buffer = {cursorX = 1, cursorY = 1, cursorBlink = false}
+		local buffer = {cursorX = 1, cursorY = 1, cursorBlink = false, text = {}, textColor = {}, backColor = {}, curTextColor = colors.white, curBackColor = colors.black}
 		for i=1, self.y do
-			buffer[i] = string.rep(" ", self.x)
+			buffer.text[i] = string.rep(" ", self.x)
+			buffer.textColor[i] = string.rep("0", self.x)
+			buffer.backColor[i] = string.rep("f", self.x)
 		end
 		table.insert(self.bufferStack, buffer)
 		return newRedirect(self, buffer)
@@ -91,24 +140,32 @@ local compositor = {
 		term.redirect(self.target)
 		term.setCursorBlink(false)
 		if mode ~= "cursor" then
-			local finalBuffer = {}
+			local finalBuffer = {text = {}, textColor = {}, backColor = {}}
 			for i=1, self.y do
-				finalBuffer[i] = string.rep(" ", self.x)
+				finalBuffer.text[i] = string.rep(" ", self.x)
+				finalBuffer.textColor[i] = string.rep("0", self.x)
+				finalBuffer.backColor[i] = string.rep("f", self.x)
 			end
 			for i=1, #self.bufferStack do
 				for j=1, self.y do
 					local start, finish
-					_, start = string.find(self.bufferStack[i][j], "^%s*%S")
+					_, start = string.find(self.bufferStack[i].text[j], "^%s*%S")
 					if start then
-						finish, _ = string.find(self.bufferStack[i][j], "%S%s*$")
+						finish, _ = string.find(self.bufferStack[i].text[j], "%S%s*$")
 						--if not finish then finish = self.x end
-						finalBuffer[j] = string.sub(string.sub(finalBuffer[j], math.min(1, start - 1), start - 1)..string.sub(self.bufferStack[i][j], start, finish)..string.sub(finalBuffer[j], finish + 1, self.x), 1, self.x)
+						finalBuffer.text[j] = string.sub(string.sub(finalBuffer.text[j], math.min(1, start - 1), start - 1)..string.sub(self.bufferStack[i].text[j], start, finish)..string.sub(finalBuffer.text[j], finish + 1, self.x), 1, self.x)
+						finalBuffer.textColor[j] = string.sub(string.sub(finalBuffer.textColor[j], math.min(1, start - 1), start - 1)..string.sub(self.bufferStack[i].textColor[j], start, finish)..string.sub(finalBuffer.textColor[j], finish + 1, self.x), 1, self.x)
+						finalBuffer.backColor[j] = string.sub(string.sub(finalBuffer.backColor[j], math.min(1, start - 1), start - 1)..string.sub(self.bufferStack[i].backColor[j], start, finish)..string.sub(finalBuffer.backColor[j], finish + 1, self.x), 1, self.x)
 					end
 				end
 			end
 			for i=1, self.y do
 				term.setCursorPos(1,i)
-				term.write(finalBuffer[i])
+				for j=1,self.x do
+					term.setTextColor(2 ^ tonumber(string.sub(finalBuffer.textColor[i], j, j), 16))
+					term.setBackgroundColor(2 ^ tonumber(string.sub(finalBuffer.backColor[i], j, j), 16))
+					term.write(string.sub(finalBuffer.text[i], j, j))
+				end
 			end
 		end
 		term.setCursorPos(self.bufferStack[#self.bufferStack].cursorX, self.bufferStack[#self.bufferStack].cursorY)

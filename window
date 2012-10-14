@@ -6,19 +6,25 @@ local function newRedirect(_windowTable)
 			text = string.sub(text, math.abs(redirect.windowTable.cursorX) + 2)
 			redirect.windowTable.cursorX = 1
 		end
-		redirect.windowTable.buffer[redirect.windowTable.cursorY] = string.sub(redirect.windowTable.buffer[redirect.windowTable.cursorY], math.min(1, redirect.windowTable.cursorX - 1), redirect.windowTable.cursorX - 1)..text..string.sub(redirect.windowTable.buffer[redirect.windowTable.cursorY], redirect.windowTable.cursorX + string.len(text) - 1, redirect.windowTable.w - 2)
+		redirect.windowTable.buffer.text[redirect.windowTable.cursorY] = string.sub(redirect.windowTable.buffer.text[redirect.windowTable.cursorY], math.min(1, redirect.windowTable.cursorX - 1), redirect.windowTable.cursorX - 1)..text..string.sub(redirect.windowTable.buffer.text[redirect.windowTable.cursorY], redirect.windowTable.cursorX + string.len(text) - 1, redirect.windowTable.w - 2)
+		redirect.windowTable.buffer.textColor[redirect.windowTable.cursorY] = string.sub(redirect.windowTable.buffer.textColor[redirect.windowTable.cursorY], math.min(1, redirect.windowTable.cursorX - 1), redirect.windowTable.cursorX - 1)..string.rep(redirect.windowTable.buffer.curTextColor, #text)..string.sub(redirect.windowTable.buffer.textColor[redirect.windowTable.cursorY], redirect.windowTable.cursorX + string.len(text) - 1, redirect.windowTable.w - 2)
+		redirect.windowTable.buffer.backColor[redirect.windowTable.cursorY] = string.sub(redirect.windowTable.buffer.backColor[redirect.windowTable.cursorY], math.min(1, redirect.windowTable.cursorX - 1), redirect.windowTable.cursorX - 1)..string.rep(redirect.windowTable.buffer.curBackColor, #text)..string.sub(redirect.windowTable.buffer.backColor[redirect.windowTable.cursorY], redirect.windowTable.cursorX + string.len(text) - 1, redirect.windowTable.w - 2)
 		redirect.windowTable.cursorX = pos + string.len(text)
-		redirect.windowTable:draw()
+		redirect.windowTable:draw(redirect.windowTable.cursorY)
 	end
 	redirect.clear = function()
 		for i=1, redirect.windowTable.h - 2 do
-			redirect.windowTable.buffer[i] = string.rep(" ", redirect.windowTable.w - 2)
+			redirect.windowTable.buffer.text[i] = string.rep(" ", redirect.windowTable.w - 2)
+			redirect.windowTable.buffer.textColor[i] = string.rep(redirect.windowTable.buffer.curTextColor, redirect.windowTable.w - 2)
+			redirect.windowTable.buffer.backColor[i] = string.rep(redirect.windowTable.buffer.curBackColor, redirect.windowTable.w - 2)
 		end
 		redirect.windowTable:draw()
 	end
 	redirect.clearLine = function()
-		redirect.windowTable.buffer[redirect.windowTable.cursorY] = string.rep(" ", redirect.windowTable.w - 2)
-		redirect.windowTable:draw()
+		redirect.windowTable.buffer.text[redirect.windowTable.cursorY] = string.rep(" ", redirect.windowTable.w - 2)
+		redirect.windowTable.buffer.textColor[redirect.windowTable.cursorY] = string.rep(redirect.windowTable.buffer.curTextColor, redirect.windowTable.w - 2)
+		redirect.windowTable.buffer.backColor[redirect.windowTable.cursorY] = string.rep(redirect.windowTable.buffer.curBackColor, redirect.windowTable.w - 2)
+		redirect.windowTable:draw(redirect.windowTable.cursorY)
 	end
 	redirect.getCursorPos = function()
 		return redirect.windowTable.cursorX, redirect.windowTable.cursorY
@@ -26,26 +32,58 @@ local function newRedirect(_windowTable)
 	redirect.setCursorPos = function(x, y)
 		redirect.windowTable.cursorX = tonumber(x)
 		redirect.windowTable.cursorY = tonumber(y)
-		redirect.windowTable:draw()
+		redirect.windowTable:draw("curosr")
 	end
 	redirect.setCursorBlink = function(b)
 		redirect.windowTable.cursorBlink = b
-		redirect.windowTable:draw()
+		redirect.windowTable:draw("cursor")
 	end
 	redirect.getSize = function()
 		return redirect.windowTable.w - 2, redirect.windowTable.h - 2
 	end
 	redirect.scroll = function(n)
 		for i=1, redirect.windowTable.h - 3 do
-			if redirect.windowTable.buffer[i + n] then
-				redirect.windowTable.buffer[i] = redirect.windowTable.buffer[i + n]
+			if redirect.windowTable.buffer.text[i + n] then
+				redirect.windowTable.buffer.text[i] = redirect.windowTable.buffer.text[i + n]
+				redirect.windowTable.buffer.textColor[i] = redirect.windowTable.buffer.textColor[i + n]
+				redirect.windowTable.buffer.backColor[i] = redirect.windowTable.buffer.backColor[i + n]
 			end
 		end
 		for i=1,n do
-			redirect.windowTable.buffer[redirect.windowTable.h - (1 + n)] = string.rep(" ", redirect.windowTable.w - 2)
+			redirect.windowTable.buffer.text[redirect.windowTable.h - (1 + n)] = string.rep(" ", redirect.windowTable.w - 2)
+			redirect.windowTable.buffer.textColor[redirect.windowTable.h - (1 + n)] = string.rep(redirect.windowTable.buffer.curTextColor, redirect.windowTable.w - 2)
+			redirect.windowTable.buffer.backColor[redirect.windowTable.h - (1 + n)] = string.rep(redirect.windowTable.buffer.curBackColor, redirect.windowTable.w - 2)
 		end
 		redirect.windowTable:draw()
 	end
+	redirect.setTextColor = function(clr)
+		if clr and clr <= 32768 and clr >= 1 then
+			if redirect.windowTable.target.isColor() then
+				redirect.windowTable.buffer.curTextColor = string.format("%x", math.floor(math.log(clr) / math.log(2)))
+			elseif clr = 1 then
+				redirect.windowTable.buffer.curTextColor = "0"
+			else
+				return nil, "Colour not supported"
+			end
+		end
+	end
+	redirect.setTextColour = redirect.setTextColor
+	redirect.setBackgroundColor = function(clr)
+		if clr and clr <= 32768 and clr >= 1 then
+			if redirect.windowTable.target.isColor() then
+				redirect.windowTable.buffer.curBackColor = string.format("%x", math.floor(math.log(clr) / math.log(2)))
+			elseif clr = 32768 then
+				redirect.windowTable.buffer.curBackColor = "f"
+			else
+				return nil, "Colour not supported"
+			end
+		end
+	end
+	redirect.setBackgroundColour = redirect.setBackgroundColor
+	redirect.isColor = function()
+		return redirect.windowTable.target.isColor()
+	end
+	redirect.isColour = redirect.isColor
 	return redirect
 end
 
@@ -82,12 +120,16 @@ local window = {
 				if w < self.w then
 					for i=1, math.min(#self.buffer, h - 2) do
 						--w less two because the window border is part of the size, but not the buffer.
-						self.buffer[i] = string.sub(self.buffer[i],1,w - 2)
+						self.buffer.text[i] = string.sub(self.buffer.text[i],1,w - 2)
+						self.buffer.textColor[i] = string.sub(self.buffer.textColor[i],1,w - 2)
+						self.buffer.backColor[i] = string.sub(self.buffer.backColor[i],1,w - 2)
 					end
 				elseif w > self.w then
 					for i=1, math.min(#self.buffer, h - 2) do
 						--no need for width subtractions, since we are adjusting based on the difference between the two.
-						self.buffer[i] = self.buffer[i]..string.rep(" ", w - self.w)
+						self.buffer.text[i] = self.buffer.text[i]..string.rep(" ", w - self.w)
+						self.buffer.textColor[i] = self.buffer.textColor[i]..string.rep(self.buffer.curTextColor, w - self.w)
+						self.buffer.backColor[i] = self.buffer.backColor[i]..string.rep(self.buffer.curBackColor, w - self.w)
 					end
 				end
 				self.w = w
@@ -95,11 +137,15 @@ local window = {
 				if h < self.h then
 					for i=1,self.h - h do
 						--remove the last entry to trim the buffer.
-						table.remove(self.buffer)
+						table.remove(self.buffer.text)
+						table.remove(self.buffer.textColor)
+						table.remove(self.buffer.backColor)
 					end
 				elseif h > self.h then
 					for i=self.h, h do
-						table.insert(self.buffer, string.rep(" ", self.w - 2))
+						table.insert(self.buffer.text, string.rep(" ", self.w - 2))
+						table.insert(self.buffer.textColor, string.rep(self.buffer.curTextColor, self.w - 2))
+						table.insert(self.buffer.backColor, string.rep(self.buffer.curBackColor, self.w - 2))
 					end
 				end
 				self.h = h
@@ -112,36 +158,58 @@ local window = {
 			return nil, "must specify width and height"
 		end
 	end,
-	draw = function(self)
-		if not self.target.render then
+	draw = function(self, mode)
+		if mode == "cursor" then
 			term.redirect(self.target)
-			term.clear()
-			local top = nil
-			if self.caption then
-				if string.len(self.caption) > self.w - 4 then
-					top = "+-"..string.sub(self.caption, 1, self.w - 4)
-				else
-					top = "+-"..self.caption
-				end
-				top = top..string.rep("-", self.w - (string.len(top) + 1)).."+"
-			else
-				top = "+"..string.rep("-", self.w - 2).."+"
-			end
-			term.setCursorPos(self.x, self.y)
-			term.write(top)
-			for i=1, self.h - 2 do
-				term.setCursorPos(self.x, self.y + i)
-				term.write("|"..string.sub(self.buffer[i], 1, self.w - 2))
-				term.setCursorPos(self.x + self.w - 1, self.y + i)
-				term.write("|")
-			end
-			term.setCursorPos(self.x, self.y + self.h - 1)
-			term.write("+"..string.rep("-", self.w - 2).."+")
+			term.setCursorPos(self.x + self.cursorX, self.y + self.cursorY)
+			term.setCursorBlink(self.cursorBlink)
+			term.restore()
+		elseif type(mode) == "number" then
+			term.redirect(self.target)
+			term.setCursorPos(self.x, self.y + mode)
+			term.write("|"..string.sub(self.buffer.text[mode], 1, self.w - 2).."|")
 			term.setCursorPos(self.x + self.cursorX, self.y + self.cursorY)
 			term.setCursorBlink(self.cursorBlink)
 			term.restore()
 		else
-			self.target.render(self)
+			if not self.target.render then
+				term.redirect(self.target)
+				term.clear()
+				local top = nil
+				if self.caption then
+					if string.len(self.caption) > self.w - 4 then
+						top = "+-"..string.sub(self.caption, 1, self.w - 4)
+					else
+						top = "+-"..self.caption
+					end
+					top = top..string.rep("-", self.w - (string.len(top) + 1)).."+"
+				else
+					top = "+"..string.rep("-", self.w - 2).."+"
+				end
+				term.setCursorPos(self.x, self.y)
+				term.write(top)
+				for i=1, self.h - 2 do
+					term.setCursorPos(self.x, self.y + i)
+					term.setTextColor(colors.white)
+					term.setBackgroundColor(colors.black)
+					term.write("|")
+					for j=1,self.w - 2 do
+						term.setTextColor(2 ^ tonumber(string.sub(self.buffer.textColor[i], j, j), 16))
+						term.setBackgroundColor(2 ^ tonumber(string.sub(self.buffer.backColor[i], j, j), 16))
+						term.write(string.sub(self.buffer.text[i], j, j))
+					end
+					term.setTextColor(colors.white)
+					term.setBackgroundColor(colors.black)
+					term.write("|")
+				end
+				term.setCursorPos(self.x, self.y + self.h - 1)
+				term.write("+"..string.rep("-", self.w - 2).."+")
+				term.setCursorPos(self.x + self.cursorX, self.y + self.cursorY)
+				term.setCursorBlink(self.cursorBlink)
+				term.restore()
+			else
+				self.target.render(self)
+			end
 		end
 	end,
 	destroy = function(self)
@@ -158,7 +226,7 @@ local wmetatable = {
 
 function new(w, h, x, y, caption, target)
 	local win = {
-		buffer = {},
+		buffer = {text = {}, textColor = {}, backColor = {}, curTextColor = "0", curBackColor = "f"},
 		cursorX = 1,
 		cursorY = 1,
 		cursorBlink = false,
