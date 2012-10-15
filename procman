@@ -1,23 +1,30 @@
-local processTable = {}
-local activeProcess = nil
-
-local windowCompositor = compositor.new()
+processTable = {}
+process.activeProcess = nil
+windowCompositor = compositor.new()
+rawset(process, "windowCompositor", windowCompositor)
+rawset(process, "processTable", processTable)
 
 local function nextWindow(default)
-	local nextBuf = windowCompositor.bufferStack[#windowCompositor.bufferStack]
-	local nextActive = default
-	for tNum, tInfo in ipairs(processTable) do
-		if tInfo and tInfo.window then
-			if tInfo.window.target.buffer == nextBuf then
-				nextActive = tNum
+	if processTable[process.activeProcess].parent then
+		if processTable[processTable[process.activeProcess].parent] and processTable[processTable[process.activeProcess].parent].window then
+			return processTable[process.activeProcess].parent
+		end
+	else
+		local nextBuf = windowCompositor.bufferStack[#windowCompositor.bufferStack]
+		local nextActive = default
+		for tNum, tInfo in ipairs(processTable) do
+			if tInfo and tInfo.window then
+				if tInfo.window.target.buffer == nextBuf then
+					nextActive = tNum
+				end
 			end
 		end
+		return nextActive
 	end
-	return nextActive
 end
 
 local function checkWindow(proc)
-	if coroutine.status(proc.thread) == "dead" then
+	if proc and coroutine.status(proc.thread) == "dead" then
 		if proc.window then
 			proc.window:destroy()
 		end
@@ -26,45 +33,179 @@ local function checkWindow(proc)
 	return true
 end
 
+local function addChild(parent, child)
+	if processTable[parent].children then
+		local isChild = false
+		for k, v in ipairs(processTable[parent].children) do
+			if v == child then
+				isChild = true
+				break
+			end
+		end
+		if not isChild then
+			table.insert(processTable[parent].children, child)
+		end
+	else
+		processTable[parent].children = {child}
+	end
+	processTable[child].parent = parent
+end
+
+local function selectWindow()
+	local pList, menuList = {}, {}
+	for tNum, tInfo in ipairs(process.processTable) do
+		if tInfo and tInfo.window then
+			table.insert(pList, tNum)
+			table.insert(menuList, tInfo.window.caption)
+		end
+	end
+	--removes self from list of running programs.
+	table.remove(menuList)
+	table.remove(pList)
+	table.insert(menuList, "Cancel")
+	local selection = menu.select(menuList)
+	if pList[selection] then
+		process.activeProcess = pList[selection]
+		windowCompositor:toFront(processTable[process.activeProcess].window)
+	end
+end
+
+local function windowAction(actionProc)
+	if processTable[actionProc] and processTable[actionProc].window then
+		local selection = menu.select({"Move Window", "Resize Window", "Close Window", "Cancel"})
+		return selection
+	end
+end
+
+local function changeWindow(manipulationWindow, action)
+	if action == 1 then
+		--move
+		while true do
+			e, p1, p2, p3 = os.pullEvent()
+			if e == "key" then
+				if p1 == 200 then
+					--up
+					manipulationWindow.window:move(manipulationWindow.window.x, manipulationWindow.window.y - 1)
+				elseif p1 == 203 then
+					--left
+					manipulationWindow.window:move(manipulationWindow.window.x - 1, manipulationWindow.window.y)
+				elseif p1 == 205 then
+					--right
+					manipulationWindow.window:move(manipulationWindow.window.x + 1, manipulationWindow.window.y)
+				elseif p1 == 208 then
+					--down
+					manipulationWindow.window:move(manipulationWindow.window.x, manipulationWindow.window.y + 1)
+				elseif p1 == 28 then
+					--enter
+					break
+				end
+			elseif e == "click" and p3 == 1 then
+				--mouse click
+				manipulationWindow.window:move(p1, p2)
+				break
+			end
+		end
+	elseif action == 2 then
+		--resize
+		local newX, newY = manipulationWindow.window.x + manipulationWindow.window.w - 1, manipulationWindow.window.y + manipulationWindow.window.h - 1
+		term.setCursorPos(newX, newY)
+		term.write("*")
+		term.setCursorPos(newX, newY)
+		term.setCursorBlink(true)
+		local xlim, ylim = windowCompositor.target.getSize()
+		while true do
+			e, p1, p2, p3 = os.pullEvent()
+			term.setCursorBlink(false)
+			if e == "key" then
+				if p1 == 200 then
+					--up
+					if newY > manipulationWindow.window.y + 2 then
+						newY = newY - 1
+					end
+				elseif p1 == 203 then
+					--left
+					if newX > manipulationWindow.window.x + 4 then
+						newX = newX - 1
+					end
+				elseif p1 == 205 then
+					--right
+					if newX < xlim then
+						newX = newX + 1
+					end
+				elseif p1 == 208 then
+					--down
+					if newY < ylim then
+						newY = newY + 1
+					end
+				elseif p1 == 28 then
+					--enter
+					break
+				end
+				windowCompositor:draw()
+				term.setCursorPos(newX, newY)
+				term.write("*")
+				term.setCursorPos(newX, newY)
+				term.setCursorBlink(true)
+			elseif e == "click" and p3 == 1 then
+				if p1 > manipulationWindow.window.x + 4 and p2 > manipulationWindow.window.y + 2 then
+					newX, newY = p1, p2
+					break
+				end
+			end
+		end
+		manipulationWindow.window:resize(newX - manipulationWindow.window.x + 1, newY - manipulationWindow.window.y + 1)
+		os.queueEvent("window_resize")
+	elseif action == 3 then
+		manipulationWindow.window:destroy()
+		manipulationWindow = false
+		process.activeProcess = nextWindow(1)
+		windowCompositor:toFront(processTable[process.activeProcess].window)
+	end
+end
+
+processTable[1] = {}
+processTable[1].window = window.new(41,15,3,3,"CraftShell",windowCompositor:newBuffer())
+processTable[1].thread = coroutine.create(function() shell.run("/rom/programs/shell") end)
+process.activeProcess = 1
+term.clear()
+term.redirect(processTable[process.activeProcess].window.redirect)
+coroutine.resume(processTable[1].thread)
+term.restore()
+
 while true do
+	for i=1, #processTable do
+		if not checkWindow(processTable[i]) then
+			processTable[i] = false
+		end
+	end
 	event = {coroutine.yield()}
 	if event[1] == "key" and event[2] == 61 then
 		--window switching menu
-		local pList, menuList
-		for tNum, tInfo in ipairs(processTable) do
-			if tInfo.window then
-				table.insert(pList, tNum)
-				table.insert(menuList, tInfo.window.caption)
-			end
-		end
-		table.insert(menuList, "Cancel")
-		local menuWin = window.new(25,17,1,1,"Select Window",windowCompositor:newBuffer())
-		term.redirect(menuWin.redirect)
-		local selection = menu.select(menuList)
+		local pTable = {}
+		pTable.thread = coroutine.create(selectWindow)
+		pTable.window = window.new(19, 11, 1, 1, "Select Window", windowCompositor:newBuffer())
+		table.insert(processTable, pTable)
+		process.activeProcess = #process.processTable
+		term.redirect(processTable[process.activeProcess].window.redirect)
+		coroutine.resume(processTable[process.activeProcess].thread)
 		term.restore()
-		menuWin:destroy()
-		if windowList[selection] then
-			activeProcess = pList[selection]
-			windowCompositor:toFront(processTable[activeProcess].window)
+		if not checkWindow(processTable[process.activeProcess]) then
+			process.activeProcess = nextWindow(1)
+			windowCompositor:toFront(processTable[process.activeProcess].window)
 		end
-	elseif event[1] == "key" and event[4] == 61 then
+	elseif event[1] == "key" and event[2] == 62 then
 		--window controls menu
-		if processTable[activeProcess].window then
-			local menuWin = window.new(15,4,3,3,"Action Menu",windowCompositor:newBuffer())
-			term.redirect(menuWin.redirect)
-			local winAction = menu.select({"Resize Window", "Move Window", "Close Window", "Cancel"})
-			term.restore()
-			menuWin:destroy()
-			if winAction == 1 then
-				--figure out how to resize windows. :-/
-			elseif winAction == 3 then
-				processTable[activeProcess].window:destroy()
-				processTable[activeProcess] = false
-				--determine next active window.
-				activeProcess = nextWindow(1)
-				if activeProcess == 1 then windowCompositor:toFront(processTable[activeProcess].window) end
-			end
-		end
+		local pTable = {}
+		local parent = process.activeProcess
+		pTable.thread = coroutine.create(windowAction)
+		pTable.window = window.new(17, 6, 1, 1, "Action Menu", windowCompositor:newBuffer())
+		table.insert(processTable, pTable)
+		process.activeProcess = #processTable
+		term.redirect(processTable[process.activeProcess].window.redirect)
+		passback = {coroutine.resume(processTable[process.activeProcess].thread, parent)}
+		term.restore()
+		processTable[process.activeProcess].special = "window_action"
+		addChild(parent, process.activeProcess)
 	elseif event[1] == "click" then
 		local windowFound = false
 		for i = #windowCompositor.bufferStack, 1, -1 do
@@ -73,23 +214,28 @@ while true do
 					--correct window in order, break even if we don't get the click here.
 					if event[2] >= pInfo.window.x and event[2] <= pInfo.window.x + pInfo.window.w - 1 and event[3] >= pInfo.window.y and event[3] <= pInfo.window.y + pInfo.window.h - 1 then
 						windowFound = true
-						if activeProcess ~= pNum
-							activeProcess = pNum
-							windowCompositor:toFront(processTable[activeProcess].window)
+						if process.activeProcess ~= pNum then
+							process.activeProcess = pNum
+							windowCompositor:toFront(processTable[process.activeProcess].window)
 						end
 						event[2] = event[2] - pInfo.window.x
 						event[3] = event[3] - pInfo.window.y
 						if event[2] > 0 and event[2] < pInfo.window.w - 1 and event[3] > 0 and event[3] < pInfo.window.h - 1 then
 							local redir = false
-							if processTable[activeProcess].window then
-								term.redirect(processTable[activeProcess].window.redirect)
+							if processTable[process.activeProcess].window then
+								term.redirect(processTable[process.activeProcess].window.redirect)
 								redir = true
 							end
-							passback = {coroutine.resume(processTable[activeProcess].thread, unpack(event))}
+							passback = {coroutine.resume(processTable[process.activeProcess].thread, unpack(event))}
 							if redir then term.restore() end
-							if not checkWindow(processTable[activeProcess]) then
-								activeProcess = nextWindow(1)
-								if activeProcess == 1 then windowCompositor:toFront(processTable[activeProcess].window) end
+							if not checkWindow(processTable[process.activeProcess]) then
+								if processTable[process.activeProcess].special then
+									if processTable[process.activeProcess].special == "window_action" then
+										changeWindow(processTable[processTable[process.activeProcess].parent], passback[2])
+									end
+								end
+								process.activeProcess = nextWindow(1)
+								windowCompositor:toFront(processTable[process.activeProcess].window)
 							end
 						end
 					end
@@ -100,20 +246,24 @@ while true do
 		end
 	else
 		local redir = false
-		if processTable[activeProcess].window then
-			term.redirect(processTable[activeProcess].window.redirect)
+		if processTable[process.activeProcess].window then
+			term.redirect(processTable[process.activeProcess].window.redirect)
 			redir = true
 		end
-		passback = {coroutine.resume(processTable[activeProcess].thread, unpack(event))}
+		passback = {coroutine.resume(processTable[process.activeProcess].thread, unpack(event))}
 		if redir then term.restore() end
-		if not checkWindow(processTable[activeProcess]) then
-			activeProcess = nextWindow(1)
-			if activeProcess == 1 then windowCompositor:toFront(processTable[activeProcess].window) end
+		if not checkWindow(processTable[process.activeProcess]) then
+			if processTable[process.activeProcess].special then
+				if processTable[process.activeProcess].special == "window_action" then
+					changeWindow(processTable[processTable[process.activeProcess].parent], passback[2])
+				end
+			end
+			process.activeProcess = nextWindow(1)
+			windowCompositor:toFront(processTable[process.activeProcess].window)
 		end
-
-		if event[1] ~= "key" and event[1] ~= "char" and event[1] ~= "click" then
+		if event[1] ~= "key" and event[1] ~= "char" and event[1] ~= "click" and event ~= "window_resize" then
 			for tNum, tInfo in ipairs(processTable) do
-				if tInfo then
+				if tInfo and tInfo.listening then
 					for k, eType in ipairs(tInfo.listening) do
 						if event[1] == eType then
 							local redir = false
@@ -123,7 +273,7 @@ while true do
 							end
 							passback = {coroutine.resume(processTable[tNum].thread, unpack(event))}
 							if redir then term.restore() end
-							if coroutine.status(processTable[tNum].thread) = "dead" then
+							if coroutine.status(processTable[tNum].thread) == "dead" then
 								if processTable[tNum].window then
 									processTable[tNum].window:destroy()
 								end
@@ -133,18 +283,6 @@ while true do
 					end
 				end
 			end
-		end
-
-	if coroutine.status(processTable[curr].thread) = "dead" then
-		if processTable[curr].window then
-			processTable[curr].window:destroy()
-		end
-	end
-	if not passback[1] then
-		if passback[2] then
-			print(passback[2])
-		else
-			print("Program Terminated Unexpectedly!")
 		end
 	end
 end
