@@ -1,0 +1,16 @@
+local args = {...}
+if #args < 1 then
+	print("No program specified!")
+else
+	path = table.remove(args, 1)
+	if fs.exists(path) and not fs.isDir(path) then
+		local pTable = {}
+		pTable.thread = coroutine.create(function() shell.run(path, unpack(args)) end)
+		pTable.window = window.new(19,9, 1, 1, path, process.windowCompositor:newBuffer())
+		table.insert(process.processTable, pTable)
+		process.activeProcess = #process.processTable
+		term.redirect(process.processTable[process.activeProcess].window.redirect)
+		coroutine.resume(process.processTable[process.activeProcess].thread)
+		term.restore()
+	end
+end
