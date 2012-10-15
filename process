@@ -1,0 +1,9 @@
+processTable = {}
+activeProcess = nil
+windowCompositor = {}
+
+defaultWindow = {19,9}
+
+function setActive(num)
+	activeProcess = num
+end
