@@ -132,21 +132,25 @@ local function changeWindow(manipulationWindow, action)
 				if p1 == 200 then
 					--up
 					if newY > manipulationWindow.window.y + 2 then
+						windowCompositor.currentBuffer.text[newY] = string.sub(windowCompositor.currentBuffer.text[newY], 1, newX - 1).."*"..string.sub(windowCompositor.currentBuffer.text[newY], newX + 1)
 						newY = newY - 1
 					end
 				elseif p1 == 203 then
 					--left
 					if newX > manipulationWindow.window.x + 4 then
+						windowCompositor.currentBuffer.text[newY] = string.sub(windowCompositor.currentBuffer.text[newY], 1, newX - 1).."*"..string.sub(windowCompositor.currentBuffer.text[newY], newX + 1)
 						newX = newX - 1
 					end
 				elseif p1 == 205 then
 					--right
 					if newX < xlim then
+						windowCompositor.currentBuffer.text[newY] = string.sub(windowCompositor.currentBuffer.text[newY], 1, newX - 1).."*"..string.sub(windowCompositor.currentBuffer.text[newY], newX + 1)
 						newX = newX + 1
 					end
 				elseif p1 == 208 then
 					--down
 					if newY < ylim then
+						windowCompositor.currentBuffer.text[newY] = string.sub(windowCompositor.currentBuffer.text[newY], 1, newX - 1).."*"..string.sub(windowCompositor.currentBuffer.text[newY], newX + 1)
 						newY = newY + 1
 					end
 				elseif p1 == 28 then
@@ -210,7 +214,7 @@ while true do
 		local pTable = {}
 		local parent = process.activeProcess
 		pTable.thread = coroutine.create(windowAction)
-		pTable.window = window.new(17, 6, 1, 1, "Action Menu", windowCompositor:newBuffer())
+		pTable.window = window.new(17, 6, processTable[parent].window.x, processTable[parent].window.y, "Action Menu", windowCompositor:newBuffer())
 		table.insert(processTable, pTable)
 		process.activeProcess = #processTable
 		term.redirect(processTable[process.activeProcess].window.redirect)
