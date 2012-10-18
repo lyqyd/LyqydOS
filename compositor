@@ -123,7 +123,7 @@ end
 
 local compositor = {
 	newBuffer = function(self)
-		local buffer = {cursorX = 1, cursorY = 1, cursorBlink = false, text = {}, textColor = {}, backColor = {}, curTextColor = colors.white, curBackColor = colors.black}
+		local buffer = {cursorX = 1, cursorY = 1, cursorBlink = false, text = {}, textColor = {}, backColor = {}, curTextColor = "0", curBackColor = "f"}
 		for i=1, self.y do
 			buffer.text[i] = string.rep(" ", self.x)
 			buffer.textColor[i] = string.rep("0", self.x)
