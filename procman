@@ -179,6 +179,15 @@ local function changeWindow(manipulationWindow, action)
 	end
 end
 
+titlebar = windowCompositor:newBuffer()
+local titlebarWidth = titlebar.getSize()
+term.redirect(titlebar)
+print("testOne")
+term.setCursorPos(1,1)
+term.write("=LyqydOS"..string.rep("=", titlebarWidth - 8))
+term.restore()
+--titlebar.buffer.text[1] = "=LyqydOS"..string.rep("=", titlebarWidth - 8)
+
 processTable[1] = {}
 processTable[1].window = window.new(41,15,3,3,"CraftShell",windowCompositor:newBuffer())
 processTable[1].thread = coroutine.create(function() shell.run("/rom/programs/shell") end)
