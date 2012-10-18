@@ -33,6 +33,18 @@ local function checkWindow(proc)
 	return true
 end
 
+local function checkProcess(passback)
+	if not checkWindow(processTable[process.activeProcess]) then
+		if processTable[process.activeProcess].special then
+			if processTable[process.activeProcess].special == "window_action" then
+				changeWindow(processTable[processTable[process.activeProcess].parent], passback[2])
+			end
+		end
+		process.activeProcess = nextWindow(1)
+		windowCompositor:toFront(processTable[process.activeProcess].window)
+	end
+end
+
 local function addChild(parent, child)
 	if processTable[parent].children then
 		local isChild = false
@@ -228,15 +240,7 @@ while true do
 							end
 							passback = {coroutine.resume(processTable[process.activeProcess].thread, unpack(event))}
 							if redir then term.restore() end
-							if not checkWindow(processTable[process.activeProcess]) then
-								if processTable[process.activeProcess].special then
-									if processTable[process.activeProcess].special == "window_action" then
-										changeWindow(processTable[processTable[process.activeProcess].parent], passback[2])
-									end
-								end
-								process.activeProcess = nextWindow(1)
-								windowCompositor:toFront(processTable[process.activeProcess].window)
-							end
+							checkProcess()
 						end
 					end
 					break
@@ -252,15 +256,8 @@ while true do
 		end
 		passback = {coroutine.resume(processTable[process.activeProcess].thread, unpack(event))}
 		if redir then term.restore() end
-		if not checkWindow(processTable[process.activeProcess]) then
-			if processTable[process.activeProcess].special then
-				if processTable[process.activeProcess].special == "window_action" then
-					changeWindow(processTable[processTable[process.activeProcess].parent], passback[2])
-				end
-			end
-			process.activeProcess = nextWindow(1)
-			windowCompositor:toFront(processTable[process.activeProcess].window)
-		end
+		checkProcess()
+		--handle background processes.
 		if event[1] ~= "key" and event[1] ~= "char" and event[1] ~= "click" and event ~= "window_resize" then
 			for tNum, tInfo in ipairs(processTable) do
 				if tInfo and tInfo.listening then
