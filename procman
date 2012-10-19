@@ -33,18 +33,6 @@ local function checkWindow(proc)
 	return true
 end
 
-local function checkProcess(passback)
-	if not checkWindow(processTable[process.activeProcess]) then
-		if processTable[process.activeProcess].special then
-			if processTable[process.activeProcess].special == "window_action" then
-				changeWindow(processTable[processTable[process.activeProcess].parent], passback[2])
-			end
-		end
-		process.activeProcess = nextWindow(1)
-		windowCompositor:toFront(processTable[process.activeProcess].window)
-	end
-end
-
 local function addChild(parent, child)
 	if processTable[parent].children then
 		local isChild = false
@@ -79,6 +67,26 @@ local function selectWindow()
 	if pList[selection] then
 		process.activeProcess = pList[selection]
 		windowCompositor:toFront(processTable[process.activeProcess].window)
+	end
+end
+
+local function startProgram()
+	write("> ")
+	local line = read()
+	local args
+	for match in string.gmatch( line, "[^ \t]+" ) do
+		table.insert( args, match )
+	end
+	path = table.remove(args, 1)
+	if fs.exists(path) and not fs.isDir(path) then
+		local pTable = {}
+		pTable.thread = coroutine.create(function() shell.run(path, unpack(args)) end)
+		pTable.window = window.new(19,9, 1, 1, path, windowCompositor:newBuffer())
+		table.insert(processTable, pTable)
+		process.activeProcess = #processTable
+		term.redirect(processTable[process.activeProcess].window.redirect)
+		coroutine.resume(processTable[process.activeProcess].thread)
+		term.restore()
 	end
 end
 
@@ -179,20 +187,28 @@ local function changeWindow(manipulationWindow, action)
 	end
 end
 
+local function checkProcess(passback)
+	if not checkWindow(processTable[process.activeProcess]) then
+		if processTable[process.activeProcess].special then
+			if processTable[process.activeProcess].special == "window_action" then
+				changeWindow(processTable[processTable[process.activeProcess].parent], passback[2])
+			end
+		end
+		process.activeProcess = nextWindow(1)
+		windowCompositor:toFront(processTable[process.activeProcess].window)
+	end
+end
+
+term.clear()
 titlebar = windowCompositor:newBuffer()
-local titlebarWidth = titlebar.getSize()
-term.redirect(titlebar)
-print("testOne")
-term.setCursorPos(1,1)
-term.write("=LyqydOS"..string.rep("=", titlebarWidth - 8))
-term.restore()
---titlebar.buffer.text[1] = "=LyqydOS"..string.rep("=", titlebarWidth - 8)
+local titlebarWidth, titlebarHeight = titlebar.getSize()
+titlebar.buffer.text[1] = "=LyqydOS"..string.rep("=", titlebarWidth - 8)
+windowCompositor:draw()
 
 processTable[1] = {}
 processTable[1].window = window.new(41,15,3,3,"CraftShell",windowCompositor:newBuffer())
 processTable[1].thread = coroutine.create(function() shell.run("/rom/programs/shell") end)
 process.activeProcess = 1
-term.clear()
 term.redirect(processTable[process.activeProcess].window.redirect)
 coroutine.resume(processTable[1].thread)
 term.restore()
@@ -253,13 +269,27 @@ while true do
 							end
 							passback = {coroutine.resume(processTable[process.activeProcess].thread, unpack(event))}
 							if redir then term.restore() end
-							checkProcess()
+							checkProcess(passback)
 						end
 					end
 					break
 				end
 			end
 			if windowFound then break end
+		end
+		if not windowFound and event[3] == 1 then
+			--click on titlebar with no window covering it.
+			if event[2] > 1 and event[2] < 9 then
+				--clicked on the LyqydOS button
+				local pTable = {}
+				pTable.thread = coroutine.create(startProgram)
+				pTable.window = window.new(30, 3, 2, 2, "Run Program", windowCompositor:newBuffer())
+				table.insert(processTable, pTable)
+				process.activeProcess = #process.processTable
+				term.redirect(processTable[process.activeProcess].window.redirect)
+				coroutine.resume(processTable[process.activeProcess].thread)
+				term.restore()
+			end
 		end
 	else
 		local redir = false
@@ -269,7 +299,7 @@ while true do
 		end
 		passback = {coroutine.resume(processTable[process.activeProcess].thread, unpack(event))}
 		if redir then term.restore() end
-		checkProcess()
+		checkProcess(passback)
 		--handle background processes.
 		if event[1] ~= "key" and event[1] ~= "char" and event[1] ~= "click" and event ~= "window_resize" then
 			for tNum, tInfo in ipairs(processTable) do
