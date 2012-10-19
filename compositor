@@ -149,7 +149,6 @@ local compositor = {
 					_, start = string.find(self.bufferStack[i].text[j], "^%s*%S")
 					if start then
 						finish, _ = string.find(self.bufferStack[i].text[j], "%S%s*$")
-						--if not finish then finish = self.x end
 						finalBuffer.text[j] = string.sub(string.sub(finalBuffer.text[j], math.min(1, start - 1), start - 1)..string.sub(self.bufferStack[i].text[j], start, finish)..string.sub(finalBuffer.text[j], finish + 1, self.x), 1, self.x)
 						finalBuffer.textColor[j] = string.sub(string.sub(finalBuffer.textColor[j], math.min(1, start - 1), start - 1)..string.sub(self.bufferStack[i].textColor[j], start, finish)..string.sub(finalBuffer.textColor[j], finish + 1, self.x), 1, self.x)
 						finalBuffer.backColor[j] = string.sub(string.sub(finalBuffer.backColor[j], math.min(1, start - 1), start - 1)..string.sub(self.bufferStack[i].backColor[j], start, finish)..string.sub(finalBuffer.backColor[j], finish + 1, self.x), 1, self.x)
