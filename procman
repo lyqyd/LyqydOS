@@ -18,7 +18,7 @@ if winDims then
 end
 
 local function nextWindow(default)
-	if processTable[process.activeProcess].parent then
+	if processTable[process.activeProcess] and processTable[process.activeProcess].parent then
 		if processTable[processTable[process.activeProcess].parent] and processTable[processTable[process.activeProcess].parent].window then
 			return processTable[process.activeProcess].parent
 		end
@@ -160,29 +160,29 @@ local function changeWindow(manipulationWindow, action)
 			if e == "key" then
 				if p1 == 200 then
 					--up
-					manipulationWindow.window:move(manipulationWindow.window.x, manipulationWindow.window.y - 1)
+					processTable[manipulationWindow].window:move(processTable[manipulationWindow].window.x, processTable[manipulationWindow].window.y - 1)
 				elseif p1 == 203 then
 					--left
-					manipulationWindow.window:move(manipulationWindow.window.x - 1, manipulationWindow.window.y)
+					processTable[manipulationWindow].window:move(processTable[manipulationWindow].window.x - 1, processTable[manipulationWindow].window.y)
 				elseif p1 == 205 then
 					--right
-					manipulationWindow.window:move(manipulationWindow.window.x + 1, manipulationWindow.window.y)
+					processTable[manipulationWindow].window:move(processTable[manipulationWindow].window.x + 1, processTable[manipulationWindow].window.y)
 				elseif p1 == 208 then
 					--down
-					manipulationWindow.window:move(manipulationWindow.window.x, manipulationWindow.window.y + 1)
+					processTable[manipulationWindow].window:move(processTable[manipulationWindow].window.x, processTable[manipulationWindow].window.y + 1)
 				elseif p1 == 28 then
 					--enter
 					break
 				end
-			elseif e == "click" and p3 == 1 then
+			elseif e == "mouse_click" and p1 == 1 then
 				--mouse click
-				manipulationWindow.window:move(p1, p2)
+				processTable[manipulationWindow].window:move(p2, p3)
 				break
 			end
 		end
 	elseif action == 2 then
 		--resize
-		local newX, newY = manipulationWindow.window.x + manipulationWindow.window.w - 1, manipulationWindow.window.y + manipulationWindow.window.h - 1
+		local newX, newY = processTable[manipulationWindow].window.x + processTable[manipulationWindow].window.w - 1, processTable[manipulationWindow].window.y + processTable[manipulationWindow].window.h - 1
 		term.setCursorPos(newX, newY)
 		term.write("*")
 		term.setCursorPos(newX, newY)
@@ -194,13 +194,13 @@ local function changeWindow(manipulationWindow, action)
 			if e == "key" then
 				if p1 == 200 then
 					--up
-					if newY > manipulationWindow.window.y + 2 then
+					if newY > processTable[manipulationWindow].window.y + 2 then
 						windowCompositor.currentBuffer.text[newY] = string.sub(windowCompositor.currentBuffer.text[newY], 1, newX - 1).."*"..string.sub(windowCompositor.currentBuffer.text[newY], newX + 1)
 						newY = newY - 1
 					end
 				elseif p1 == 203 then
 					--left
-					if newX > manipulationWindow.window.x + 4 then
+					if newX > processTable[manipulationWindow].window.x + 4 then
 						windowCompositor.currentBuffer.text[newY] = string.sub(windowCompositor.currentBuffer.text[newY], 1, newX - 1).."*"..string.sub(windowCompositor.currentBuffer.text[newY], newX + 1)
 						newX = newX - 1
 					end
@@ -225,20 +225,23 @@ local function changeWindow(manipulationWindow, action)
 				term.write("*")
 				term.setCursorPos(newX, newY)
 				term.setCursorBlink(true)
-			elseif e == "click" and p3 == 1 then
-				if p1 > manipulationWindow.window.x + 4 and p2 > manipulationWindow.window.y + 2 then
-					newX, newY = p1, p2
+			elseif e == "mouse_click" and p1 == 1 then
+				if p2 > processTable[manipulationWindow].window.x + 4 and p3 > processTable[manipulationWindow].window.y + 2 then
+					newX, newY = p2, p3
 					break
 				end
 			end
 		end
-		manipulationWindow.window:resize(newX - manipulationWindow.window.x + 1, newY - manipulationWindow.window.y + 1)
+		processTable[manipulationWindow].window:resize(newX - processTable[manipulationWindow].window.x + 1, newY - processTable[manipulationWindow].window.y + 1)
 		os.queueEvent("window_resize")
 	elseif action == 3 then
-		manipulationWindow.window:destroy()
-		manipulationWindow = false
+		saveDimensions(processTable[manipulationWindow])
+		processTable[manipulationWindow].window:destroy()
+		processTable[manipulationWindow] = false
 		process.activeProcess = nextWindow(1)
-		windowCompositor:toFront(processTable[process.activeProcess].window)
+		if processTable[process.activeProcess] then
+			windowCompositor:toFront(processTable[process.activeProcess].window)
+		end
 	end
 end
 
@@ -246,51 +249,18 @@ local function checkProcess(passback)
 	if not checkWindow(processTable[process.activeProcess]) then
 		if processTable[process.activeProcess].special then
 			if processTable[process.activeProcess].special == "window_action" then
-				changeWindow(processTable[processTable[process.activeProcess].parent], passback[2])
+				changeWindow(processTable[process.activeProcess].parent, passback[2])
 			end
 		end
 		process.activeProcess = nextWindow(1)
-		windowCompositor:toFront(processTable[process.activeProcess].window)
+		if processTable[process.activeProcess] then
+			windowCompositor:toFront(processTable[process.activeProcess].window)
+		end
 	end
 end
 
-term.clear()
-titlebar = windowCompositor:newBuffer()
-local titlebarWidth, titlebarHeight = titlebar.getSize()
-titlebar.buffer.text[1] = "=LyqydOS"..string.rep("=", titlebarWidth - 8)
-windowCompositor:draw()
-
-processTable[1] = {}
-processTable[1].window = window.new(41,15,3,3,"CraftShell",windowCompositor:newBuffer())
-processTable[1].thread = coroutine.create(function() shell.run("/rom/programs/shell") end)
-process.activeProcess = 1
-term.redirect(processTable[process.activeProcess].window.redirect)
-coroutine.resume(processTable[1].thread)
-term.restore()
-
-while true do
-	for i=1, #processTable do
-		if not checkWindow(processTable[i]) then
-			processTable[i] = false
-		end
-	end
-	event = {coroutine.yield()}
-	if event[1] == "key" and event[2] == 61 then
-		--window switching menu
-		local pTable = {}
-		pTable.thread = coroutine.create(selectWindow)
-		pTable.window = window.new(19, 11, 1, 1, "Select Window", windowCompositor:newBuffer())
-		table.insert(processTable, pTable)
-		process.activeProcess = #process.processTable
-		term.redirect(processTable[process.activeProcess].window.redirect)
-		coroutine.resume(processTable[process.activeProcess].thread)
-		term.restore()
-		if not checkWindow(processTable[process.activeProcess]) then
-			process.activeProcess = nextWindow(1)
-			windowCompositor:toFront(processTable[process.activeProcess].window)
-		end
-	elseif event[1] == "key" and event[2] == 62 then
-		--window controls menu
+local function windowOptionsMenu()
+	if processTable[process.activeProcess] then
 		local pTable = {}
 		local parent = process.activeProcess
 		pTable.thread = coroutine.create(windowAction)
@@ -302,21 +272,81 @@ while true do
 		term.restore()
 		processTable[process.activeProcess].special = "window_action"
 		addChild(parent, process.activeProcess)
-	elseif event[1] == "click" then
+	end
+end
+
+local function chooseWindowMenu()
+	if processTable[process.activeProcess] then
+		local pTable = {}
+		pTable.thread = coroutine.create(selectWindow)
+		pTable.window = window.new(19, 11, 1, 1, "Select Window", windowCompositor:newBuffer())
+		table.insert(processTable, pTable)
+		process.activeProcess = #process.processTable
+		term.redirect(processTable[process.activeProcess].window.redirect)
+		coroutine.resume(processTable[process.activeProcess].thread)
+		term.restore()
+		processTable[process.activeProcess].special = "select_window"
+	end
+end
+
+term.clear()
+local titlebar = windowCompositor:newBuffer()
+local titlebarWidth, titlebarHeight = titlebar.getSize()
+titlebar.buffer.text[1] = "=LyqydOS"..string.rep("=", titlebarWidth - 8)
+windowCompositor:draw()
+
+while true do
+	local titlebarItems = {}
+	for i=1, #processTable do
+		if not checkWindow(processTable[i]) then
+			processTable[i] = false
+		else
+			if processTable[i] and processTable[i].window and not processTable[i].special then
+				local tBarEntry = {pID = i, text = processTable[i].window.caption}
+				table.insert(titlebarItems, tBarEntry)
+			end
+		end
+	end
+	local taskText = ""
+	local tasksClickable = 0
+	local usableWidth = titlebarWidth - 10
+	for eNum, eInfo in ipairs(titlebarItems) do
+		if #taskText + 9 > usableWidth then
+			if #taskText > 9 then
+				taskText = string.sub(taskText, 1, -10).."More... |"
+			end
+			break
+		end
+		local str = string.sub(eInfo.text, 1, 8)
+		str = str..string.rep(" ", 8 - #str)
+		if taskText == "" then taskText = "|" end
+		taskText = taskText..str.."|"
+		tasksClickable = tasksClickable + 1
+	end
+	titlebar.buffer.text[1] = "=LyqydOS="..taskText..string.rep("=", titlebarWidth - (#taskText + 9))
+	windowCompositor:draw()
+	event = {coroutine.yield()}
+	if event[1] == "key" and event[2] == 61 then
+		--window switching menu
+		chooseWindowMenu()
+	elseif event[1] == "key" and event[2] == 62 then
+		--window controls menu
+		windowOptionsMenu()
+	elseif event[1] == "mouse_click" then
 		local windowFound = false
 		for i = #windowCompositor.bufferStack, 1, -1 do
 			for pNum, pInfo in pairs(processTable) do
 				if pInfo and pInfo.window and pInfo.window.target.buffer == windowCompositor.bufferStack[i] then
 					--correct window in order, break even if we don't get the click here.
-					if event[2] >= pInfo.window.x and event[2] <= pInfo.window.x + pInfo.window.w - 1 and event[3] >= pInfo.window.y and event[3] <= pInfo.window.y + pInfo.window.h - 1 then
+					if event[3] >= pInfo.window.x and event[3] <= pInfo.window.x + pInfo.window.w - 1 and event[4] >= pInfo.window.y and event[4] <= pInfo.window.y + pInfo.window.h - 1 then
 						windowFound = true
 						if process.activeProcess ~= pNum then
 							process.activeProcess = pNum
 							windowCompositor:toFront(processTable[process.activeProcess].window)
 						end
-						event[2] = event[2] - pInfo.window.x
-						event[3] = event[3] - pInfo.window.y
-						if event[2] > 0 and event[2] < pInfo.window.w - 1 and event[3] > 0 and event[3] < pInfo.window.h - 1 then
+						event[3] = event[3] - pInfo.window.x
+						event[4] = event[4] - pInfo.window.y
+						if event[3] > 0 and event[3] < pInfo.window.w - 1 and event[4] > 0 and event[4] < pInfo.window.h - 1 then
 							local redir = false
 							if processTable[process.activeProcess].window then
 								term.redirect(processTable[process.activeProcess].window.redirect)
@@ -332,9 +362,9 @@ while true do
 			end
 			if windowFound then break end
 		end
-		if not windowFound and event[3] == 1 then
+		if not windowFound and event[4] == 1 then
 			--click on titlebar with no window covering it.
-			if event[2] > 1 and event[2] < 9 then
+			if event[3] > 1 and event[3] < 9 and event[2] == 1 then
 				--clicked on the LyqydOS button
 				local pTable = {}
 				pTable.thread = coroutine.create(startProgram)
@@ -347,16 +377,18 @@ while true do
 			end
 		end
 	else
-		local redir = false
-		if processTable[process.activeProcess].window then
-			term.redirect(processTable[process.activeProcess].window.redirect)
-			redir = true
+		if processTable[process.activeProcess] then
+			local redir = false
+			if processTable[process.activeProcess].window then
+				term.redirect(processTable[process.activeProcess].window.redirect)
+				redir = true
+			end
+			passback = {coroutine.resume(processTable[process.activeProcess].thread, unpack(event))}
+			if redir then term.restore() end
+			checkProcess(passback)
 		end
-		passback = {coroutine.resume(processTable[process.activeProcess].thread, unpack(event))}
-		if redir then term.restore() end
-		checkProcess(passback)
 		--handle background processes.
-		if event[1] ~= "key" and event[1] ~= "char" and event[1] ~= "click" and event ~= "window_resize" then
+		if event[1] ~= "key" and event[1] ~= "char" and event[1] ~= "mouse_click" and event ~= "window_resize" then
 			for tNum, tInfo in ipairs(processTable) do
 				if tInfo and tInfo.listening then
 					for k, eType in ipairs(tInfo.listening) do
