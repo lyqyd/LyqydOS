@@ -2,11 +2,24 @@ local args = {...}
 if #args < 1 then
 	print("No program specified!")
 else
-	path = table.remove(args, 1)
-	if fs.exists(path) and not fs.isDir(path) then
+	path = shell.resolveProgram(table.remove(args, 1))
+	if path then
+		local w, h, x, y = 19, 9, 1, 1
+		windowDimensions = {}
+		winDims = io.open("/.lyqwin", "r")
+		if winDims then
+			for line in winDims:lines() do
+				if string.match(line, "%d+,%d+,%d+,%d+,(.*)") == path then
+					x, y, w, h = string.match(line, "(%d+),(%d+),(%d+),(%d+),")
+					break
+				end
+			end
+			winDims:close()
+		end
 		local pTable = {}
+		pTable.path = path
 		pTable.thread = coroutine.create(function() shell.run(path, unpack(args)) end)
-		pTable.window = window.new(19,9, 1, 1, path, process.windowCompositor:newBuffer())
+		pTable.window = window.new(w, h, x, y, fs.getName(path), process.windowCompositor:newBuffer())
 		table.insert(process.processTable, pTable)
 		process.activeProcess = #process.processTable
 		term.redirect(process.processTable[process.activeProcess].window.redirect)

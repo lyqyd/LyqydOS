@@ -4,6 +4,19 @@ windowCompositor = compositor.new()
 rawset(process, "windowCompositor", windowCompositor)
 rawset(process, "processTable", processTable)
 
+windowDimensions = {}
+winDims = io.open("/.lyqwin", "r")
+if winDims then
+	for line in winDims:lines() do
+		local dimEntry = {}
+		dimEntry.x, dimEntry.y, dimEntry.w, dimEntry.h, dimEntry.path = string.match(line, "(%d+),(%d+),(%d+),(%d+),(.*)")
+		if dimEntry.x and dimEntry.path then
+			table.insert(windowDimensions, dimEntry)
+		end
+	end
+	winDims:close()
+end
+
 local function nextWindow(default)
 	if processTable[process.activeProcess].parent then
 		if processTable[processTable[process.activeProcess].parent] and processTable[processTable[process.activeProcess].parent].window then
@@ -23,9 +36,40 @@ local function nextWindow(default)
 	end
 end
 
+local function saveDimensions(proc)
+	if proc.path then
+		local pathFound = false
+		winDims = io.open("/.lyqwin", "w")
+		if winDims then
+			for wNum, wInfo in ipairs(windowDimensions) do
+				if wInfo.path == proc.path then
+					pathFound = true
+					wInfo.x = proc.window.x
+					wInfo.y = proc.window.y
+					wInfo.w = proc.window.w
+					wInfo.h = proc.window.h
+				end
+				winDims:write(wInfo.x..","..wInfo.y..","..wInfo.w..","..wInfo.h..","..wInfo.path.."\n")
+			end
+			if not pathFound then
+				local winInfo = {}
+				winInfo.x = proc.window.x
+				winInfo.y = proc.window.y
+				winInfo.w = proc.window.w
+				winInfo.h = proc.window.h
+				winInfo.path = proc.path
+				table.insert(windowDimensions, winInfo)
+				winDims:write(proc.window.x..","..proc.window.y..","..proc.window.w..","..proc.window.h..","..proc.path.."\n")
+			end
+			winDims:close()
+		end
+	end
+end
+
 local function checkWindow(proc)
 	if proc and coroutine.status(proc.thread) == "dead" then
 		if proc.window then
+			saveDimensions(proc)
 			proc.window:destroy()
 		end
 		return false
@@ -73,19 +117,30 @@ end
 local function startProgram()
 	write("> ")
 	local line = read()
-	local args
+	local args = {}
 	for match in string.gmatch( line, "[^ \t]+" ) do
 		table.insert( args, match )
 	end
-	path = table.remove(args, 1)
-	if fs.exists(path) and not fs.isDir(path) then
+	path = shell.resolveProgram(table.remove(args, 1))
+	if path then
+		local w, h, x, y = 19, 9, 1, 1
+		for dNum, dInfo in ipairs(windowDimensions) do
+			if dInfo.path == path then
+				w = dInfo.w
+				h = dInfo.h
+				x = dInfo.x
+				y = dInfo.y
+				break
+			end
+		end
 		local pTable = {}
+		pTable.path = path
 		pTable.thread = coroutine.create(function() shell.run(path, unpack(args)) end)
-		pTable.window = window.new(19,9, 1, 1, path, windowCompositor:newBuffer())
-		table.insert(processTable, pTable)
-		process.activeProcess = #processTable
-		term.redirect(processTable[process.activeProcess].window.redirect)
-		coroutine.resume(processTable[process.activeProcess].thread)
+		pTable.window = window.new(w, h, x, y, fs.getName(path), process.windowCompositor:newBuffer())
+		table.insert(process.processTable, pTable)
+		process.activeProcess = #process.processTable
+		term.redirect(process.processTable[process.activeProcess].window.redirect)
+		coroutine.resume(process.processTable[process.activeProcess].thread)
 		term.restore()
 	end
 end
