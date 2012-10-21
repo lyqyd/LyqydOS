@@ -355,6 +355,9 @@ while true do
 							passback = {coroutine.resume(processTable[process.activeProcess].thread, unpack(event))}
 							if redir then term.restore() end
 							checkProcess(passback)
+						elseif event[4] == 0 and event[2] == 2 then
+							--right click on window title bar, open window menu.
+							windowOptionsMenu()
 						end
 					end
 					break
@@ -374,6 +377,26 @@ while true do
 				term.redirect(processTable[process.activeProcess].window.redirect)
 				coroutine.resume(processTable[process.activeProcess].thread)
 				term.restore()
+				processTable[process.activeProcess].special = "run_program"
+			elseif event[3] > 9 then
+				--clicked on task bar.
+				clickItem = math.floor((event[3] - 1) / 9)
+				if (event[3] - 10 ) % 9 ~= 0 and clickItem <= tasksClickable then
+					--they clicked on the name itself, not the boundary line.
+					if clickItem == tasksClickable and clickItem < #titlebarItems then
+						--display the window choice dialog
+						chooseWindowMenu()
+					else
+						if process.activeProcess ~= titlebarItems[clickItem].pID then
+							process.activeProcess = titlebarItems[clickItem].pID
+							windowCompositor:toFront(processTable[process.activeProcess].window)
+						end
+						if event[2] == 2 then
+							--they right-clicked, so let's also display the window action menu.
+							windowOptionsMenu()
+						end
+					end
+				end
 			end
 		end
 	else
