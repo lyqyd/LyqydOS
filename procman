@@ -4,6 +4,19 @@ windowCompositor = compositor.new()
 rawset(process, "windowCompositor", windowCompositor)
 rawset(process, "processTable", processTable)
 
+local oldTredirect = term.redirect
+local oldTrestore = term.restore
+
+local function newTredirect(target)
+	table.insert(process.redirectStack, target)
+	oldTredirect(target)
+end
+
+local function newTrestore()
+	table.remove(process.redirectStack)
+	oldTrestore()
+end
+
 windowDimensions = {}
 winDims = io.open("/.lyqwin", "r")
 if winDims then
@@ -67,7 +80,7 @@ local function saveDimensions(proc)
 end
 
 local function checkWindow(proc)
-	if proc and coroutine.status(proc.thread) == "dead" then
+	if (proc and coroutine.status(proc.thread) == "dead") or (proc and proc.special and proc ~= processTable[process.activeProcess]) then
 		if proc.window then
 			saveDimensions(proc)
 			proc.window:destroy()
@@ -429,9 +442,21 @@ while true do
 			if processTable[process.activeProcess].window then
 				term.redirect(processTable[process.activeProcess].window.redirect)
 				redir = true
+				for _,t in ipairs(process.redirectStack) do
+					term.redirect(t)
+				end
+				rawset(term, "redirect", newTredirect)
+				rawset(term, "restore", newTrestore)
 			end
 			passback = {coroutine.resume(processTable[process.activeProcess].thread, unpack(event))}
-			if redir then term.restore() end
+			if redir then
+				rawset(term, "redirect", oldTredirect)
+				rawset(term, "restore", oldTrestore)
+				for i=1, #process.redirectStack do
+					term.restore()
+				end
+				term.restore()
+			end
 			checkProcess(passback)
 		end
 		--handle background processes.

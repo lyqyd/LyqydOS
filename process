@@ -1,6 +1,7 @@
 processTable = {}
 activeProcess = nil
 windowCompositor = {}
+redirectStack = {}
 
 defaultWindow = {19,9}
 
