@@ -88,26 +88,45 @@ local function newRedirect(_compTable, _buffer)
 	end
 	redirect.isColour = redirect.isColor
 	redirect.render = function(win)
-		for i=1, #redirect.buffer.text do
-			if i == win.y then
-				if win.caption then
-					local caption = string.sub(win.caption, 1, win.w - 4)
-					redirect.buffer.text[i] = string.rep(" ", win.x - 1).."+-"..caption..string.rep("-", win.w - (string.len(caption) + 3)).."+"..string.rep(" ", redirect.compTable.x - (win.x + win.w - 1))
+		if not win.minimized then
+			for i=1, #redirect.buffer.text do
+				if i == win.y then
+					if win.caption then
+						local caption = string.sub(win.caption, 1, win.w - 4)
+						redirect.buffer.text[i] = string.rep(" ", win.x - 1)..win.decorations.ul..win.decorations.top..caption..string.rep(win.decorations.top, win.w - (string.len(caption) + 3))..win.decorations.ur..string.rep(" ", redirect.compTable.x - (win.x + win.w - 1))
+					else
+						redirect.buffer.text[i] = string.rep(" ", win.x - 1)..win.decorations.ul..string.rep(win.decorations.top, win.w - 2)..win.decorations.ur..string.rep(" ", redirect.compTable.x - (win.x + win.w - 1))
+					end
+					redirect.buffer.textColor[i] = string.rep("0", redirect.compTable.x)
+					redirect.buffer.backColor[i] = string.rep("f", redirect.compTable.x)
+					if win.windowType == "modal" then
+						redirect.buffer.text[i] = string.sub(redirect.buffer.text[i], 1, win.x + win.w - 5).."-X"..string.sub(redirect.buffer.text[i], win.x + win.w - 2)
+						if redirect.compTable.target.isColor() then redirect.buffer.textColor[i] = string.rep("0", win.x + win.w - 4).."e"..string.rep("0", redirect.compTable.x - (win.x + win.w - 3)) end
+					elseif win.windowType == "standard" then
+						if win.maximized then
+							redirect.buffer.text[i] = string.sub(redirect.buffer.text[i], 1, win.x + win.w - 7).."-_RX"..string.sub(redirect.buffer.text[i], win.x + win.w - 2)
+						else
+							redirect.buffer.text[i] = string.sub(redirect.buffer.text[i], 1, win.x + win.w - 7).."-_MX"..string.sub(redirect.buffer.text[i], win.x + win.w - 2)
+						end
+						if redirect.compTable.target.isColor() then redirect.buffer.textColor[i] = string.rep("0", win.x + win.w - 4).."e"..string.rep("0", redirect.compTable.x - (win.x + win.w - 3)) end
+					end
+				elseif i > win.y and i < win.y + win.h - 1 then
+					redirect.buffer.text[i] = string.rep(" ", win.x - 1)..win.decorations.left..string.sub(win.buffer.text[i - win.y], 1, win.w - 2)..win.decorations.right..string.rep(" ", redirect.compTable.x - (win.x + win.w - 1))
+					--initial -1 isn't necessary, to catch leading window decoration, trailing edge uses -2 to pick up the window decoration as well.
+					redirect.buffer.textColor[i] = string.rep("0", win.x)..string.sub(win.buffer.textColor[i - win.y], 1, win.w - 2)..string.rep("0", redirect.compTable.x - (win.x + win.w - 2))
+					redirect.buffer.backColor[i] = string.rep("f", win.x)..string.sub(win.buffer.backColor[i - win.y], 1, win.w - 2)..string.rep("f", redirect.compTable.x - (win.x + win.w - 2))
+				elseif i == win.y + win.h - 1 then
+					redirect.buffer.text[i] = string.rep(" ", win.x - 1)..win.decorations.ll..string.rep(win.decorations.bottom, win.w - 2)..win.decorations.lr..string.rep(" ", redirect.compTable.x - (win.x + win.w - 1))
+					redirect.buffer.textColor[i] = string.rep("0", redirect.compTable.x)
+					redirect.buffer.backColor[i] = string.rep("f", redirect.compTable.x)
 				else
-					redirect.buffer.text[i] = string.rep(" ", win.x - 1).."+"..string.rep("-", win.w - 2).."+"..string.rep(" ", redirect.compTable.x - (win.x + win.w - 1))
+					redirect.buffer.text[i] = string.rep(" ", redirect.compTable.x)
+					redirect.buffer.textColor[i] = string.rep("0", redirect.compTable.x)
+					redirect.buffer.backColor[i] = string.rep("f", redirect.compTable.x)
 				end
-				redirect.buffer.textColor[i] = string.rep("0", redirect.compTable.x)
-				redirect.buffer.backColor[i] = string.rep("f", redirect.compTable.x)
-			elseif i > win.y and i < win.y + win.h - 1 then
-				redirect.buffer.text[i] = string.rep(" ", win.x - 1).."|"..string.sub(win.buffer.text[i - win.y], 1, win.w - 2).."|"..string.rep(" ", redirect.compTable.x - (win.x + win.w - 1))
-				--initial -1 isn't necessary, to catch leading window decoration, trailing edge uses -2 to pick up the window decoration as well.
-				redirect.buffer.textColor[i] = string.rep("0", win.x)..string.sub(win.buffer.textColor[i - win.y], 1, win.w - 2)..string.rep("0", redirect.compTable.x - (win.x + win.w - 2))
-				redirect.buffer.backColor[i] = string.rep("f", win.x)..string.sub(win.buffer.backColor[i - win.y], 1, win.w - 2)..string.rep("f", redirect.compTable.x - (win.x + win.w - 2))
-			elseif i == win.y + win.h - 1 then
-				redirect.buffer.text[i] = string.rep(" ", win.x - 1).."+"..string.rep("-", win.w - 2).."+"..string.rep(" ", redirect.compTable.x - (win.x + win.w - 1))
-				redirect.buffer.textColor[i] = string.rep("0", redirect.compTable.x)
-				redirect.buffer.backColor[i] = string.rep("f", redirect.compTable.x)
-			else
+			end
+		else
+			for i=1, #redirect.buffer.text do
 				redirect.buffer.text[i] = string.rep(" ", redirect.compTable.x)
 				redirect.buffer.textColor[i] = string.rep("0", redirect.compTable.x)
 				redirect.buffer.backColor[i] = string.rep("f", redirect.compTable.x)
@@ -115,7 +134,7 @@ local function newRedirect(_compTable, _buffer)
 		end
 		redirect.buffer.cursorX = win.x + win.cursorX
 		redirect.buffer.cursorY = win.y + win.cursorY
-		redirect.buffer.cursorBlink = win.cursorBlink
+		if not win.minimized then redirect.buffer.cursorBlink = win.cursorBlink else redirect.buffer.cursorBlink = false end
 		redirect.compTable:draw()
 	end
 	return redirect

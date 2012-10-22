@@ -1,3 +1,26 @@
+decorationsTable = {
+	standard = {
+		ul = "+",
+		ur = "+",
+		ll = "+",
+		lr = "+",
+		top = "-",
+		bottom = "-",
+		left = "|",
+		right = "|",
+	},
+	menu = {
+		ul = "/",
+		ur = "\\",
+		ll = "\\",
+		lr = "/",
+		top = "-",
+		bottom = "-",
+		left = "|",
+		right = "|",
+	},
+}
+
 local function newRedirect(_windowTable)
 	local redirect = {windowTable = _windowTable}
 	redirect.write = function(text)
@@ -88,6 +111,72 @@ local function newRedirect(_windowTable)
 end
 
 local window = {
+	draw = function(self, mode)
+		if mode == "cursor" then
+			term.redirect(self.target)
+			term.setCursorPos(self.x + self.cursorX, self.y + self.cursorY)
+			term.setCursorBlink(self.cursorBlink)
+			term.restore()
+		else
+			if not self.target.render then
+				if not self.minimized then
+					term.redirect(self.target)
+					term.clear()
+					local top = nil
+					if self.caption then
+						if string.len(self.caption) > self.w - 4 then
+							top = self.decorations.ul..self.decorations.top..string.sub(self.caption, 1, self.w - 4)
+						else
+							top = self.decorations.ul..self.decorations.top..self.caption
+						end
+						top = top..string.rep(self.decorations.top, self.w - (string.len(top) + 1))..self.decorations.ur
+					else
+						top = self.decorations.ul..string.rep(self.decorations.top, self.w - 2)..self.decorations.ur
+					end
+					term.setCursorPos(self.x, self.y)
+					term.setTextColor(1)
+					term.setBackgroundColor(32768)
+					term.write(top)
+					if self.windowType == "modal" or self.windowType == "standard" then
+						term.setCursorPos(self.x + self.w - 4)
+						term.write("-")
+						if term.isColor() then term.setTextColor(16384) end
+						term.write("X")
+						term.setTextColor(1)
+						if self.windowType == "standard" then
+							term.setCursorPos(self.x + self.w - 6)
+							if self.maximized then
+								term.write("-_R")
+							else
+								term.write("-_M")
+							end
+						end
+					end
+					for i=1, self.h - 2 do
+						term.setCursorPos(self.x, self.y + i)
+						term.setTextColor(colors.white)
+						term.setBackgroundColor(colors.black)
+						term.write(self.decorations.left)
+						for j=1, self.w - 2 do
+							term.setTextColor(2 ^ tonumber(string.sub(self.buffer.textColor[i], j, j), 16))
+							term.setBackgroundColor(2 ^ tonumber(string.sub(self.buffer.backColor[i], j, j), 16))
+							term.write(string.sub(self.buffer.text[i], j, j))
+						end
+						term.setTextColor(colors.white)
+						term.setBackgroundColor(colors.black)
+						term.write(self.decorations.right)
+					end
+					term.setCursorPos(self.x, self.y + self.h - 1)
+					term.write(self.decorations.ll..string.rep(self.decorations.bottom, self.w - 2)..self.decorations.lr)
+					term.setCursorPos(self.x + self.cursorX, self.y + self.cursorY)
+					term.setCursorBlink(self.cursorBlink)
+					term.restore()
+				end
+			else
+				self.target.render(self)
+			end
+		end
+	end,
 	move = function(self, x, y)
 		if x and y then
 			local xlim, ylim = self.target.getSize()
@@ -157,58 +246,60 @@ local window = {
 			return nil, "must specify width and height"
 		end
 	end,
-	draw = function(self, mode)
-		if mode == "cursor" then
-			term.redirect(self.target)
-			term.setCursorPos(self.x + self.cursorX, self.y + self.cursorY)
-			term.setCursorBlink(self.cursorBlink)
-			term.restore()
-		else
-			if not self.target.render then
-				term.redirect(self.target)
-				term.clear()
-				local top = nil
-				if self.caption then
-					if string.len(self.caption) > self.w - 4 then
-						top = "+-"..string.sub(self.caption, 1, self.w - 4)
-					else
-						top = "+-"..self.caption
-					end
-					top = top..string.rep("-", self.w - (string.len(top) + 1)).."+"
-				else
-					top = "+"..string.rep("-", self.w - 2).."+"
-				end
-				term.setCursorPos(self.x, self.y)
-				term.write(top)
-				for i=1, self.h - 2 do
-					term.setCursorPos(self.x, self.y + i)
-					term.setTextColor(colors.white)
-					term.setBackgroundColor(colors.black)
-					term.write("|")
-					for j=1,self.w - 2 do
-						term.setTextColor(2 ^ tonumber(string.sub(self.buffer.textColor[i], j, j), 16))
-						term.setBackgroundColor(2 ^ tonumber(string.sub(self.buffer.backColor[i], j, j), 16))
-						term.write(string.sub(self.buffer.text[i], j, j))
-					end
-					term.setTextColor(colors.white)
-					term.setBackgroundColor(colors.black)
-					term.write("|")
-				end
-				term.setCursorPos(self.x, self.y + self.h - 1)
-				term.write("+"..string.rep("-", self.w - 2).."+")
-				term.setCursorPos(self.x + self.cursorX, self.y + self.cursorY)
-				term.setCursorBlink(self.cursorBlink)
-				term.restore()
-			else
-				self.target.render(self)
-			end
-		end
-	end,
 	destroy = function(self)
 		if self.target.compTable then
 			self.target.compTable:removeWindow(self)
 		end
 		self = nil
+	end,
+	setDecorations = function(self, decoration)
+		if not decoration then
+			return nil, "Invalid decoration"
+		elseif type(decoration) == "string" then
+			if decorationsTable[decoration] then
+				for k,v in pairs(decorationsTable[decoration]) do
+					self.decorations[k] = string.sub(v, 1, 1)
+				end
+			else
+				return nil, "Invalid decoration"
+			end
+		elseif type(decoration == "table") then
+			for k,v in pairs(decorationsTable.standard) do
+				--check for completeness.
+				if type(decoration[k]) ~= "string" then
+					return nil, "Invalid decoration"
+				end
+			end
+			for k,v in pairs(decoration) do
+				self.decorations[k] = v
+			end
+		else
+			return nil, "Invalid decoration"
+		end
+		self:draw()
+	end,
+	maximize = function(self)
+		self.normalSize = {x = self.x, y = self.y, w = self.w, h = self.h}
+		self:move(1, 1)
+		self.maximized = true
+		self:resize(self.target.getSize())
+	end,
+	minimize = function(self)
+		self.minimized = true
+		self:draw()
+	end,
+	unMinimize = function(self)
+		self.minimized = false
+		self:draw()
+	end,
+	restore = function(self)
+		self.maximized = false
+		self:resize(self.normalSize.w, self.normalSize.h)
+		self:move(self.normalSize.x, self.normalSize.y)
+	end,
+	setType = function(self, winType)
+		self.windowType = winType
+		self:draw()
 	end,
 }
 
@@ -228,6 +319,21 @@ function new(w, h, x, y, caption, target)
 		x = tonumber(x) or 1,
 		y = tonumber(y) or 1,
 		caption = caption or nil,
+		--windowType: clean, standard, menu, modal
+		--clean is normal window, standard includes _MX controls, modal includes X control only.
+		windowType = "clean",
+		decorations = {
+			ul = "+",
+			ur = "+",
+			ll = "+",
+			lr = "+",
+			top = "-",
+			bottom = "-",
+			left = "|",
+			right = "|",
+		},
+		maximized = false,
+		minimized = false,
 	}
 	local xlim, ylim = win.target.getSize()
 	--x and y bounding for initial window.

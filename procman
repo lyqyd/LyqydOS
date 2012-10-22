@@ -110,6 +110,7 @@ local function selectWindow()
 	local selection = menu.select(menuList)
 	if pList[selection] then
 		process.activeProcess = pList[selection]
+		if processTable[process.activeProcess].window.minimized then processTable[process.activeProcess].window:unMinimize() end
 		windowCompositor:toFront(processTable[process.activeProcess].window)
 	end
 end
@@ -137,6 +138,7 @@ local function startProgram()
 		pTable.path = path
 		pTable.thread = coroutine.create(function() shell.run(path, unpack(args)) end)
 		pTable.window = window.new(w, h, x, y, fs.getName(path), process.windowCompositor:newBuffer())
+		if windowCompositor.target.isColor() then pTable.window:setType("standard") end
 		table.insert(process.processTable, pTable)
 		process.activeProcess = #process.processTable
 		term.redirect(process.processTable[process.activeProcess].window.redirect)
@@ -265,6 +267,7 @@ local function windowOptionsMenu()
 		local parent = process.activeProcess
 		pTable.thread = coroutine.create(windowAction)
 		pTable.window = window.new(17, 6, processTable[parent].window.x, processTable[parent].window.y, "Action Menu", windowCompositor:newBuffer())
+		pTable.window:setDecorations("menu")
 		table.insert(processTable, pTable)
 		process.activeProcess = #processTable
 		term.redirect(processTable[process.activeProcess].window.redirect)
@@ -338,7 +341,7 @@ while true do
 			for pNum, pInfo in pairs(processTable) do
 				if pInfo and pInfo.window and pInfo.window.target.buffer == windowCompositor.bufferStack[i] then
 					--correct window in order, break even if we don't get the click here.
-					if event[3] >= pInfo.window.x and event[3] <= pInfo.window.x + pInfo.window.w - 1 and event[4] >= pInfo.window.y and event[4] <= pInfo.window.y + pInfo.window.h - 1 then
+					if event[3] >= pInfo.window.x and event[3] <= pInfo.window.x + pInfo.window.w - 1 and event[4] >= pInfo.window.y and event[4] <= pInfo.window.y + pInfo.window.h - 1 and not pInfo.window.minimized then
 						windowFound = true
 						if process.activeProcess ~= pNum then
 							process.activeProcess = pNum
@@ -358,6 +361,26 @@ while true do
 						elseif event[4] == 0 and event[2] == 2 then
 							--right click on window title bar, open window menu.
 							windowOptionsMenu()
+						elseif (pInfo.window.windowType == "modal" and event[4] == 0 and event[2] == 1 and pInfo.window.w - event[3] == 3) or (pInfo.window.windowType == "standard" and event[4] == 0 and event[2] == 1 and pInfo.window.w - event[3] > 2 and pInfo.window.w - event[3] < 6) then
+							local action = pInfo.window.w - event[3] - 2
+							if action == 1 then
+								--close window
+								saveDimensions(processTable[process.activeProcess])
+								processTable[process.activeProcess].window:destroy()
+								processTable[process.activeProcess] = false
+								process.activeProcess = nextWindow(1)
+								if processTable[process.activeProcess] then
+									windowCompositor:toFront(processTable[process.activeProcess].window)
+								end
+							elseif action == 2 then
+								if pInfo.window.maximized then
+									pInfo.window:restore()
+								else
+									pInfo.window:maximize()
+								end
+							elseif action == 3 then
+								pInfo.window:minimize()
+							end
 						end
 					end
 					break
@@ -389,8 +412,9 @@ while true do
 					else
 						if process.activeProcess ~= titlebarItems[clickItem].pID then
 							process.activeProcess = titlebarItems[clickItem].pID
-							windowCompositor:toFront(processTable[process.activeProcess].window)
 						end
+						windowCompositor:toFront(processTable[process.activeProcess].window)
+						if processTable[process.activeProcess].window.minimized then processTable[process.activeProcess].window:unMinimize() end
 						if event[2] == 2 then
 							--they right-clicked, so let's also display the window action menu.
 							windowOptionsMenu()
