@@ -1,0 +1,22 @@
+LyqydOS -- A windowing operating system for ComputerCraft.
+
+To install, place these files in /rom/apis or load them as APIs in
+startup:
+
+	* compositor
+	* menu
+	* process
+	* window
+
+To start the operating system, run procman.  Once procman is running,
+you may use the start program from within it to start other programs.
+
+Planned features:
+	* Resuming startup from immediately after procman runs, allowing for
+	programs to be started within the process manager at startup.
+	* Finishing of terminal redirect stack for better monitor support.
+	* Multi-monitor support, to allow windows to be sent to attached
+	devices.
+	* Background process event filtering, for system/rednet daemons.
+	* Finishing process API to expose current window handle to running
+	processes, allowing them to set custom size or window caption, etc.
