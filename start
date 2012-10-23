@@ -4,13 +4,13 @@ if #args < 1 then
 else
 	path = shell.resolveProgram(table.remove(args, 1))
 	if path then
-		local w, h, x, y = 19, 9, 1, 1
+		local w, h, x, y, max = 19, 9, 1, 1, "false"
 		windowDimensions = {}
 		winDims = io.open("/.lyqwin", "r")
 		if winDims then
 			for line in winDims:lines() do
-				if string.match(line, "%d+,%d+,%d+,%d+,(.*)") == path then
-					x, y, w, h = string.match(line, "(%d+),(%d+),(%d+),(%d+),")
+				if string.match(line, "%d+,%d+,%d+,%d+,%a+,(.*)") == path then
+					x, y, w, h, max = string.match(line, "(%d+),(%d+),(%d+),(%d+),(%a+),")
 					break
 				end
 			end
@@ -20,6 +20,8 @@ else
 		pTable.path = path
 		pTable.thread = coroutine.create(function() shell.run(path, unpack(args)) end)
 		pTable.window = window.new(w, h, x, y, fs.getName(path), process.windowCompositor:newBuffer())
+		if process.windowCompositor.target.isColor() then pTable.window:setType("standard") end
+		if max == "true" then pTable.window:maximize() end
 		table.insert(process.processTable, pTable)
 		process.activeProcess = #process.processTable
 		term.redirect(process.processTable[process.activeProcess].window.redirect)
