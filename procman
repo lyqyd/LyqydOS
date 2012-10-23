@@ -22,7 +22,7 @@ winDims = io.open("/.lyqwin", "r")
 if winDims then
 	for line in winDims:lines() do
 		local dimEntry = {}
-		dimEntry.x, dimEntry.y, dimEntry.w, dimEntry.h, dimEntry.path = string.match(line, "(%d+),(%d+),(%d+),(%d+),(.*)")
+		dimEntry.x, dimEntry.y, dimEntry.w, dimEntry.h, dimEntry.max, dimEntry.path = string.match(line, "(%d+),(%d+),(%d+),(%d+),(%a+),(.*)")
 		if dimEntry.x and dimEntry.path then
 			table.insert(windowDimensions, dimEntry)
 		end
@@ -57,22 +57,38 @@ local function saveDimensions(proc)
 			for wNum, wInfo in ipairs(windowDimensions) do
 				if wInfo.path == proc.path then
 					pathFound = true
-					wInfo.x = proc.window.x
-					wInfo.y = proc.window.y
-					wInfo.w = proc.window.w
-					wInfo.h = proc.window.h
+					if proc.window.maximized then
+						wInfo.x = proc.window.normalSize.x
+						wInfo.y = proc.window.normalSize.y
+						wInfo.w = proc.window.normalSize.w
+						wInfo.h = proc.window.normalSize.h
+					else
+						wInfo.x = proc.window.x
+						wInfo.y = proc.window.y
+						wInfo.w = proc.window.w
+						wInfo.h = proc.window.h
+					end
+					wInfo.max = tostring(proc.window.maximized)
 				end
-				winDims:write(wInfo.x..","..wInfo.y..","..wInfo.w..","..wInfo.h..","..wInfo.path.."\n")
+				winDims:write(wInfo.x..","..wInfo.y..","..wInfo.w..","..wInfo.h..","..wInfo.max..","..wInfo.path.."\n")
 			end
 			if not pathFound then
 				local winInfo = {}
-				winInfo.x = proc.window.x
-				winInfo.y = proc.window.y
-				winInfo.w = proc.window.w
-				winInfo.h = proc.window.h
+				if proc.window.maximized then
+					winInfo.x = proc.window.normalSize.x
+					winInfo.y = proc.window.normalSize.y
+					winInfo.w = proc.window.normalSize.w
+					winInfo.h = proc.window.normalSize.h
+				else
+					winInfo.x = proc.window.x
+					winInfo.y = proc.window.y
+					winInfo.w = proc.window.w
+					winInfo.h = proc.window.h
+				end
+				winInfo.max = tostring(proc.window.maximized)
 				winInfo.path = proc.path
 				table.insert(windowDimensions, winInfo)
-				winDims:write(proc.window.x..","..proc.window.y..","..proc.window.w..","..proc.window.h..","..proc.path.."\n")
+				winDims:write(winInfo.x..","..winInfo.y..","..winInfo.w..","..winInfo.h..","..winInfo.max..","..proc.path.."\n")
 			end
 			winDims:close()
 		end
@@ -137,13 +153,14 @@ local function startProgram()
 	end
 	path = shell.resolveProgram(table.remove(args, 1))
 	if path then
-		local w, h, x, y = 19, 9, 1, 1
+		local w, h, x, y, max = 19, 9, 1, 1, "false"
 		for dNum, dInfo in ipairs(windowDimensions) do
 			if dInfo.path == path then
 				w = dInfo.w
 				h = dInfo.h
 				x = dInfo.x
 				y = dInfo.y
+				max = dInfo.max
 				break
 			end
 		end
@@ -152,6 +169,7 @@ local function startProgram()
 		pTable.thread = coroutine.create(function() shell.run(path, unpack(args)) end)
 		pTable.window = window.new(w, h, x, y, fs.getName(path), process.windowCompositor:newBuffer())
 		if windowCompositor.target.isColor() then pTable.window:setType("standard") end
+		if max == "true" then pTable.window:maximize() end
 		table.insert(process.processTable, pTable)
 		process.activeProcess = #process.processTable
 		term.redirect(process.processTable[process.activeProcess].window.redirect)
@@ -162,13 +180,18 @@ end
 
 local function windowAction(actionProc)
 	if processTable[actionProc] and processTable[actionProc].window then
-		local selection = menu.select({"Move Window", "Resize Window", "Close Window", "Cancel"})
+		local selection = menu.select({"Restore", "Move", "Resize", "Minimize", "Maximize", "Close", "Cancel"})
 		return selection
 	end
 end
 
 local function changeWindow(manipulationWindow, action)
 	if action == 1 then
+		if processTable[manipulationWindow].window.maximized then
+			processTable[manipulationWindow].window:restore()
+			os.queueEvent("window_resize")
+		end
+	elseif action == 2 then
 		--move
 		while true do
 			e, p1, p2, p3 = os.pullEvent()
@@ -195,7 +218,7 @@ local function changeWindow(manipulationWindow, action)
 				break
 			end
 		end
-	elseif action == 2 then
+	elseif action == 3 then
 		--resize
 		local newX, newY = processTable[manipulationWindow].window.x + processTable[manipulationWindow].window.w - 1, processTable[manipulationWindow].window.y + processTable[manipulationWindow].window.h - 1
 		term.setCursorPos(newX, newY)
@@ -249,7 +272,14 @@ local function changeWindow(manipulationWindow, action)
 		end
 		processTable[manipulationWindow].window:resize(newX - processTable[manipulationWindow].window.x + 1, newY - processTable[manipulationWindow].window.y + 1)
 		os.queueEvent("window_resize")
-	elseif action == 3 then
+	elseif action == 4 then
+		processTable[manipulationWindow].window:minimize()
+	elseif action == 5 then
+		if not processTable[manipulationWindow].window.maximized then
+			processTable[manipulationWindow].window:maximize()
+			os.queueEvent("window_resize")
+		end
+	elseif action == 6 then
 		saveDimensions(processTable[manipulationWindow])
 		processTable[manipulationWindow].window:destroy()
 		processTable[manipulationWindow] = false
@@ -279,7 +309,7 @@ local function windowOptionsMenu()
 		local pTable = {}
 		local parent = process.activeProcess
 		pTable.thread = coroutine.create(windowAction)
-		pTable.window = window.new(17, 6, processTable[parent].window.x, processTable[parent].window.y, "Action Menu", windowCompositor:newBuffer())
+		pTable.window = window.new(15, 9, processTable[parent].window.x, processTable[parent].window.y, "Action Menu", windowCompositor:newBuffer())
 		pTable.window:setDecorations("menu")
 		table.insert(processTable, pTable)
 		process.activeProcess = #processTable
@@ -303,6 +333,18 @@ local function chooseWindowMenu()
 		term.restore()
 		processTable[process.activeProcess].special = "select_window"
 	end
+end
+
+local function runProgramDialog()
+	local pTable = {}
+	pTable.thread = coroutine.create(startProgram)
+	pTable.window = window.new(30, 3, 2, 2, "Run Program", windowCompositor:newBuffer())
+	table.insert(processTable, pTable)
+	process.activeProcess = #process.processTable
+	term.redirect(processTable[process.activeProcess].window.redirect)
+	coroutine.resume(processTable[process.activeProcess].thread)
+	term.restore()
+	processTable[process.activeProcess].special = "run_program"
 end
 
 term.clear()
@@ -342,7 +384,10 @@ while true do
 	titlebar.buffer.text[1] = "=LyqydOS="..taskText..string.rep("=", titlebarWidth - (#taskText + 9))
 	windowCompositor:draw()
 	event = {coroutine.yield()}
-	if event[1] == "key" and event[2] == 61 then
+	if event[1] == "key" and event[2] == 59 then
+		--run menu for keyboard users.
+		runProgramDialog()
+	elseif event[1] == "key" and event[2] == 61 then
 		--window switching menu
 		chooseWindowMenu()
 	elseif event[1] == "key" and event[2] == 62 then
@@ -388,8 +433,10 @@ while true do
 							elseif action == 2 then
 								if pInfo.window.maximized then
 									pInfo.window:restore()
+									os.queueEvent("window_resize")
 								else
 									pInfo.window:maximize()
+									os.queueEvent("window_resize")
 								end
 							elseif action == 3 then
 								pInfo.window:minimize()
@@ -405,15 +452,7 @@ while true do
 			--click on titlebar with no window covering it.
 			if event[3] > 1 and event[3] < 9 and event[2] == 1 then
 				--clicked on the LyqydOS button
-				local pTable = {}
-				pTable.thread = coroutine.create(startProgram)
-				pTable.window = window.new(30, 3, 2, 2, "Run Program", windowCompositor:newBuffer())
-				table.insert(processTable, pTable)
-				process.activeProcess = #process.processTable
-				term.redirect(processTable[process.activeProcess].window.redirect)
-				coroutine.resume(processTable[process.activeProcess].thread)
-				term.restore()
-				processTable[process.activeProcess].special = "run_program"
+				runProgramDialog()
 			elseif event[3] > 9 then
 				--clicked on task bar.
 				clickItem = math.floor((event[3] - 1) / 9)
