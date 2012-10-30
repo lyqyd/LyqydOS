@@ -1,5 +1,5 @@
 processTable = {}
-process.activeProcess = nil
+process.focusWindow = nil
 windowCompositor = compositor.new()
 rawset(process, "windowCompositor", windowCompositor)
 rawset(process, "processTable", processTable)
@@ -31,9 +31,9 @@ if winDims then
 end
 
 local function nextWindow(default)
-	if processTable[process.activeProcess] and processTable[process.activeProcess].parent then
-		if processTable[processTable[process.activeProcess].parent] and processTable[processTable[process.activeProcess].parent].window then
-			return processTable[process.activeProcess].parent
+	if processTable[process.focusWindow] and processTable[process.focusWindow].parent then
+		if processTable[processTable[process.focusWindow].parent] and processTable[processTable[process.focusWindow].parent].window then
+			return processTable[process.focusWindow].parent
 		end
 	else
 		local nextBuf = windowCompositor.bufferStack[#windowCompositor.bufferStack]
@@ -96,7 +96,7 @@ local function saveDimensions(proc)
 end
 
 local function checkWindow(proc)
-	if (proc and coroutine.status(proc.thread) == "dead") or (proc and proc.special and proc ~= processTable[process.activeProcess]) then
+	if (proc and coroutine.status(proc.thread) == "dead") or (proc and proc.special and proc ~= processTable[process.focusWindow]) then
 		if proc.window then
 			saveDimensions(proc)
 			proc.window:destroy()
@@ -138,9 +138,9 @@ local function selectWindow()
 	table.insert(menuList, "Cancel")
 	local selection = menu.select(menuList)
 	if pList[selection] then
-		process.activeProcess = pList[selection]
-		if processTable[process.activeProcess].window.minimized then processTable[process.activeProcess].window:unMinimize() end
-		windowCompositor:toFront(processTable[process.activeProcess].window)
+		process.focusWindow = pList[selection]
+		if processTable[process.focusWindow].window.minimized then processTable[process.focusWindow].window:unMinimize() end
+		windowCompositor:toFront(processTable[process.focusWindow].window)
 	end
 end
 
@@ -171,9 +171,9 @@ local function startProgram()
 		if windowCompositor.target.isColor() then pTable.window:setType("standard") end
 		if max == "true" then pTable.window:maximize() end
 		table.insert(process.processTable, pTable)
-		process.activeProcess = #process.processTable
-		term.redirect(process.processTable[process.activeProcess].window.redirect)
-		coroutine.resume(process.processTable[process.activeProcess].thread)
+		process.focusWindow = #process.processTable
+		term.redirect(process.processTable[process.focusWindow].window.redirect)
+		coroutine.resume(process.processTable[process.focusWindow].thread)
 		term.restore()
 	end
 end
@@ -283,55 +283,57 @@ local function changeWindow(manipulationWindow, action)
 		saveDimensions(processTable[manipulationWindow])
 		processTable[manipulationWindow].window:destroy()
 		processTable[manipulationWindow] = false
-		process.activeProcess = nextWindow(1)
-		if processTable[process.activeProcess] then
-			windowCompositor:toFront(processTable[process.activeProcess].window)
+		process.focusWindow = nextWindow(1)
+		if processTable[process.focusWindow] then
+			windowCompositor:toFront(processTable[process.focusWindow].window)
 		end
 	end
 end
 
-local function checkProcess(passback)
-	if not checkWindow(processTable[process.activeProcess]) then
-		if processTable[process.activeProcess].special then
-			if processTable[process.activeProcess].special == "window_action" then
-				changeWindow(processTable[process.activeProcess].parent, passback[2])
+local function checkProcess(proc, passback)
+	if not checkWindow(processTable[proc]) then
+		if processTable[proc].special then
+			if processTable[proc].special == "window_action" then
+				changeWindow(processTable[proc].parent, passback[2])
 			end
 		end
-		process.activeProcess = nextWindow(1)
-		if processTable[process.activeProcess] then
-			windowCompositor:toFront(processTable[process.activeProcess].window)
+		if proc == process.focusWindow then
+			process.focusWindow = nextWindow(1)
+			if processTable[process.focusWindow] then
+				windowCompositor:toFront(processTable[process.focusWindow].window)
+			end
 		end
 	end
 end
 
 local function windowOptionsMenu()
-	if processTable[process.activeProcess] then
+	if processTable[process.focusWindow] and not processTable[process.focusWindow].special then
 		local pTable = {}
-		local parent = process.activeProcess
+		local parent = process.focusWindow
 		pTable.thread = coroutine.create(windowAction)
 		pTable.window = window.new(15, 9, processTable[parent].window.x, processTable[parent].window.y, "Action Menu", windowCompositor:newBuffer())
 		pTable.window:setDecorations("menu")
 		table.insert(processTable, pTable)
-		process.activeProcess = #processTable
-		term.redirect(processTable[process.activeProcess].window.redirect)
-		passback = {coroutine.resume(processTable[process.activeProcess].thread, parent)}
+		process.focusWindow = #processTable
+		term.redirect(processTable[process.focusWindow].window.redirect)
+		passback = {coroutine.resume(processTable[process.focusWindow].thread, parent)}
 		term.restore()
-		processTable[process.activeProcess].special = "window_action"
-		addChild(parent, process.activeProcess)
+		processTable[process.focusWindow].special = "window_action"
+		addChild(parent, process.focusWindow)
 	end
 end
 
 local function chooseWindowMenu()
-	if processTable[process.activeProcess] then
+	if processTable[process.focusWindow] then
 		local pTable = {}
 		pTable.thread = coroutine.create(selectWindow)
 		pTable.window = window.new(19, 11, 1, 1, "Select Window", windowCompositor:newBuffer())
 		table.insert(processTable, pTable)
-		process.activeProcess = #process.processTable
-		term.redirect(processTable[process.activeProcess].window.redirect)
-		coroutine.resume(processTable[process.activeProcess].thread)
+		process.focusWindow = #process.processTable
+		term.redirect(processTable[process.focusWindow].window.redirect)
+		coroutine.resume(processTable[process.focusWindow].thread)
 		term.restore()
-		processTable[process.activeProcess].special = "select_window"
+		processTable[process.focusWindow].special = "select_window"
 	end
 end
 
@@ -340,11 +342,40 @@ local function runProgramDialog()
 	pTable.thread = coroutine.create(startProgram)
 	pTable.window = window.new(30, 3, 2, 2, "Run Program", windowCompositor:newBuffer())
 	table.insert(processTable, pTable)
-	process.activeProcess = #process.processTable
-	term.redirect(processTable[process.activeProcess].window.redirect)
-	coroutine.resume(processTable[process.activeProcess].thread)
+	process.focusWindow = #process.processTable
+	term.redirect(processTable[process.focusWindow].window.redirect)
+	coroutine.resume(processTable[process.focusWindow].thread)
 	term.restore()
-	processTable[process.activeProcess].special = "run_program"
+	processTable[process.focusWindow].special = "run_program"
+end
+
+local function resumeProcess(pID, eventTable)
+	local redir = false
+	if processTable[pID].window then
+		term.redirect(processTable[pID].window.redirect)
+		redir = true
+		if processTable[pID].redirectStack then
+			for _,t in ipairs(processTable[pID].redirectStack) do
+				term.redirect(t)
+			end
+		end
+		rawset(term, "redirect", newTredirect)
+		rawset(term, "restore", newTrestore)
+	end
+	process.activeProcess = pID
+	passback = {coroutine.resume(processTable[pID].thread, unpack(eventTable))}
+	process.activeProcess = nil
+	if redir then
+		rawset(term, "redirect", oldTredirect)
+		rawset(term, "restore", oldTrestore)
+		processTable[pID].redirectStack = {}
+		for i=1, #process.redirectStack do
+			term.restore()
+			processTable[pID].redirectStack[i] = process.redirectStack[i]
+		end
+		term.restore()
+	end
+	checkProcess(pID, passback)
 end
 
 term.clear()
@@ -352,6 +383,11 @@ local titlebar = windowCompositor:newBuffer()
 local titlebarWidth, titlebarHeight = titlebar.getSize()
 titlebar.buffer.text[1] = "=LyqydOS"..string.rep("=", titlebarWidth - 8)
 windowCompositor:draw()
+
+local watchMouseDragging = false
+local mouseStartX = nil
+local mouseStartY = nil
+local mouseDragAction = nil
 
 while true do
 	local titlebarItems = {}
@@ -394,6 +430,7 @@ while true do
 		--window controls menu
 		windowOptionsMenu()
 	elseif event[1] == "mouse_click" then
+		watchMouseDragging = false
 		local windowFound = false
 		for i = #windowCompositor.bufferStack, 1, -1 do
 			for pNum, pInfo in pairs(processTable) do
@@ -401,21 +438,14 @@ while true do
 					--correct window in order, break even if we don't get the click here.
 					if event[3] >= pInfo.window.x and event[3] <= pInfo.window.x + pInfo.window.w - 1 and event[4] >= pInfo.window.y and event[4] <= pInfo.window.y + pInfo.window.h - 1 and not pInfo.window.minimized then
 						windowFound = true
-						if process.activeProcess ~= pNum then
-							process.activeProcess = pNum
-							windowCompositor:toFront(processTable[process.activeProcess].window)
+						if process.focusWindow ~= pNum then
+							process.focusWindow = pNum
+							windowCompositor:toFront(processTable[process.focusWindow].window)
 						end
 						event[3] = event[3] - pInfo.window.x
 						event[4] = event[4] - pInfo.window.y
 						if event[3] > 0 and event[3] < pInfo.window.w - 1 and event[4] > 0 and event[4] < pInfo.window.h - 1 then
-							local redir = false
-							if processTable[process.activeProcess].window then
-								term.redirect(processTable[process.activeProcess].window.redirect)
-								redir = true
-							end
-							passback = {coroutine.resume(processTable[process.activeProcess].thread, unpack(event))}
-							if redir then term.restore() end
-							checkProcess(passback)
+							resumeProcess(process.focusWindow, event)
 						elseif event[4] == 0 and event[2] == 2 then
 							--right click on window title bar, open window menu.
 							windowOptionsMenu()
@@ -423,12 +453,12 @@ while true do
 							local action = pInfo.window.w - event[3] - 2
 							if action == 1 then
 								--close window
-								saveDimensions(processTable[process.activeProcess])
-								processTable[process.activeProcess].window:destroy()
-								processTable[process.activeProcess] = false
-								process.activeProcess = nextWindow(1)
-								if processTable[process.activeProcess] then
-									windowCompositor:toFront(processTable[process.activeProcess].window)
+								saveDimensions(processTable[process.focusWindow])
+								processTable[process.focusWindow].window:destroy()
+								processTable[process.focusWindow] = false
+								process.focusWindow = nextWindow(1)
+								if processTable[process.focusWindow] then
+									windowCompositor:toFront(processTable[process.focusWindow].window)
 								end
 							elseif action == 2 then
 								if pInfo.window.maximized then
@@ -441,6 +471,18 @@ while true do
 							elseif action == 3 then
 								pInfo.window:minimize()
 							end
+						elseif event[4] == 0 and event[2] == 1 then
+							--clicked on titlebar, set variables to see if we drag.
+							watchMouseDragging = true
+							mouseDragAction = "move"
+							mouseStartX = event[3] + pInfo.window.x
+							mouseStartY = event[4] + pInfo.window.y
+						elseif event[3] == pInfo.window.w - 1 and event[4] == pInfo.window.h - 1 and event[2] == 1 then
+							--clicked on lower right corner, resize.
+							watchMouseDragging = true
+							mouseDragAction = "resize"
+							mouseStartX = event[3] + pInfo.window.x
+							mouseStartY = event[4] + pInfo.window.y
 						end
 					end
 					break
@@ -462,11 +504,11 @@ while true do
 						--display the window choice dialog
 						chooseWindowMenu()
 					else
-						if process.activeProcess ~= titlebarItems[clickItem].pID then
-							process.activeProcess = titlebarItems[clickItem].pID
+						if process.focusWindow ~= titlebarItems[clickItem].pID then
+							process.focusWindow = titlebarItems[clickItem].pID
 						end
-						windowCompositor:toFront(processTable[process.activeProcess].window)
-						if processTable[process.activeProcess].window.minimized then processTable[process.activeProcess].window:unMinimize() end
+						windowCompositor:toFront(processTable[process.focusWindow].window)
+						if processTable[process.focusWindow].window.minimized then processTable[process.focusWindow].window:unMinimize() end
 						if event[2] == 2 then
 							--they right-clicked, so let's also display the window action menu.
 							windowOptionsMenu()
@@ -475,47 +517,43 @@ while true do
 				end
 			end
 		end
+	elseif event[1] == "mouse_drag" then
+		--mouse is dragging, see if we need to do something with windows.
+		if watchMouseDragging then
+			if mouseDragAction == "move" then
+				processTable[process.focusWindow].window:move(processTable[process.focusWindow].window.x + (event[3] - mouseStartX), processTable[process.focusWindow].window.y + (event[4] - mouseStartY))
+				mouseStartX = event[3]
+				mouseStartY = event[4]
+			elseif mouseDragAction == "resize" then
+				processTable[process.focusWindow].window:resize(processTable[process.focusWindow].window.w + (event[3] - mouseStartX), processTable[process.focusWindow].window.h + (event[4] - mouseStartY))
+				mouseStartX = event[3]
+				mouseStartY = event[4]
+				os.queueEvent("window_resize")
+			end
+		else
+			event[3] = event[3] - processTable[process.focusWindow].window.x
+			event[4] = event[4] - processTable[process.focusWindow].window.y
+			if event[3] > 0 and event[3] < processTable[process.focusWindow].window.w - 1 and event[4] > 0 and event[4] < processTable[process.focusWindow].window.h - 1 then
+				resumeProcess(process.focusWindow, event)
+			end
+		end
+	elseif event[1] == "mouse_scroll" then
+		event[3] = event[3] - processTable[process.focusWindow].window.x
+		event[4] = event[4] - processTable[process.focusWindow].window.y
+		if event[3] > 0 and event[3] < processTable[process.focusWindow].window.w - 1 and event[4] > 0 and event[4] < processTable[process.focusWindow].window.h - 1 then
+			resumeProcess(process.focusWindow, event)
+		end
 	else
-		if processTable[process.activeProcess] then
-			local redir = false
-			if processTable[process.activeProcess].window then
-				term.redirect(processTable[process.activeProcess].window.redirect)
-				redir = true
-				for _,t in ipairs(process.redirectStack) do
-					term.redirect(t)
-				end
-				rawset(term, "redirect", newTredirect)
-				rawset(term, "restore", newTrestore)
-			end
-			passback = {coroutine.resume(processTable[process.activeProcess].thread, unpack(event))}
-			if redir then
-				rawset(term, "redirect", oldTredirect)
-				rawset(term, "restore", oldTrestore)
-				for i=1, #process.redirectStack do
-					term.restore()
-				end
-				term.restore()
-			end
-			checkProcess(passback)
+		if processTable[process.focusWindow] then
+			resumeProcess(process.focusWindow, event)
 		end
 		--handle background processes.
-		if event[1] ~= "key" and event[1] ~= "char" and event[1] ~= "mouse_click" and event ~= "window_resize" then
+		if event[1] ~= "key" and event[1] ~= "char" and event[1] ~= "mouse_click" and event[1] ~= "mouse_drag" and event[1] ~= "mouse_scroll" and event ~= "window_resize" then
 			for tNum, tInfo in ipairs(processTable) do
-				if tInfo and tInfo.listening then
+				if tNum ~= process.focusWindow and tInfo and tInfo.listening then
 					for k, eType in ipairs(tInfo.listening) do
 						if event[1] == eType then
-							local redir = false
-							if processTable[tNum].window then
-								term.redirect(processTable[tNum].window.redirect)
-								redir = true
-							end
-							passback = {coroutine.resume(processTable[tNum].thread, unpack(event))}
-							if redir then term.restore() end
-							if coroutine.status(processTable[tNum].thread) == "dead" then
-								if processTable[tNum].window then
-									processTable[tNum].window:destroy()
-								end
-							end
+							resumeProcess(tNum, event)
 							break
 						end
 					end
