@@ -23,9 +23,9 @@ else
 		if process.windowCompositor.target.isColor() then pTable.window:setType("standard") end
 		if max == "true" then pTable.window:maximize() end
 		table.insert(process.processTable, pTable)
-		process.activeProcess = #process.processTable
-		term.redirect(process.processTable[process.activeProcess].window.redirect)
-		coroutine.resume(process.processTable[process.activeProcess].thread)
+		process.focusWindow = #process.processTable
+		term.redirect(process.processTable[process.focusWindow].window.redirect)
+		coroutine.resume(process.processTable[process.focusWindow].thread)
 		term.restore()
 	end
 end
