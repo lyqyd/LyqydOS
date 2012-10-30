@@ -1,10 +1,19 @@
 processTable = {}
+focusWindow = nil
 activeProcess = nil
 windowCompositor = {}
 redirectStack = {}
 
 defaultWindow = {19,9}
 
-function setActive(num)
-	activeProcess = num
+function setFocus(num)
+	focusWindow = num
+end
+
+function getWindow()
+	if processTable[activeProcess].window then
+		return processTable[activeProcess].window
+	else
+		return nil, "No window!"
+	end
 end
