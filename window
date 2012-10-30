@@ -301,6 +301,10 @@ local window = {
 		self.windowType = winType
 		self:draw()
 	end,
+	setCaption = function(self, text)
+		self.caption = text
+		self:draw()
+	end,
 }
 
 local wmetatable = {
