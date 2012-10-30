@@ -1,0 +1,92 @@
+local fileList = {
+	"compositor",
+	"menu",
+	"process",
+	"procman",
+	"start",
+	"window",
+}
+
+function resetScreen()
+	term.clear()
+	term.setCursorPos(1,1)
+	xlim, ylim = term.getSize()
+	if xlim >= 20 then
+		term.write("=LyqydOS Installer"..string.rep("=", xlim - 18))
+		term.setCursorPos(1,2)
+	end
+end
+
+resetScreen()
+
+if not fs.exists("/LyqydOS") or not fs.isDir("/LyqydOS") then
+	fs.makeDir("/LyqydOS")
+end
+
+for _, file in ipairs(fileList) do
+	print("Fetching file: "..file)
+	local remoteHandle = http.get("https://raw.github.com/lyqyd/LyqydOS/master/"..file)
+	if remoteHandle then
+		fileHandle = io.open("/LyqydOS/"..file, "w")
+		if fileHandle then
+			fileHandle:write(remoteHandle.readAll())
+			fileHandle:close()
+		else
+			error("Could not open file /LyqydOS/"..file)
+		end
+	else
+		error("Could not retrieve remote file: "..file)
+	end
+end
+print("Finished fetching!")
+sleep(1)
+if fs.exists("/LyqydOS/start") then
+	if fs.exists("/start") then fs.delete("/start") end
+	fs.move("/LyqydOS/start", "/start")
+end
+
+--write sane default window sizes
+if not fs.exists("/.lyqwin") then
+	local handle = io.open("/.lyqwin", "w")
+	if handle then
+		handle:write([[1,1,9,4,false,rom/programs/reboot]].."\n")
+		handle:write([[1,1,9,4,false,rom/programs/reboot]].."\n")
+		handle:write([[1,1,9,4,false,rom/programs/shutdown]].."\n")
+		handle:close()
+	end
+end
+
+resetScreen()
+
+print("Run LyqydOS on startup? (y/N)")
+term.write("> ")
+local input = read()
+if #input > 0 then
+	input = string.lower(string.sub(input, 1, 1))
+	if input == "y" then
+		local handle = io.open("/startup", "a")
+		if handle then
+			handle:write([[os.loadAPI("/LyqydOS/compositor")]].."\n")
+			handle:write([[os.loadAPI("/LyqydOS/menu")]].."\n")
+			handle:write([[os.loadAPI("/LyqydOS/process")]].."\n")
+			handle:write([[os.loadAPI("/LyqydOS/window")]].."\n")
+			handle:write([[shell.run("/LyqydOS/procman")]].."\n")
+			handle:close()
+		end
+	end
+end
+
+print("Reboot now? (Y/n)")
+term.write("> ")
+input = read()
+if #input > 0 then
+	input = string.lower(string.sub(input, 1, 1))
+	if input == "y" then
+		os.reboot()
+	end
+else
+	os.reboot()
+end
+
+term.clear()
+term.setCursorPos(1,1)
