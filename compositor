@@ -240,7 +240,6 @@ function new(target)
 		target = target or term.native,
 		currentBuffer = {text = {}, textColor = {}, backColor = {}}
 	}
-	--win.redirect = newRedirect(win)
 	setmetatable( comp, cmetatable )
 	if comp.target.getSize() then
 		comp.x, comp.y = comp.target.getSize()
