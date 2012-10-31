@@ -52,6 +52,7 @@ if not fs.exists("/.lyqwin") then
 		handle:write([[1,1,9,4,false,rom/programs/reboot]].."\n")
 		handle:write([[1,1,9,4,false,rom/programs/reboot]].."\n")
 		handle:write([[1,1,9,4,false,rom/programs/shutdown]].."\n")
+		handle:write([[1,1,19,9,true,rom/programs/color/paint]].."\n")
 		handle:close()
 	end
 end
