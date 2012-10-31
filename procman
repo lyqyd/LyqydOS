@@ -530,7 +530,7 @@ while true do
 				mouseStartY = event[4]
 				os.queueEvent("window_resize")
 			end
-		else
+		elseif processTable[process.focusWindow] and processTable[process.focusWindow].window then
 			event[3] = event[3] - processTable[process.focusWindow].window.x
 			event[4] = event[4] - processTable[process.focusWindow].window.y
 			if event[3] > 0 and event[3] < processTable[process.focusWindow].window.w - 1 and event[4] > 0 and event[4] < processTable[process.focusWindow].window.h - 1 then
@@ -538,10 +538,12 @@ while true do
 			end
 		end
 	elseif event[1] == "mouse_scroll" then
-		event[3] = event[3] - processTable[process.focusWindow].window.x
-		event[4] = event[4] - processTable[process.focusWindow].window.y
-		if event[3] > 0 and event[3] < processTable[process.focusWindow].window.w - 1 and event[4] > 0 and event[4] < processTable[process.focusWindow].window.h - 1 then
-			resumeProcess(process.focusWindow, event)
+		if processTable[process.focusWindow] and processTable[process.focusWindow].window then
+			event[3] = event[3] - processTable[process.focusWindow].window.x
+			event[4] = event[4] - processTable[process.focusWindow].window.y
+			if event[3] > 0 and event[3] < processTable[process.focusWindow].window.w - 1 and event[4] > 0 and event[4] < processTable[process.focusWindow].window.h - 1 then
+				resumeProcess(process.focusWindow, event)
+			end
 		end
 	else
 		if processTable[process.focusWindow] then
