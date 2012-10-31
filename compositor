@@ -33,8 +33,8 @@ local function newRedirect(_compTable, _buffer)
 		return redirect.buffer.cursorX, redirect.buffer.cursorY
 	end
 	redirect.setCursorPos = function(x, y)
-		redirect.buffer.cursorX = tonumber(x)
-		redirect.buffer.cursorY = tonumber(y)
+		redirect.buffer.cursorX = math.floor(tonumber(x)) or redirect.buffer.cursorX
+		redirect.buffer.cursorY = math.floor(tonumber(y)) or redirect.buffer.cursorY
 		redirect.compTable:draw("cursor")
 	end
 	redirect.setCursorBlink = function(b)

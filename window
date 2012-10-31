@@ -53,8 +53,8 @@ local function newRedirect(_windowTable)
 		return redirect.windowTable.cursorX, redirect.windowTable.cursorY
 	end
 	redirect.setCursorPos = function(x, y)
-		redirect.windowTable.cursorX = tonumber(x)
-		redirect.windowTable.cursorY = tonumber(y)
+		redirect.windowTable.cursorX = math.floor(tonumber(x)) or redirect.windowTable.cursorX
+		redirect.windowTable.cursorY = math.floor(tonumber(y)) or redirect.windowTable.cursorY
 		redirect.windowTable:draw("curosr")
 	end
 	redirect.setCursorBlink = function(b)
