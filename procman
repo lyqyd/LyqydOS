@@ -7,6 +7,13 @@ rawset(process, "processTable", processTable)
 local oldTredirect = term.redirect
 local oldTrestore = term.restore
 
+local tRunHistory = {}
+if fs.exists("/.runhistory") then
+	local histFile=io.open("/.runhistory","r")
+	tRunHistory=textutils.unserialize(histFile:read())
+	histFile:close()
+end
+
 local function newTredirect(target)
 	table.insert(process.redirectStack, target)
 	oldTredirect(target)
@@ -146,7 +153,19 @@ end
 
 local function startProgram()
 	write("> ")
-	local line = read()
+	local line = read(nil, tRunHistory)
+        --don't save empty or repeated lines
+	if line~="" and (#tRunHistory==0 or line~=tRunHistory[#tRunHistory]) then
+		--should never be able to get above 255, but just in case, the while doesn't hurt
+	        table.insert(tRunHistory,line)		
+		while #tRunHistory>255 do
+			table.remove(tRunHistory,256)
+		end
+		--update history on disk
+		local histFile=io.open("/.runhistory","w")
+		histFile:write(textutils.serialize(tRunHistory))
+		histFile:close()
+	end
 	local args = {}
 	for match in string.gmatch( line, "[^ \t]+" ) do
 		table.insert( args, match )
