@@ -1,3 +1,7 @@
+local versionNumber = 1.1
+
+local args = {...}
+
 local fileList = {
 	"compositor",
 	"menu",
@@ -21,6 +25,32 @@ resetScreen()
 
 if not fs.exists("/LyqydOS") or not fs.isDir("/LyqydOS") then
 	fs.makeDir("/LyqydOS")
+end
+
+if #args < 1 or args[1] ~= "noupdate" then
+	print("Updating Installer")
+	local remoteHandle = http.get("http://pastebin.com/raw.php?i=WmFHmuZq")
+	if remoteHandle then
+		fileHandle = io.open(shell.getRunningProgram(), "w")
+		if fileHandle then
+			fileHandle:write(remoteHandle.readAll())
+			fileHandle:close()
+		else
+			error("Could not open file "..shell.getRunningProgram())
+		end
+	else
+		error("Could not retrieve remote file.")
+	end
+	local fileHandle = io.open(shell.getRunningProgram(), "r")
+	if fileHandle then
+		local newVersionNumber = tonumber(string.match(fileHandle:read("*l"), "local versionNumber = (.*)"))
+		fileHandle:close()
+		if newVersionNumber > versionNumber then
+			shell.run(shell.getRunningProgram(), "noupdate")
+			return
+		end
+	end
+	resetScreen()
 end
 
 for _, file in ipairs(fileList) do
