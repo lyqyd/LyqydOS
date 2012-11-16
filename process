@@ -4,10 +4,37 @@ activeProcess = nil
 windowCompositor = {}
 redirectStack = {}
 
-defaultWindow = {19,9}
-
 function setFocus(num)
 	focusWindow = num
+end
+
+function addChildWindow(pID, childWindow)
+	if processTable[pID].children then
+		local isChild = false
+		for k, v in ipairs(processTable[pID].children) do
+			if v == childWindow then
+				isChild = true
+				break
+			end
+		end
+		if not isChild then
+			table.insert(processTable[pID].children, childWindow)
+		end
+	else
+		processTable[pID].children = {childWindow, "rootWindow"}
+	end
+end
+
+function removeChildWindow(pID, childWindow)
+	if processTable[pID] and processTable[pID].children then
+		local index
+		for k, v in ipairs(processTable[pID].children) do
+			if v == childWindow then
+				index = k
+				break
+			end
+		end
+		if index then 
 end
 
 function getWindow()
@@ -15,5 +42,13 @@ function getWindow()
 		return processTable[activeProcess].window
 	else
 		return nil, "No window!"
+	end
+end
+
+function id()
+	if activeProcess and processTable[activeProcess] then
+		return activeProcess
+	else
+		return nil, "No active process!"
 	end
 end
