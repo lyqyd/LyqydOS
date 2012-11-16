@@ -1,0 +1,110 @@
+local function verifyAcyclicTable( t, track )	
+	if type(t) == "table" then
+		if track[t] ~= nil then
+			return false
+		end
+		track[t] = true
+		for k,v in pairs(t) do
+			if not verifyAcyclicTable(v, track) then return false end
+		end
+	else
+		return true
+	end
+end
+
+local guiTable = {
+	newChildWindow = function(self, w, h, x, y, caption)
+		local win = window.new(w, h, x, y, caption, process.windowCompositor:newBuffer())
+		process.addChildWindow(self.parentProcessID, win)
+		return win
+	end,
+	newWindowMenu = function(self, targetWindow, x, y, menuTable)
+		if not verifyAcyclicTable(menuTable, {}) then return nil, "Cannot create cyclic menu" end
+		if not self.trackedWindows[targetWindow] then
+			local windowTracked = false
+			if self.parentWindow == targetWindow then
+				self.trackedWindows[targetWindow] = true
+				windowTracked = true
+			else
+				for k,v in ipairs(self.parentProcessTable.children) do
+					if v == targetWindow then
+						self.trackedWindows[targetWindow] = {}
+						windowTracked = true
+					end
+				end
+			end
+			if not windowTracked then return nil, "Cannot create gui in that window" end
+		end
+		
+		local menuBarText = {}
+		local menuBarLength = 0
+		for k, v in ipairs(menuTable) do
+			if type(v) == "table" then
+				--menu contains submenus, use .name for the text
+				table.insert(menuBarText, v.name)
+				menuBarLength = menuBarLength + string.len(v.name) + 1
+			elseif type(v) == "string" then
+				--menu option is just a button, use the text
+				table.insert(menuBarText, v)
+				menuBarLength = menuBarLength + string.len(v) + 1
+			end
+		end
+		menuBarLength = menuBarLength - 1
+		local xLim, yLim = term.getSize()
+		if menuBarLength <= xLim - (x - 1) then
+			term.setCursorPos(x, y)
+			for i=1, #menuBarText do
+				term.write(menuBarText[i])
+				if i < #menuBarText then
+					term.write(" ")
+				end
+			end
+		end
+	end,
+	handleEvent = function(self, ...)
+		event = {...}
+		if event[1] == "mouse_click" then
+			if #self.trackedWindows >= 1 then
+				local currentFront
+				if self.parentProcessTable.children[#self.parentProcessTable.children] == "rootWindow" then
+					currentFront = self.parentWindow
+				else
+					currentFront = self.parentProcessTable.children[#self.parentProcessTable.children]
+				end
+				if not self.trackedWindows[currentFront] then
+					return unpack(event)
+				end
+				--otherwise, we are tracking this window, so see if we clicked in a gui bounding box.
+				if self.trackedWindows[currentFront].guiElements then
+					for k, box in ipairs(self.trackedWindows[currentFront].guiElements) do
+						if event[3] >= box.minX and event[3] <= box.maxX and event[4] >= box.minY and event[4] <= box.maxY then
+							--event is in this bounding box!
+							return box.eventHandler(event[1], event[2], event[3] - (box.minX - 1), event[4] - (box.minY - 1))
+						end
+					end
+					--if it's not in our bounding boxes, return the event.
+					return unpack(event)
+				end
+			end
+		elseif event[1] == "key" or event[1] == "char" then
+			--check activation keys/current state
+		end
+		return unpack(event)
+	end,
+}
+
+local gmetatable = {
+	__index = guiTable,
+}
+
+function new()
+	if not (process and compositor and window and process.activeProcess) then return nil, "Incorrect environment!" end
+	local g = {
+		parentProcessID = process.activeProcess
+		parentProcessTable = process.processTable[parentProcessID]
+		parentWindow = parentProcessTable.window
+		trackedWindows = {}
+	}
+	setmetatable( g, gmetatable )
+	return g
+end
