@@ -106,24 +106,6 @@ local function checkWindow(proc)
 	return true
 end
 
-local function addChild(parent, child)
-	if processTable[parent].children then
-		local isChild = false
-		for k, v in ipairs(processTable[parent].children) do
-			if v == child then
-				isChild = true
-				break
-			end
-		end
-		if not isChild then
-			table.insert(processTable[parent].children, child)
-		end
-	else
-		processTable[parent].children = {child}
-	end
-	processTable[child].parent = parent
-end
-
 local function selectWindow()
 	local pList, menuList = {}, {}
 	for tNum, tInfo in ipairs(process.processTable) do
@@ -271,6 +253,7 @@ local function changeWindow(manipulationWindow, action)
 			end
 		end
 		processTable[manipulationWindow].window:resize(newX - processTable[manipulationWindow].window.x + 1, newY - processTable[manipulationWindow].window.y + 1)
+		processTable[manipulationWindow].window.maximized = false
 		os.queueEvent("window_resize")
 	elseif action == 4 then
 		processTable[manipulationWindow].window:minimize()
@@ -319,7 +302,6 @@ local function windowOptionsMenu()
 		passback = {coroutine.resume(processTable[process.focusWindow].thread, parent)}
 		term.restore()
 		processTable[process.focusWindow].special = "window_action"
-		addChild(parent, process.focusWindow)
 	end
 end
 
@@ -434,7 +416,7 @@ while true do
 		local windowFound = false
 		for i = #windowCompositor.bufferStack, 1, -1 do
 			for pNum, pInfo in pairs(processTable) do
-				if pInfo and pInfo.window and pInfo.window.target.buffer == windowCompositor.bufferStack[i] then
+				if pInfo and pInfo.window and pInfo.window.target.buffer and pInfo.window.target.buffer == windowCompositor.bufferStack[i] then
 					--correct window in order, break even if we don't get the click here.
 					if event[3] >= pInfo.window.x and event[3] <= pInfo.window.x + pInfo.window.w - 1 and event[4] >= pInfo.window.y and event[4] <= pInfo.window.y + pInfo.window.h - 1 and not pInfo.window.minimized then
 						windowFound = true
@@ -528,6 +510,7 @@ while true do
 				processTable[process.focusWindow].window:resize(processTable[process.focusWindow].window.w + (event[3] - mouseStartX), processTable[process.focusWindow].window.h + (event[4] - mouseStartY))
 				mouseStartX = event[3]
 				mouseStartY = event[4]
+				processTable[process.focusWindow].window.maximized = false
 				os.queueEvent("window_resize")
 			end
 		elseif processTable[process.focusWindow] and processTable[process.focusWindow].window then
