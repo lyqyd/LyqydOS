@@ -7,45 +7,189 @@ local function verifyAcyclicTable( t, track )
 		for k,v in pairs(t) do
 			if not verifyAcyclicTable(v, track) then return false end
 		end
-	else
-		return true
 	end
+	return true
+end
+
+local function trackWindow(guiTable, targetWindow)
+	if not guiTable.trackedWindows[targetWindow] then
+		local windowTracked = false
+		if guiTable.parentWindow == targetWindow then
+			guiTable.trackedWindows[targetWindow] = {}
+			windowTracked = true
+		else
+			for k,v in ipairs(guiTable.parentProcessTable.children) do
+				if v == targetWindow then
+					guiTable.trackedWindows[targetWindow] = {}
+					windowTracked = true
+				end
+			end
+		end
+		if not windowTracked then return false end
+	end
+	return true
 end
 
 local guiTable = {
 	newChildWindow = function(self, w, h, x, y, caption)
 		local win = window.new(w, h, x, y, caption, process.windowCompositor:newBuffer())
+		print(self.parentProcessID)
 		process.addChildWindow(self.parentProcessID, win)
 		return win
 	end,
-	newWindowMenu = function(self, targetWindow, x, y, menuTable)
+	newMenu = function(self, targetWindow, x, y, menuTable)
 		if not verifyAcyclicTable(menuTable, {}) then return nil, "Cannot create cyclic menu" end
-		if not self.trackedWindows[targetWindow] then
-			local windowTracked = false
-			if self.parentWindow == targetWindow then
-				self.trackedWindows[targetWindow] = true
-				windowTracked = true
+		if not trackWindow(self, targetWindow) then return nil, "Cannot create gui in menu parent window" end
+		local elementData = {}
+		elementData.menuEntries = {}
+		elementData.cleanTable = {}
+		menuWidth = 0
+		for i, v in ipairs(menuTable) do
+			if type(v) == "table" then
+				local entryData = {}
+				entryData.name = v.name
+				entryData.menu = v.options
+				table.insert(elementData.menuEntries, entryData)
+				table.insert(elementData.cleanTable, v.name)
+				menuWidth = math.max(menuWidth, string.len(v.name))
+			elseif type(v) == "string" then
+				table.insert(elementData.menuEntries, {name = v})
+				table.insert(elementData.cleanTable, v)
+				menuWidth = math.max(menuWidth, string.len(v))
+			end
+		end
+		local xLim, yLim = process.windowCompositor.x, process.windowCompositor.y
+		--add one to get the borders accounted for
+		if y + #elementData.menuEntries + 1 > yLim then
+			y = math.max(1, yLim - #elementData.menuEntries - 1)
+		end
+		print(targetWindow.x + x..","..targetWindow.y + y..","..math.min(x + menuWidth + 1, xLim - x - 1)..","..math.min(yLim - 1, #elementData.menuEntries + 2))
+		menuWindow = self:newChildWindow(math.min(x + menuWidth + 1, xLim - x - 1), math.min(yLim - 1, #elementData.menuEntries + 2), targetWindow.x + x, targetWindow.y + y, nil)
+		--menuWindow = window.new(targetWindow.x + x, targetWindow.y + y, math.min(x + menuWidth + 1, xLim - x - 1), math.min(yLim - 1, #elementData.menuEntries + 2), nil, process.windowCompositor:newBuffer())
+		menuWindow:setDecorations("menu")
+		--process.addChildWindow(self.parentProcessID, menuWindow)
+		if not trackWindow(self, menuWindow) then
+			menuWindow:destroy()
+			return nil, "Cannot create gui in menu parent window"
+		end
+		elementData.offset = 1
+		elementData.cursor = 1
+		elementData.drawCursor = false
+		elementData.redrawMenu = function(menuTable, cursor, offset, drawCursor)
+			local xlim, ylim = term.getSize()
+			if xlim < 3 or (ylim < 3 and #menuTable > 2) then
+				return nil, "Not enough space to draw menu!"
+			end
+			term.clear()
+			offset = offset or 1
+			term.setCursorPos(1, 1)
+			if offset > 1 then
+				term.write("/\\")
 			else
-				for k,v in ipairs(self.parentProcessTable.children) do
-					if v == targetWindow then
-						self.trackedWindows[targetWindow] = {}
-						windowTracked = true
+				term.write(string.sub(menuTable[1], 1, xlim))
+			end
+			for i=1, math.min(ylim - 2,#menuTable - 1) do
+				term.setCursorPos(1, i + 1)
+				if drawCursor and offset + i == cursor then
+					term.setBackgroundColor(colors.white)
+					term.setTextColor(colors.black)
+					term.write(string.sub(menuTable[offset + i], 1, xlim))
+					term.setBackgroundColor(colors.black)
+					term.setTextColor(colors.white)
+				else
+					term.write(string.sub(menuTable[offset + i], 1, xlim))
+				end
+			end
+			if #menuTable >= ylim then
+				term.setCursorPos(1, ylim)
+				if #menuTable > offset + ylim - 1 then
+					term.write("\\/")
+				else
+					if drawCursor and offset + i == cursor then
+						term.setBackgroundColor(colors.white)
+						term.setTextColor(colors.black)
+						term.write(string.sub(menuTable[#menuTable], 1, xlim))
+						term.setBackgroundColor(colors.black)
+						term.setTextColor(colors.white)
+					else
+						term.write(string.sub(menuTable[#menuTable], 1, xlim))
 					end
 				end
 			end
-			if not windowTracked then return nil, "Cannot create gui in that window" end
 		end
+		elementData.eventHandler = function(self, ...)
+			if event[1] == "key" then
+				--up
+				if event[2] == 200 then
+					self.drawCursor = true
+					if self.cursor - self.offset + 1 > 2 or (self.cursor > 1 and self.offset ==  1) then
+						self.cursor = self.cursor - 1
+						self.redrawMenu(self.cleanTable, self.cursor, self.offset, self.drawCursor)
+					elseif self.cursor - self.offset + 1 == 2 and self.offset > 1 then
+						self.offset = self.offset - 1
+						self.cursor = self.cursor - 1
+						self.redrawMenu(self.cleanTable, self.cursor, self.offset, self.drawCursor)
+					end
+				--down
+				elseif event[2] == 208 then
+					self.drawCursor = true
+					_, ylim = term.getSize()
+					if self.cursor < #self.cleanTable and (self.cursor - self.offset + 1 < ylim - 1 or #self.cleanTable <= ylim or (self.cursor == #self.cleanTable - 1 and self.cursor - self.offset + 1 == ylim - 1)) then
+						self.cursor = self.cursor + 1
+						self.redrawMenu(self.cleanTable, self.cursor, self.offset, self.drawCursor)
+					elseif self.cursor < #self.cleanTable and self.cursor - self.offset + 1 == ylim - 1 then
+						self.offset = self.offset + 1
+						self.cursor = self.cursor + 1
+						self.redrawMenu(self.cleanTable, self.cursor, self.offset, self.drawCursor)
+					end
+				elseif event[2] == 28 then
+					return self.cursor
+				end
+			elseif event[1] == "mouse_click" and event[2] == 1 then
+				if event[4] <= #self.cleanTable then
+					_, ylim = term.getSize()
+					if self.offset > 1 and event[4] == 1 then
+						--scroll up.
+						self.offset = self.offset - 1
+						self.cursor = self.offset + 1
+						self.redrawMenu(self.cleanTable, self.cursor, self.offset, self.drawCursor)
+					elseif self.offset + ylim - 1 < #self.cleanTable and event[4] == ylim then
+						--scroll down.
+						self.offset = self.offset + 1
+						self.cursor = self.offset + ylim - 2
+						self.redrawMenu(self.cleanTable, self.cursor, self.offset, self.drawCursor)
+					else
+						self.drawCursor = true
+						self.redrawMenu(self.cleanTable, self.cursor, self.offset, self.drawCursor)
+						return event[4] + self.offset - 1
+					end
+				end
+			elseif event[1] == "window_resize" then
+				self.redrawMenu(self.cleanTable, self.cursor, self.offset, self.drawCursor)
+			end
+		end
+		term.redirect(menuWindow.redirect)
+		elementData.redrawMenu(elementData.cleanTable, 1, 1, false)
+		term.restore()
+	end,
+	newMenuBar = function(self, targetWindow, x, y, menuTable)
+		if not verifyAcyclicTable(menuTable, {}) then return nil, "Cannot create cyclic menu" end
+		if not trackWindow(self, targetWindow) then return nil, "Cannot create gui in that window" end
+		local elementData = {}
+		elementData.menuButtons = {}
 		
-		local menuBarText = {}
 		local menuBarLength = 0
-		for k, v in ipairs(menuTable) do
+		for i, v in ipairs(menuTable) do
 			if type(v) == "table" then
 				--menu contains submenus, use .name for the text
-				table.insert(menuBarText, v.name)
+				local buttonData = {}
+				buttonData.name = v.name
+				buttonData.menu = v.options
+				table.insert(elementData.menuButtons, buttonData)
 				menuBarLength = menuBarLength + string.len(v.name) + 1
 			elseif type(v) == "string" then
 				--menu option is just a button, use the text
-				table.insert(menuBarText, v)
+				table.insert(elementData.menuButtons, {name = v})
 				menuBarLength = menuBarLength + string.len(v) + 1
 			end
 		end
@@ -53,38 +197,62 @@ local guiTable = {
 		local xLim, yLim = term.getSize()
 		if menuBarLength <= xLim - (x - 1) then
 			term.setCursorPos(x, y)
-			for i=1, #menuBarText do
-				term.write(menuBarText[i])
-				if i < #menuBarText then
+			for i=1, #elementData.menuButtons do
+				term.write(elementData.menuButtons[i].name)
+				if i < #elementData.menuButtons then
 					term.write(" ")
 				end
 			end
 		end
+
+		elementData.minX = x
+		elementData.minY = y
+		elementData.maxX = x + menuBarLength - 1
+		elementData.maxY = y
+		elementData.eventHandler = function(self, ...)
+			event = {...}
+			if event[1] == "mouse_click" then
+				local offset = 1
+				for i,v in ipairs(self.menuButtons) do
+					if event[3] >= offset and event[3] <= offset + string.len(v.name) - 1 then
+						if v.options then
+							--this creates the menu window
+						else
+							return "gui_menu_click", v.name
+						end
+						--this button
+						break
+					else
+						offset = offset + string.len(v.name) + 1
+					end
+				end
+			end
+		end
+		if not self.trackedWindows[targetWindow].guiElements then self.trackedWindows[targetWindow].guiElements = {} end
+		table.insert(self.trackedWindows[targetWindow].guiElements, elementData)
 	end,
 	handleEvent = function(self, ...)
 		event = {...}
 		if event[1] == "mouse_click" then
-			if #self.trackedWindows >= 1 then
-				local currentFront
-				if self.parentProcessTable.children[#self.parentProcessTable.children] == "rootWindow" then
-					currentFront = self.parentWindow
-				else
-					currentFront = self.parentProcessTable.children[#self.parentProcessTable.children]
-				end
-				if not self.trackedWindows[currentFront] then
-					return unpack(event)
-				end
-				--otherwise, we are tracking this window, so see if we clicked in a gui bounding box.
-				if self.trackedWindows[currentFront].guiElements then
-					for k, box in ipairs(self.trackedWindows[currentFront].guiElements) do
-						if event[3] >= box.minX and event[3] <= box.maxX and event[4] >= box.minY and event[4] <= box.maxY then
-							--event is in this bounding box!
-							return box.eventHandler(event[1], event[2], event[3] - (box.minX - 1), event[4] - (box.minY - 1))
-						end
+			local currentFront
+			if not self.parentProcessTable.children or self.parentProcessTable.children[#self.parentProcessTable.children] == "rootWindow" then
+				currentFront = self.parentWindow
+			else
+				currentFront = self.parentProcessTable.children[#self.parentProcessTable.children]
+			end
+			if not self.trackedWindows[currentFront] then
+				return unpack(event)
+			end
+			--otherwise, we are tracking this window, so see if we clicked in a gui bounding box.
+			if self.trackedWindows[currentFront].guiElements then
+				for k, box in ipairs(self.trackedWindows[currentFront].guiElements) do
+					if event[3] >= box.minX and event[3] <= box.maxX and event[4] >= box.minY and event[4] <= box.maxY then
+						--event is in this bounding box!
+						return box:eventHandler(event[1], event[2], event[3] - (box.minX - 1), event[4] - (box.minY - 1))
 					end
-					--if it's not in our bounding boxes, return the event.
-					return unpack(event)
 				end
+				--if it's not in our bounding boxes, return the event.
+				return unpack(event)
 			end
 		elseif event[1] == "key" or event[1] == "char" then
 			--check activation keys/current state
@@ -100,10 +268,10 @@ local gmetatable = {
 function new()
 	if not (process and compositor and window and process.activeProcess) then return nil, "Incorrect environment!" end
 	local g = {
-		parentProcessID = process.activeProcess
-		parentProcessTable = process.processTable[parentProcessID]
-		parentWindow = parentProcessTable.window
-		trackedWindows = {}
+		parentProcessID = process.activeProcess,
+		parentProcessTable = process.processTable[process.activeProcess],
+		parentWindow = process.processTable[process.activeProcess].window,
+		trackedWindows = {},
 	}
 	setmetatable( g, gmetatable )
 	return g
