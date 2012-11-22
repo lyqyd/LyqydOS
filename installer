@@ -1,4 +1,4 @@
-local versionNumber = 1.1
+local versionNumber = 1.2
 
 local args = {...}
 
@@ -27,7 +27,7 @@ if not fs.exists("/LyqydOS") or not fs.isDir("/LyqydOS") then
 	fs.makeDir("/LyqydOS")
 end
 
-if #args < 1 or args[1] ~= "noupdate" then
+if #args < 1 or (args[1] ~= "noupdate" and args[1] ~= "setup") then
 	print("Updating Installer")
 	local remoteHandle = http.get("http://pastebin.com/raw.php?i=WmFHmuZq")
 	if remoteHandle then
@@ -53,23 +53,25 @@ if #args < 1 or args[1] ~= "noupdate" then
 	resetScreen()
 end
 
-for _, file in ipairs(fileList) do
-	print("Fetching file: "..file)
-	local remoteHandle = http.get("https://raw.github.com/lyqyd/LyqydOS/master/"..file)
-	if remoteHandle then
-		fileHandle = io.open("/LyqydOS/"..file, "w")
-		if fileHandle then
-			fileHandle:write(remoteHandle.readAll())
-			fileHandle:close()
+if #args < 1 or args[1] ~= "setup" then
+	for _, file in ipairs(fileList) do
+		print("Fetching file: "..file)
+		local remoteHandle = http.get("https://raw.github.com/lyqyd/LyqydOS/master/"..file)
+		if remoteHandle then
+			fileHandle = io.open("/LyqydOS/"..file, "w")
+			if fileHandle then
+				fileHandle:write(remoteHandle.readAll())
+				fileHandle:close()
+			else
+				error("Could not open file /LyqydOS/"..file)
+			end
 		else
-			error("Could not open file /LyqydOS/"..file)
+			error("Could not retrieve remote file: "..file)
 		end
-	else
-		error("Could not retrieve remote file: "..file)
 	end
+	print("Finished fetching!")
+	sleep(1)
 end
-print("Finished fetching!")
-sleep(1)
 if fs.exists("/LyqydOS/start") then
 	if fs.exists("/start") then fs.delete("/start") end
 	fs.move("/LyqydOS/start", "/start")
