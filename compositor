@@ -5,13 +5,24 @@ local function newRedirect(_compTable, _buffer)
 	}
 	redirect.write = function(text)
 		local pos = redirect.buffer.cursorX
-		if redirect.buffer.cursorX < 1 then
-			text = string.sub(text, math.abs(redirect.buffer.cursorX) + 2)
+		if pos + #text <= 1 then
+			--skip entirely.
+			redirect.buffer.cursorX = pos + #text
+			return
+		elseif pos < 1 then
+			--adjust text to fit on screen starting at one.
+			writeText = string.sub(text, math.abs(redirect.buffer.cursorX) + 2)
 			redirect.buffer.cursorX = 1
+		elseif pos >= redirect.compTable.x - 1 then
+			--if we're off the edge to the right, skip entirely.
+			redirect.buffer.cursorX = pos + #text
+			return
+		else
+			writeText = text
 		end
-		redirect.buffer.text[redirect.buffer.cursorY] = string.sub(redirect.buffer.text[redirect.buffer.cursorY], math.min(1, redirect.buffer.cursorX - 1), redirect.buffer.cursorX - 1)..text..string.sub(redirect.buffer.text[redirect.buffer.cursorY], redirect.buffer.cursorX + string.len(text), redirect.compTable.x)
-		redirect.buffer.textColor[redirect.buffer.cursorY] = string.sub(redirect.buffer.textColor[redirect.buffer.cursorY], math.min(1, redirect.buffer.cursorX - 1), redirect.buffer.cursorX - 1)..string.rep(redirect.buffer.curTextColor, #text)..string.sub(redirect.buffer.textColor[redirect.buffer.cursorY], redirect.buffer.cursorX + string.len(text), redirect.compTable.x)
-		redirect.buffer.backColor[redirect.buffer.cursorY] = string.sub(redirect.buffer.backColor[redirect.buffer.cursorY], math.min(1, redirect.buffer.cursorX - 1), redirect.buffer.cursorX - 1)..string.rep(redirect.buffer.curBackColor, #text)..string.sub(redirect.buffer.backColor[redirect.buffer.cursorY], redirect.buffer.cursorX + string.len(text), redirect.compTable.x)
+		redirect.buffer.text[redirect.buffer.cursorY] = string.sub(redirect.buffer.text[redirect.buffer.cursorY], math.min(1, redirect.buffer.cursorX - 1), redirect.buffer.cursorX - 1)..writeText..string.sub(redirect.buffer.text[redirect.buffer.cursorY], redirect.buffer.cursorX + string.len(writeText), redirect.compTable.x - 2)
+		redirect.buffer.textColor[redirect.buffer.cursorY] = string.sub(redirect.buffer.textColor[redirect.buffer.cursorY], math.min(1, redirect.buffer.cursorX - 1), redirect.buffer.cursorX - 1)..string.rep(redirect.buffer.curTextColor, #writeText)..string.sub(redirect.buffer.textColor[redirect.buffer.cursorY], redirect.buffer.cursorX + string.len(writeText), redirect.buffer.w - 2)
+		redirect.buffer.backColor[redirect.buffer.cursorY] = string.sub(redirect.buffer.backColor[redirect.buffer.cursorY], math.min(1, redirect.buffer.cursorX - 1), redirect.buffer.cursorX - 1)..string.rep(redirect.buffer.curBackColor, #writeText)..string.sub(redirect.buffer.backColor[redirect.buffer.cursorY], redirect.buffer.cursorX + string.len(writeText), redirect.buffer.w - 2)
 		redirect.buffer.cursorX = pos + string.len(text)
 		redirect.compTable:draw()
 	end

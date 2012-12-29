@@ -25,13 +25,24 @@ local function newRedirect(_windowTable)
 	local redirect = {windowTable = _windowTable}
 	redirect.write = function(text)
 		local pos = redirect.windowTable.cursorX
-		if redirect.windowTable.cursorX < 1 then
-			text = string.sub(text, math.abs(redirect.windowTable.cursorX) + 2)
+		if pos + #text <= 1 then
+			--skip entirely.
+			redirect.windowTable.cursorX = pos + #text
+			return
+		elseif pos < 1 then
+			--adjust text to fit on screen starting at one.
+			writeText = string.sub(text, math.abs(redirect.windowTable.cursorX) + 2)
 			redirect.windowTable.cursorX = 1
+		elseif pos >= redirect.windowTable.w - 1 then
+			--if we're off the edge to the right, skip entirely.
+			redirect.windowTable.cursorX = pos + #text
+			return
+		else
+			writeText = text
 		end
-		redirect.windowTable.buffer.text[redirect.windowTable.cursorY] = string.sub(redirect.windowTable.buffer.text[redirect.windowTable.cursorY], math.min(1, redirect.windowTable.cursorX - 1), redirect.windowTable.cursorX - 1)..text..string.sub(redirect.windowTable.buffer.text[redirect.windowTable.cursorY], redirect.windowTable.cursorX + string.len(text), redirect.windowTable.w - 2)
-		redirect.windowTable.buffer.textColor[redirect.windowTable.cursorY] = string.sub(redirect.windowTable.buffer.textColor[redirect.windowTable.cursorY], math.min(1, redirect.windowTable.cursorX - 1), redirect.windowTable.cursorX - 1)..string.rep(redirect.windowTable.buffer.curTextColor, #text)..string.sub(redirect.windowTable.buffer.textColor[redirect.windowTable.cursorY], redirect.windowTable.cursorX + string.len(text), redirect.windowTable.w - 2)
-		redirect.windowTable.buffer.backColor[redirect.windowTable.cursorY] = string.sub(redirect.windowTable.buffer.backColor[redirect.windowTable.cursorY], math.min(1, redirect.windowTable.cursorX - 1), redirect.windowTable.cursorX - 1)..string.rep(redirect.windowTable.buffer.curBackColor, #text)..string.sub(redirect.windowTable.buffer.backColor[redirect.windowTable.cursorY], redirect.windowTable.cursorX + string.len(text), redirect.windowTable.w - 2)
+		redirect.windowTable.buffer.text[redirect.windowTable.cursorY] = string.sub(redirect.windowTable.buffer.text[redirect.windowTable.cursorY], math.min(1, redirect.windowTable.cursorX - 1), redirect.windowTable.cursorX - 1)..writeText..string.sub(redirect.windowTable.buffer.text[redirect.windowTable.cursorY], redirect.windowTable.cursorX + string.len(writeText), redirect.windowTable.w - 2)
+		redirect.windowTable.buffer.textColor[redirect.windowTable.cursorY] = string.sub(redirect.windowTable.buffer.textColor[redirect.windowTable.cursorY], math.min(1, redirect.windowTable.cursorX - 1), redirect.windowTable.cursorX - 1)..string.rep(redirect.windowTable.buffer.curTextColor, #writeText)..string.sub(redirect.windowTable.buffer.textColor[redirect.windowTable.cursorY], redirect.windowTable.cursorX + string.len(writeText), redirect.windowTable.w - 2)
+		redirect.windowTable.buffer.backColor[redirect.windowTable.cursorY] = string.sub(redirect.windowTable.buffer.backColor[redirect.windowTable.cursorY], math.min(1, redirect.windowTable.cursorX - 1), redirect.windowTable.cursorX - 1)..string.rep(redirect.windowTable.buffer.curBackColor, #writeText)..string.sub(redirect.windowTable.buffer.backColor[redirect.windowTable.cursorY], redirect.windowTable.cursorX + string.len(writeText), redirect.windowTable.w - 2)
 		redirect.windowTable.cursorX = pos + string.len(text)
 		redirect.windowTable:draw()
 	end
@@ -323,7 +334,7 @@ function new(w, h, x, y, caption, target)
 		x = tonumber(x) or 1,
 		y = tonumber(y) or 1,
 		caption = caption or nil,
-		--windowType: clean, standard, menu, modal
+		--windowType: clean, standard, modal
 		--clean is normal window, standard includes _MX controls, modal includes X control only.
 		windowType = "clean",
 		decorations = {
