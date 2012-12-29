@@ -2,6 +2,15 @@ local versionNumber = 1.2
 
 local args = {...}
 
+if #args == 1 and args[1] == "remove" then
+	if fs.exists("/LyqydOS") then
+		fs.delete("/LyqydOS")
+		if fs.exists("/.lyqwin") then fs.delete("/.lyqwin") end
+		if fs.exists("/.runhistory") then fs.delete("/.runhistory") end
+	end
+	return
+end
+
 local fileList = {
 	"compositor",
 	"menu",
