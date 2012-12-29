@@ -160,6 +160,7 @@ local function startProgram()
 	for match in string.gmatch( line, "[^ \t]+" ) do
 		table.insert( args, match )
 	end
+	shell.setDir("")
 	path = shell.resolveProgram(table.remove(args, 1))
 	if path then
 		local w, h, x, y, max = 19, 9, 1, 1, "false"

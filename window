@@ -217,14 +217,14 @@ local window = {
 			if w >= 5 and h >= 3 then
 				--adjust buffer horizontal size, but don't bother adjusting things below the new window bottom if smaller
 				if w < self.w then
-					for i=1, math.min(#self.buffer.text, h - 2) do
+					for i=1, math.min(#self.buffer.text, math.max(self.h, h) - 2) do
 						--w less two because the window border is part of the size, but not the buffer.
 						self.buffer.text[i] = string.sub(self.buffer.text[i],1,w - 2)
 						self.buffer.textColor[i] = string.sub(self.buffer.textColor[i],1,w - 2)
 						self.buffer.backColor[i] = string.sub(self.buffer.backColor[i],1,w - 2)
 					end
 				elseif w > self.w then
-					for i=1, math.min(#self.buffer.text, h - 2) do
+					for i=1, math.min(#self.buffer.text, math.max(self.h, h) - 2) do
 						--no need for width subtractions, since we are adjusting based on the difference between the two.
 						self.buffer.text[i] = self.buffer.text[i]..string.rep(" ", w - self.w)
 						self.buffer.textColor[i] = self.buffer.textColor[i]..string.rep(self.buffer.curTextColor, w - self.w)
@@ -232,20 +232,19 @@ local window = {
 					end
 				end
 				self.w = w
-				--adjust buffer vertical size
 				if h < self.h then
-					for i=1,self.h - h do
-						--remove the last entry to trim the buffer.
-						table.remove(self.buffer.text)
-						table.remove(self.buffer.textColor)
-						table.remove(self.buffer.backColor)
-					end
+					repeat
+					--remove the last entry to trim the buffer.
+					table.remove(self.buffer.text)
+					table.remove(self.buffer.textColor)
+					table.remove(self.buffer.backColor)
+					until #self.buffer.text == h - 2
 				elseif h > self.h then
-					for i=self.h, h do
+					repeat
 						table.insert(self.buffer.text, string.rep(" ", self.w - 2))
 						table.insert(self.buffer.textColor, string.rep(self.buffer.curTextColor, self.w - 2))
 						table.insert(self.buffer.backColor, string.rep(self.buffer.curBackColor, self.w - 2))
-					end
+					until #self.buffer.text == h - 2
 				end
 				self.h = h
 				self:draw()
