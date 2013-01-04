@@ -1,0 +1,9 @@
+if process and process.activeProcess then
+	local args = {...}
+	print("PID  NAME")
+	for pID, pInfo in ipairs(process.processTable) do
+		if pInfo then
+			print(string.rep(" ", 3 - #tostring(pID))..pID.." "..fs.getName(pInfo.path))
+		end
+	end
+end
