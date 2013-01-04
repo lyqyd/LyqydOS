@@ -1,3 +1,8 @@
+if not compositor then if fs.exists("/LyqydOS/compositor") then if not os.loadAPI("/LyqydOS/compositor") then print("Could not load compositor API!") return end else print("Could not find compositor API!") return end end
+if not menu then if fs.exists("/LyqydOS/menu") then if not os.loadAPI("/LyqydOS/menu") then print("Could not load menu API!") return end else print("Could not find menu API!") return end end
+if not process then if fs.exists("/LyqydOS/process") then if not os.loadAPI("/LyqydOS/process") then print("Could not load process API!") return end else print("Could not find process API!") return end end
+if not window then if fs.exists("/LyqydOS/window") then if not os.loadAPI("/LyqydOS/window") then print("Could not load window API!") return end else print("Could not find window API!") return end end
+
 processTable = {}
 process.focusWindow = nil
 windowCompositor = compositor.new()
