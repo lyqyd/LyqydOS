@@ -37,6 +37,9 @@ local function newRedirect(_windowTable)
 			--if we're off the edge to the right, skip entirely.
 			redirect.windowTable.cursorX = pos + #text
 			return
+		elseif redirect.windowTable.cursorY > redirect.windowTable.h - 2 then
+			redirect.windowTable.cursorX = pos + #text
+			return
 		else
 			writeText = text
 		end

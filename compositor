@@ -146,14 +146,24 @@ local function newRedirect(_compTable, _buffer)
 		redirect.buffer.cursorX = win.x + win.cursorX
 		redirect.buffer.cursorY = win.y + win.cursorY
 		if not win.minimized then redirect.buffer.cursorBlink = win.cursorBlink else redirect.buffer.cursorBlink = false end
+		redirect.buffer.minX = win.x
+		redirect.buffer.maxX = win.x + win.w - 1
+		redirect.buffer.minY = win.y
+		redirect.buffer.maxY = win.y + win.h - 1
 		redirect.compTable:draw()
+	end
+	redirect.setBounds = function(x_min, y_min, x_max, y_max)
+		redirect.buffer.minX = x_min
+		redirect.buffer.maxX = x_max
+		redirect.buffer.minY = y_min
+		redirect.buffer.maxY = y_max
 	end
 	return redirect
 end
 
 local compositor = {
 	newBuffer = function(self)
-		local buffer = {cursorX = 1, cursorY = 1, cursorBlink = false, text = {}, textColor = {}, backColor = {}, curTextColor = "0", curBackColor = "f"}
+		local buffer = {cursorX = 1, cursorY = 1, cursorBlink = false, text = {}, textColor = {}, backColor = {}, curTextColor = "0", curBackColor = "f", minX = 1, minY = 1, maxX = self.x, maxY = self.y}
 		for i=1, self.y do
 			buffer.text[i] = string.rep(" ", self.x)
 			buffer.textColor[i] = string.rep("0", self.x)
@@ -174,16 +184,13 @@ local compositor = {
 				finalBuffer.backColor[i] = string.rep("f", self.x)
 			end
 			for i=1, #self.bufferStack do
-				for j=1, self.y do
-					local start, finish
-					_, start = string.find(self.bufferStack[i].text[j], "^%s*%S")
-					if start then
-						finish, _ = string.find(self.bufferStack[i].text[j], "%S%s*$")
-						finalBuffer.text[j] = string.sub(string.sub(finalBuffer.text[j], math.min(1, start - 1), start - 1)..string.sub(self.bufferStack[i].text[j], start, finish)..string.sub(finalBuffer.text[j], finish + 1, self.x), 1, self.x)
-						finalBuffer.textColor[j] = string.sub(string.sub(finalBuffer.textColor[j], math.min(1, start - 1), start - 1)..string.sub(self.bufferStack[i].textColor[j], start, finish)..string.sub(finalBuffer.textColor[j], finish + 1, self.x), 1, self.x)
-						finalBuffer.backColor[j] = string.sub(string.sub(finalBuffer.backColor[j], math.min(1, start - 1), start - 1)..string.sub(self.bufferStack[i].backColor[j], start, finish)..string.sub(finalBuffer.backColor[j], finish + 1, self.x), 1, self.x)
-					end
-				end
+				local j = self.bufferStack[i].minY
+				repeat
+					finalBuffer.text[j] = string.sub(string.sub(finalBuffer.text[j], math.min(1, self.bufferStack[i].minX - 1), self.bufferStack[i].minX - 1)..string.sub(self.bufferStack[i].text[j], self.bufferStack[i].minX, self.bufferStack[i].maxX)..string.sub(finalBuffer.text[j], self.bufferStack[i].maxX + 1, self.x), 1, self.x)
+					finalBuffer.textColor[j] = string.sub(string.sub(finalBuffer.textColor[j], math.min(1, self.bufferStack[i].minX - 1), self.bufferStack[i].minX - 1)..string.sub(self.bufferStack[i].textColor[j], self.bufferStack[i].minX, self.bufferStack[i].maxX)..string.sub(finalBuffer.textColor[j], self.bufferStack[i].maxX + 1, self.x), 1, self.x)
+					finalBuffer.backColor[j] = string.sub(string.sub(finalBuffer.backColor[j], math.min(1, self.bufferStack[i].minX - 1), self.bufferStack[i].minX - 1)..string.sub(self.bufferStack[i].backColor[j], self.bufferStack[i].minX, self.bufferStack[i].maxX)..string.sub(finalBuffer.backColor[j], self.bufferStack[i].maxX + 1, self.x), 1, self.x)
+					j = j + 1
+				until j > self.bufferStack[i].maxY
 			end
 			for i=1, self.y do
 				term.setCursorPos(1,i)
