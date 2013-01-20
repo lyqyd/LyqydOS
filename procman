@@ -6,6 +6,7 @@ if not window then if fs.exists("/LyqydOS/window") then if not os.loadAPI("/Lyqy
 processTable = {}
 process.focusWindow = nil
 windowCompositor = compositor.new()
+windowCompositor.deferDraw = true
 rawset(process, "windowCompositor", windowCompositor)
 rawset(process, "processTable", processTable)
 
@@ -379,6 +380,7 @@ local function resumeProcess(pID, eventTable)
 	end
 	process.activeProcess = pID
 	passback = {coroutine.resume(processTable[pID].thread, unpack(eventTable))}
+	windowCompositor:draw()
 	process.activeProcess = nil
 	if redir then
 		rawset(term, "redirect", oldTredirect)

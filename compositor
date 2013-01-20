@@ -24,7 +24,7 @@ local function newRedirect(_compTable, _buffer)
 		redirect.buffer.textColor[redirect.buffer.cursorY] = string.sub(redirect.buffer.textColor[redirect.buffer.cursorY], math.min(1, redirect.buffer.cursorX - 1), redirect.buffer.cursorX - 1)..string.rep(redirect.buffer.curTextColor, #writeText)..string.sub(redirect.buffer.textColor[redirect.buffer.cursorY], redirect.buffer.cursorX + string.len(writeText), redirect.buffer.w - 2)
 		redirect.buffer.backColor[redirect.buffer.cursorY] = string.sub(redirect.buffer.backColor[redirect.buffer.cursorY], math.min(1, redirect.buffer.cursorX - 1), redirect.buffer.cursorX - 1)..string.rep(redirect.buffer.curBackColor, #writeText)..string.sub(redirect.buffer.backColor[redirect.buffer.cursorY], redirect.buffer.cursorX + string.len(writeText), redirect.buffer.w - 2)
 		redirect.buffer.cursorX = pos + string.len(text)
-		redirect.compTable:draw()
+		if not redirect.compTable.deferDraw then redirect.compTable:draw() end
 	end
 	redirect.clear = function()
 		for i=1, redirect.compTable.y do
@@ -32,13 +32,13 @@ local function newRedirect(_compTable, _buffer)
 			redirect.buffer.textColor[i] = string.rep(redirect.buffer.curTextColor, redirect.compTable.x)
 			redirect.buffer.backColor[i] = string.rep(redirect.buffer.curBackColor, redirect.compTable.x)
 		end
-		redirect.compTable:draw()
+		if not redirect.compTable.deferDraw then redirect.compTable:draw() end
 	end
 	redirect.clearLine = function()
 		redirect.buffer[redirect.buffer.cursorY] = string.rep(" ", redirect.compTable.x)
 		redirect.buffer.textColor[redirect.buffer.cursorY] = string.rep(redirect.buffer.curTextColor, redirect.compTable.x)
 		redirect.buffer.backColor[redirect.buffer.cursorY] = string.rep(redirect.buffer.curBackColor, redirect.compTable.x)
-		redirect.compTable:draw()
+		if not redirect.compTable.deferDraw then redirect.compTable:draw() end
 	end
 	redirect.getCursorPos = function()
 		return redirect.buffer.cursorX, redirect.buffer.cursorY
@@ -46,11 +46,11 @@ local function newRedirect(_compTable, _buffer)
 	redirect.setCursorPos = function(x, y)
 		redirect.buffer.cursorX = math.floor(tonumber(x)) or redirect.buffer.cursorX
 		redirect.buffer.cursorY = math.floor(tonumber(y)) or redirect.buffer.cursorY
-		redirect.compTable:draw("cursor")
+		if not redirect.compTable.deferDraw then redirect.compTable:draw("cursor") end
 	end
 	redirect.setCursorBlink = function(b)
 		redirect.buffer.cursorBlink = b
-		redirect.compTable:draw("cursor")
+		if not redirect.compTable.deferDraw then redirect.compTable:draw("cursor") end
 	end
 	redirect.getSize = function()
 		return redirect.compTable.x, redirect.compTable.y
@@ -68,7 +68,7 @@ local function newRedirect(_compTable, _buffer)
 			redirect.buffer.textColor[redirect.compTable.y - (1 + n)] = string.rep(redirect.buffer.curTextColor, redirect.compTable.x)
 			redirect.buffer.backColor[redirect.compTable.y - (1 + n)] = string.rep(redirect.buffer.curBackColor, redirect.compTable.x)
 		end
-		redirect.compTable:draw()
+		if not redirect.compTable.deferDraw then redirect.compTable:draw() end
 	end
 	redirect.setTextColor = function(clr)
 		if clr and clr <= 32768 and clr >= 1 then
@@ -256,7 +256,8 @@ function new(target)
 	local comp = {
 		bufferStack = {},
 		target = target or term.native,
-		currentBuffer = {text = {}, textColor = {}, backColor = {}}
+		currentBuffer = {text = {}, textColor = {}, backColor = {}},
+		deferDraw = false
 	}
 	setmetatable( comp, cmetatable )
 	if comp.target.getSize() then
