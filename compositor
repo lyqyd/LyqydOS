@@ -216,14 +216,7 @@ local compositor = {
 		term.setCursorBlink(self.bufferStack[#self.bufferStack].cursorBlink)
 		term.restore()
 	end,
-	toFront = function(self, win)
-		local pos = nil
-		for i = 1, #self.bufferStack do
-			if self.bufferStack[i] == win.target.buffer then
-				pos = i
-				break
-			end
-		end
+	toFront = function(self, pos)
 		if pos and pos < #self.bufferStack then
 			tempbuffer = self.bufferStack[pos]
 			for i = pos, #self.bufferStack - 1 do

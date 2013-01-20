@@ -66,6 +66,37 @@ local function nextWindow(default)
 	end
 end
 
+local function processToFront(proc)
+	--brings a process and all children windows (in order) to the top of the stack.
+	if proc and proc.window then
+		if proc.children then
+			--process has children windows, so we need to iterate all of these.
+			local currWindow
+			for i=1, #proc.children do
+				if proc.children[i] == "rootWindow" then
+					currWindow = proc.window
+				else
+					currWindow = proc.children[i]
+				end
+				local pos = nil
+				for j = 1, #windowCompositor.bufferStack do
+					if windowCompositor.bufferStack[j] == currWindow.target.buffer then
+						windowCompositor:toFront(j)
+						break
+					end
+				end
+			end
+		else
+			for j = 1, #windowCompositor.bufferStack do
+				if windowCompositor.bufferStack[j] == proc.window.target.buffer then
+					windowCompositor:toFront(j)
+					break
+				end
+			end
+		end
+	end					
+end
+
 local function saveDimensions(proc)
 	if proc.path then
 		local pathFound = false
@@ -139,7 +170,7 @@ local function selectWindow()
 	if pList[selection] then
 		process.focusWindow = pList[selection]
 		if processTable[process.focusWindow].window.minimized then processTable[process.focusWindow].window:unMinimize() end
-		windowCompositor:toFront(processTable[process.focusWindow].window)
+		processToFront(processTable[process.focusWindow])
 	end
 end
 
@@ -302,7 +333,7 @@ local function changeWindow(manipulationWindow, action)
 		processTable[manipulationWindow] = false
 		process.focusWindow = nextWindow(1)
 		if processTable[process.focusWindow] then
-			windowCompositor:toFront(processTable[process.focusWindow].window)
+			processToFront(processTable[process.focusWindow])
 		end
 	end
 end
@@ -317,7 +348,7 @@ local function checkProcess(proc, passback)
 		if proc == process.focusWindow then
 			process.focusWindow = nextWindow(1)
 			if processTable[process.focusWindow] then
-				windowCompositor:toFront(processTable[process.focusWindow].window)
+				processToFront(processTable[process.focusWindow])
 			end
 		end
 	end
@@ -457,7 +488,7 @@ while true do
 						windowFound = true
 						if process.focusWindow ~= pNum then
 							process.focusWindow = pNum
-							windowCompositor:toFront(processTable[process.focusWindow].window)
+							processToFront(processTable[process.focusWindow])
 						end
 						event[3] = event[3] - pInfo.window.x
 						event[4] = event[4] - pInfo.window.y
@@ -475,7 +506,7 @@ while true do
 								processTable[process.focusWindow] = false
 								process.focusWindow = nextWindow(1)
 								if processTable[process.focusWindow] then
-									windowCompositor:toFront(processTable[process.focusWindow].window)
+									processToFront(processTable[process.focusWindow])
 								end
 							elseif action == 2 then
 								if pInfo.window.maximized then
@@ -524,7 +555,7 @@ while true do
 						if process.focusWindow ~= titlebarItems[clickItem].pID then
 							process.focusWindow = titlebarItems[clickItem].pID
 						end
-						windowCompositor:toFront(processTable[process.focusWindow].window)
+						processToFront(processTable[process.focusWindow])
 						if processTable[process.focusWindow].window.minimized then processTable[process.focusWindow].window:unMinimize() end
 						if event[2] == 2 then
 							--they right-clicked, so let's also display the window action menu.
