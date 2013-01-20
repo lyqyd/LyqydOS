@@ -98,6 +98,7 @@ local function processToFront(proc)
 end
 
 local function saveDimensions(proc)
+	--saves window dimensions when closing windows
 	if proc.path then
 		local pathFound = false
 		winDims = io.open("/.lyqwin", "w")
@@ -155,6 +156,7 @@ local function checkWindow(proc)
 end
 
 local function selectWindow()
+	--started as a process to choose a window.
 	local pList, menuList = {}, {}
 	for tNum, tInfo in ipairs(process.processTable) do
 		if tInfo and tInfo.window then
@@ -197,6 +199,7 @@ local function startProgram()
 	for match in string.gmatch( line, "[^ \t]+" ) do
 		table.insert( args, match )
 	end
+	--fix for previously-changed working directory
 	shell.setDir("")
 	path = shell.resolveProgram(table.remove(args, 1))
 	if path then
@@ -226,6 +229,7 @@ local function startProgram()
 end
 
 local function windowAction(actionProc)
+	--various actions performed on windows.
 	if processTable[actionProc] and processTable[actionProc].window then
 		local selection = menu.select({"Restore", "Move", "Resize", "Minimize", "Maximize", "Close", "Cancel"})
 		return selection
@@ -233,7 +237,9 @@ local function windowAction(actionProc)
 end
 
 local function changeWindow(manipulationWindow, action)
+	--handles the results of the menu from windowAction().
 	if action == 1 then
+		--restore
 		if processTable[manipulationWindow].window.maximized then
 			processTable[manipulationWindow].window:restore()
 			os.queueEvent("window_resize")
@@ -321,13 +327,16 @@ local function changeWindow(manipulationWindow, action)
 		processTable[manipulationWindow].window.maximized = false
 		os.queueEvent("window_resize")
 	elseif action == 4 then
+		--minimize
 		processTable[manipulationWindow].window:minimize()
 	elseif action == 5 then
+		--maximize
 		if not processTable[manipulationWindow].window.maximized then
 			processTable[manipulationWindow].window:maximize()
 			os.queueEvent("window_resize")
 		end
 	elseif action == 6 then
+		--close
 		saveDimensions(processTable[manipulationWindow])
 		processTable[manipulationWindow].window:destroy()
 		processTable[manipulationWindow] = false
@@ -355,6 +364,7 @@ local function checkProcess(proc, passback)
 end
 
 local function windowOptionsMenu()
+	--initiates the window options menu window.
 	if processTable[process.focusWindow] and not processTable[process.focusWindow].special then
 		local pTable = {}
 		local parent = process.focusWindow
@@ -371,6 +381,7 @@ local function windowOptionsMenu()
 end
 
 local function chooseWindowMenu()
+	--initiates the window choice menu window.
 	if processTable[process.focusWindow] then
 		local pTable = {}
 		pTable.thread = coroutine.create(selectWindow)
@@ -385,6 +396,7 @@ local function chooseWindowMenu()
 end
 
 local function runProgramDialog()
+	--initiates the run program dialog box.
 	local pTable = {}
 	pTable.thread = coroutine.create(startProgram)
 	pTable.window = window.new(30, 3, 2, 2, "Run Program", windowCompositor:newBuffer())
@@ -397,6 +409,7 @@ local function runProgramDialog()
 end
 
 local function resumeProcess(pID, eventTable)
+	--central process resumption.
 	local redir = false
 	if processTable[pID].window then
 		term.redirect(processTable[pID].window.redirect)
@@ -493,6 +506,7 @@ while true do
 						event[3] = event[3] - pInfo.window.x
 						event[4] = event[4] - pInfo.window.y
 						if event[3] > 0 and event[3] < pInfo.window.w - 1 and event[4] > 0 and event[4] < pInfo.window.h - 1 then
+							--mouse click resume
 							resumeProcess(process.focusWindow, event)
 						elseif event[4] == 0 and event[2] == 2 then
 							--right click on window title bar, open window menu.
