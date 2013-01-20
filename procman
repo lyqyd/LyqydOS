@@ -146,17 +146,6 @@ local function saveDimensions(proc)
 	end
 end
 
-local function checkWindow(proc)
-	if (proc and coroutine.status(proc.thread) == "dead") or (proc and proc.special and proc ~= processTable[process.focusWindow]) then
-		if proc.window then
-			saveDimensions(proc)
-			proc.window:destroy()
-		end
-		return false
-	end
-	return true
-end
-
 local function selectWindow()
 	--started as a process to choose a window.
 	local pList, menuList = {}, {}
@@ -349,20 +338,15 @@ local function changeWindow(manipulationWindow, action)
 	end
 end
 
-local function checkProcess(proc, passback)
-	if not checkWindow(processTable[proc]) then
-		if processTable[proc].special then
-			if processTable[proc].special == "window_action" then
-				changeWindow(processTable[proc].parent, passback[2])
-			end
+local function checkWindow(proc)
+	if (proc and coroutine.status(proc.thread) == "dead") or (proc and proc.special and proc ~= processTable[process.focusWindow]) then
+		if proc.window then
+			saveDimensions(proc)
+			proc.window:destroy()
 		end
-		if proc == process.focusWindow then
-			process.focusWindow = nextWindow(1)
-			if processTable[process.focusWindow] then
-				processToFront(processTable[process.focusWindow])
-			end
-		end
+		return false
 	end
+	return true
 end
 
 local function windowOptionsMenu()
@@ -411,8 +395,21 @@ local function runProgramDialog()
 end
 
 local function resumeProcess(pID, eventTable)
-	--central process resumption.
+	--evaluate whether this event should even go to this process.
+	if processTable[pID].listening then
+
+		local resumeProcess = false
+		for i=1, #processTable[pID].listening do
+			if eventTable[1] == processTable[pID].listening[i] then
+				resumeProcess = true
+				processTable[pID].listening = nil
+				break
+			end
+		end
+		if not resumeProcess then return end
+	end
 	local redir = false
+	--if process owns a window, set up its redirect functions.
 	if processTable[pID].window then
 		term.redirect(processTable[pID].window.redirect)
 		redir = true
@@ -428,6 +425,7 @@ local function resumeProcess(pID, eventTable)
 	passback = {coroutine.resume(processTable[pID].thread, unpack(eventTable))}
 	windowCompositor:draw()
 	process.activeProcess = nil
+	--if the process had a window, recover its redirect stack and restore the redirect functions.
 	if redir then
 		rawset(term, "redirect", oldTredirect)
 		rawset(term, "restore", oldTrestore)
@@ -438,7 +436,28 @@ local function resumeProcess(pID, eventTable)
 		end
 		term.restore()
 	end
-	checkProcess(pID, passback)
+	--handle filters being sent back in passback.
+	if passback[1] and passback[2] then
+		if type(passback[2]) == "string" then
+			processTable[pID].listening = {passback[2]}
+		elseif type(passback[2]) == "table" then
+			processTable[pID].listening = passback[2]
+		end
+	end
+	--former checkProcess function.
+	if not checkWindow(processTable[pID]) then
+		if processTable[pID].special then
+			if processTable[pID].special == "window_action" then
+				changeWindow(processTable[pID].parent, passback[2])
+			end
+		end
+		if pID == process.focusWindow then
+			process.focusWindow = nextWindow(1)
+			if processTable[process.focusWindow] then
+				processToFront(processTable[process.focusWindow])
+			end
+		end
+	end
 end
 
 term.clear()
@@ -615,7 +634,7 @@ while true do
 			resumeProcess(process.focusWindow, event)
 		end
 		--handle background processes.
-		if event[1] ~= "key" and event[1] ~= "char" and event[1] ~= "mouse_click" and event[1] ~= "mouse_drag" and event[1] ~= "mouse_scroll" and event ~= "window_resize" and event ~= "terminate" then
+		if event[1] ~= "key" and event[1] ~= "char" and event[1] ~= "mouse_click" and event[1] ~= "mouse_drag" and event[1] ~= "mouse_scroll" and event[1] ~= "window_resize" and event[1] ~= "terminate" then
 			for tNum, tInfo in ipairs(processTable) do
 				if tNum ~= process.focusWindow and tInfo then
 					if tInfo.listening then
