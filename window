@@ -238,14 +238,15 @@ local window = {
 							outputBuffer.backColor[i] = string.rep("f", maxX)
 						end
 					end
+					if self.target.setBounds then self.target.setBounds(self.x, self.y, self.x + self.w - 1, self.y + self.h - 1) end
 				else
-					for i=1, #maxY do
+					for i=1, maxY do
 						outputBuffer.text[i] = string.rep(" ", maxX)
 						outputBuffer.textColor[i] = string.rep("0", maxX)
 						outputBuffer.backColor[i] = string.rep("f", maxX)
 					end
+					if self.target.setBounds then self.target.setBounds(0, 0, 0, 0) end
 				end
-				if self.target.setBounds then self.target.setBounds(self.x, self.y, self.x + self.w - 1, self.y + self.h - 1) end
 				self.target.render(outputBuffer)
 				term.setCursorPos(self.x + self.cursorX, self.y + self.cursorY)
 				term.setCursorBlink(self.cursorBlink)

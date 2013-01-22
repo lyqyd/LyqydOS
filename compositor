@@ -138,13 +138,15 @@ local compositor = {
 				finalBuffer.backColor[i] = string.rep("f", self.x)
 			end
 			for i=1, #self.bufferStack do
-				local j = self.bufferStack[i].minY
-				repeat
-					finalBuffer.text[j] = string.sub(string.sub(finalBuffer.text[j], math.min(1, self.bufferStack[i].minX - 1), self.bufferStack[i].minX - 1)..string.sub(self.bufferStack[i].text[j], self.bufferStack[i].minX, self.bufferStack[i].maxX)..string.sub(finalBuffer.text[j], self.bufferStack[i].maxX + 1, self.x), 1, self.x)
-					finalBuffer.textColor[j] = string.sub(string.sub(finalBuffer.textColor[j], math.min(1, self.bufferStack[i].minX - 1), self.bufferStack[i].minX - 1)..string.sub(self.bufferStack[i].textColor[j], self.bufferStack[i].minX, self.bufferStack[i].maxX)..string.sub(finalBuffer.textColor[j], self.bufferStack[i].maxX + 1, self.x), 1, self.x)
-					finalBuffer.backColor[j] = string.sub(string.sub(finalBuffer.backColor[j], math.min(1, self.bufferStack[i].minX - 1), self.bufferStack[i].minX - 1)..string.sub(self.bufferStack[i].backColor[j], self.bufferStack[i].minX, self.bufferStack[i].maxX)..string.sub(finalBuffer.backColor[j], self.bufferStack[i].maxX + 1, self.x), 1, self.x)
-					j = j + 1
-				until j > self.bufferStack[i].maxY
+				if self.bufferStack[i].minY > 0 then
+					local j = self.bufferStack[i].minY
+					repeat
+						finalBuffer.text[j] = string.sub(string.sub(finalBuffer.text[j], math.min(1, self.bufferStack[i].minX - 1), self.bufferStack[i].minX - 1)..string.sub(self.bufferStack[i].text[j], self.bufferStack[i].minX, self.bufferStack[i].maxX)..string.sub(finalBuffer.text[j], self.bufferStack[i].maxX + 1, self.x), 1, self.x)
+						finalBuffer.textColor[j] = string.sub(string.sub(finalBuffer.textColor[j], math.min(1, self.bufferStack[i].minX - 1), self.bufferStack[i].minX - 1)..string.sub(self.bufferStack[i].textColor[j], self.bufferStack[i].minX, self.bufferStack[i].maxX)..string.sub(finalBuffer.textColor[j], self.bufferStack[i].maxX + 1, self.x), 1, self.x)
+						finalBuffer.backColor[j] = string.sub(string.sub(finalBuffer.backColor[j], math.min(1, self.bufferStack[i].minX - 1), self.bufferStack[i].minX - 1)..string.sub(self.bufferStack[i].backColor[j], self.bufferStack[i].minX, self.bufferStack[i].maxX)..string.sub(finalBuffer.backColor[j], self.bufferStack[i].maxX + 1, self.x), 1, self.x)
+						j = j + 1
+					until j > self.bufferStack[i].maxY
+				end
 			end
 			for i=1, self.y do
 				term.setCursorPos(1,i)
