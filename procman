@@ -81,7 +81,7 @@ local function processToFront(proc)
 					currWindow = proc.children[i]
 				end
 				local pos = nil
-				for j = 1, #windowCompositor.bufferStack do
+				for j=1, #windowCompositor.bufferStack do
 					if windowCompositor.bufferStack[j] == currWindow.target.buffer then
 						windowCompositor:toFront(j)
 						break
@@ -89,7 +89,7 @@ local function processToFront(proc)
 				end
 			end
 		else
-			for j = 1, #windowCompositor.bufferStack do
+			for j=1, #windowCompositor.bufferStack do
 				if windowCompositor.bufferStack[j] == proc.window.target.buffer then
 					windowCompositor:toFront(j)
 					break
@@ -97,6 +97,34 @@ local function processToFront(proc)
 			end
 		end
 	end					
+end
+
+local function processToBack(proc)
+	if proc and proc.window then
+		if proc.children then
+			--stub
+		else
+			for j = #windowCompositor.bufferStack, 1, -1 do
+				if windowCompositor.bufferStack[j] == proc.window.target.buffer then
+					--use 2 here because the title bar is layer 1.
+					if j and j > 2 then
+						tempbuffer = windowCompositor.bufferStack[j]
+						for i=j, 2, -1 do
+							windowCompositor.bufferStack[i] = windowCompositor.bufferStack[i - 1]
+						end
+						windowCompositor.bufferStack[2] = tempbuffer
+						windowCompositor:draw()
+					end
+					break
+				end
+			end
+		end
+		--set active window to new top of stack.
+		process.focusWindow = nextWindow(1)
+		if processTable[process.focusWindow] then
+			processToFront(processTable[process.focusWindow])
+		end
+	end
 end
 
 local function saveDimensions(proc)
@@ -223,7 +251,7 @@ local function windowAction(actionProc)
 	--various actions performed on windows.
 	if processTable[actionProc] and processTable[actionProc].window then
 		local selection = menu.select({"Restore", "Move", "Resize", "Minimize", "Maximize", "Close", "Cancel"})
-		return selection
+		return actionProc, selection
 	end
 end
 
@@ -261,6 +289,7 @@ local function changeWindow(manipulationWindow, action)
 				processTable[manipulationWindow].window:move(p2, p3)
 				break
 			end
+			windowCompositor:draw()
 		end
 	elseif action == 3 then
 		--resize
@@ -320,6 +349,8 @@ local function changeWindow(manipulationWindow, action)
 	elseif action == 4 then
 		--minimize
 		processTable[manipulationWindow].window:minimize()
+		--also move the window to the bottom of the buffer stack.
+		processToBack(processTable[manipulationWindow])
 	elseif action == 5 then
 		--maximize
 		if not processTable[manipulationWindow].window.maximized then
@@ -448,7 +479,7 @@ local function resumeProcess(pID, eventTable)
 	if not checkWindow(processTable[pID]) then
 		if processTable[pID].special then
 			if processTable[pID].special == "window_action" then
-				changeWindow(processTable[pID].parent, passback[2])
+				changeWindow(passback[2], passback[3])
 			end
 		end
 		if pID == process.focusWindow then
@@ -553,14 +584,15 @@ while true do
 								end
 							elseif action == 3 then
 								pInfo.window:minimize()
+								processToBack(pInfo)
 							end
-						elseif event[4] == 0 and event[2] == 1 then
+						elseif event[4] == 0 and event[2] == 1 and not pInfo.special then
 							--clicked on titlebar, set variables to see if we drag.
 							watchMouseDragging = true
 							mouseDragAction = "move"
 							mouseStartX = event[3] + pInfo.window.x
 							mouseStartY = event[4] + pInfo.window.y
-						elseif event[3] == pInfo.window.w - 1 and event[4] == pInfo.window.h - 1 and event[2] == 1 then
+						elseif event[3] == pInfo.window.w - 1 and event[4] == pInfo.window.h - 1 and event[2] == 1 and not pInfo.special then
 							--clicked on lower right corner, resize.
 							watchMouseDragging = true
 							mouseDragAction = "resize"

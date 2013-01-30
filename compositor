@@ -169,7 +169,10 @@ local compositor = {
 			end
 		end
 		term.setCursorPos(self.bufferStack[#self.bufferStack].cursorX, self.bufferStack[#self.bufferStack].cursorY)
-		term.setCursorBlink(self.bufferStack[#self.bufferStack].cursorBlink)
+		--ensure cursor is inside opaque area before setting blink.
+		if self.bufferStack[#self.bufferStack].cursorX >= self.bufferStack[#self.bufferStack].minX and self.bufferStack[#self.bufferStack].cursorX <= self.bufferStack[#self.bufferStack].maxX and self.bufferStack[#self.bufferStack].cursorY >= self.bufferStack[#self.bufferStack].minY and self.bufferStack[#self.bufferStack].cursorY <= self.bufferStack[#self.bufferStack].maxY then
+			term.setCursorBlink(self.bufferStack[#self.bufferStack].cursorBlink)
+		end
 		term.restore()
 	end,
 	toFront = function(self, pos)
