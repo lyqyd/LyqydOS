@@ -668,7 +668,7 @@ while true do
 		--handle background processes.
 		if event[1] ~= "key" and event[1] ~= "char" and event[1] ~= "mouse_click" and event[1] ~= "mouse_drag" and event[1] ~= "mouse_scroll" and event[1] ~= "window_resize" and event[1] ~= "terminate" then
 			for tNum, tInfo in ipairs(processTable) do
-				if tInfo then
+				if tNum ~= process.focusWindow and tInfo then
 					resumeProcess(tNum, event)
 				end
 			end
