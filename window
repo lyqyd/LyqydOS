@@ -43,9 +43,16 @@ local function newRedirect(_windowTable)
 		else
 			writeText = text
 		end
-		redirect.windowTable.buffer.text[redirect.windowTable.cursorY] = string.sub(redirect.windowTable.buffer.text[redirect.windowTable.cursorY], math.min(1, redirect.windowTable.cursorX - 1), redirect.windowTable.cursorX - 1)..writeText..string.sub(redirect.windowTable.buffer.text[redirect.windowTable.cursorY], redirect.windowTable.cursorX + string.len(writeText), redirect.windowTable.w - 2)
-		redirect.windowTable.buffer.textColor[redirect.windowTable.cursorY] = string.sub(redirect.windowTable.buffer.textColor[redirect.windowTable.cursorY], math.min(1, redirect.windowTable.cursorX - 1), redirect.windowTable.cursorX - 1)..string.rep(redirect.windowTable.buffer.curTextColor, #writeText)..string.sub(redirect.windowTable.buffer.textColor[redirect.windowTable.cursorY], redirect.windowTable.cursorX + string.len(writeText), redirect.windowTable.w - 2)
-		redirect.windowTable.buffer.backColor[redirect.windowTable.cursorY] = string.sub(redirect.windowTable.buffer.backColor[redirect.windowTable.cursorY], math.min(1, redirect.windowTable.cursorX - 1), redirect.windowTable.cursorX - 1)..string.rep(redirect.windowTable.buffer.curBackColor, #writeText)..string.sub(redirect.windowTable.buffer.backColor[redirect.windowTable.cursorY], redirect.windowTable.cursorX + string.len(writeText), redirect.windowTable.w - 2)
+		local lineText = redirect.windowTable.buffer.text[redirect.windowTable.cursorY]
+		local lineColor = redirect.windowTable.buffer.textColor[redirect.windowTable.cursorY]
+		local lineBack = redirect.windowTable.buffer.backColor[redirect.windowTable.cursorY]
+		local preStop = redirect.windowTable.cursorX - 1
+		local preStart = math.min(1, preStop)
+		local postStart = redirect.windowTable.cursorX + string.len(writeText)
+		local postStop = redirect.windowTable.w - 2
+		redirect.windowTable.buffer.text[redirect.windowTable.cursorY] = string.sub(lineText, preStart, preStop)..writeText..string.sub(lineText, postStart, postStop)
+		redirect.windowTable.buffer.textColor[redirect.windowTable.cursorY] = string.sub(lineColor, preStart, preStop)..string.rep(redirect.windowTable.buffer.curTextColor, #writeText)..string.sub(lineColor, postStart, postStop)
+		redirect.windowTable.buffer.backColor[redirect.windowTable.cursorY] = string.sub(lineBack, preStart, preStop)..string.rep(redirect.windowTable.buffer.curBackColor, #writeText)..string.sub(lineBack, postStart, postStop)
 		redirect.windowTable.cursorX = pos + string.len(text)
 		redirect.windowTable:draw()
 	end

@@ -20,9 +20,16 @@ local function newRedirect(_compTable, _buffer)
 		else
 			writeText = text
 		end
-		redirect.buffer.text[redirect.buffer.cursorY] = string.sub(redirect.buffer.text[redirect.buffer.cursorY], math.min(1, redirect.buffer.cursorX - 1), redirect.buffer.cursorX - 1)..writeText..string.sub(redirect.buffer.text[redirect.buffer.cursorY], redirect.buffer.cursorX + string.len(writeText), redirect.compTable.x - 2)
-		redirect.buffer.textColor[redirect.buffer.cursorY] = string.sub(redirect.buffer.textColor[redirect.buffer.cursorY], math.min(1, redirect.buffer.cursorX - 1), redirect.buffer.cursorX - 1)..string.rep(redirect.buffer.curTextColor, #writeText)..string.sub(redirect.buffer.textColor[redirect.buffer.cursorY], redirect.buffer.cursorX + string.len(writeText), redirect.buffer.w - 2)
-		redirect.buffer.backColor[redirect.buffer.cursorY] = string.sub(redirect.buffer.backColor[redirect.buffer.cursorY], math.min(1, redirect.buffer.cursorX - 1), redirect.buffer.cursorX - 1)..string.rep(redirect.buffer.curBackColor, #writeText)..string.sub(redirect.buffer.backColor[redirect.buffer.cursorY], redirect.buffer.cursorX + string.len(writeText), redirect.buffer.w - 2)
+		local lineText = redirect.buffer.text[redirect.buffer.cursorY]
+		local lineColor = redirect.buffer.textColor[redirect.buffer.cursorY]
+		local lineBack = redirect.buffer.backColor[redirect.buffer.cursorY]
+		local preStop = redirect.buffer.cursorX - 1
+		local preStart = math.min(1, preStop)
+		local postStart = redirect.buffer.cursorX + string.len(writeText)
+		local postStop = redirect.compTable.x - 2
+		redirect.buffer.text[redirect.buffer.cursorY] = string.sub(lineText, preStart, preStop)..writeText..string.sub(lineText, postStart, postStop)
+		redirect.buffer.textColor[redirect.buffer.cursorY] = string.sub(lineColor, preStart, preStop)..string.rep(redirect.buffer.curTextColor, #writeText)..string.sub(lineColor, postStart, postStop)
+		redirect.buffer.backColor[redirect.buffer.cursorY] = string.sub(lineBack, preStart, preStop)..string.rep(redirect.buffer.curBackColor, #writeText)..string.sub(lineBack, postStart, postStop)
 		redirect.buffer.cursorX = pos + string.len(text)
 		if not redirect.compTable.deferDraw then redirect.compTable:draw() end
 	end
