@@ -99,8 +99,8 @@ local window = {
 				end
 				term.setCursorPos(self.x, self.y + self.h - 1)
 				term.write(self.decorations.ll[1]..string.rep(self.decorations.bottom[1], self.w - 2)..self.decorations.lr[1])
-				term.setCursorPos(self.x + self.cursorX, self.y + self.cursorY)
-				term.setCursorBlink(self.cursorBlink)
+				term.setCursorPos(self.x + self.redirect.buffer.cursorX, self.y + self.redirect.buffer.cursorY)
+				term.setCursorBlink(self.redirect.buffer.cursorBlink)
 				term.restore()
 			end
 		else
@@ -164,8 +164,8 @@ local window = {
 				if self.target.setBounds then self.target.setBounds(0, 0, 0, 0) end
 			end
 			self.target.render(outputBuffer)
-			term.setCursorPos(self.x + self.cursorX, self.y + self.cursorY)
-			term.setCursorBlink(self.cursorBlink)
+			term.setCursorPos(self.x + self.redirect.buffer.cursorX, self.y + self.redirect.buffer.cursorY)
+			term.setCursorBlink(self.redirect.buffer.cursorBlink)
 			term.restore()
 		end
 	end,
@@ -240,8 +240,8 @@ local window = {
 		end
 	end,
 	destroy = function(self)
-		if self.target.compTable then
-			self.target.compTable:removeWindow(self)
+		if process.windowCompositor then
+			process.windowCompositor:removeWindow(self)
 		end
 		self = nil
 	end,

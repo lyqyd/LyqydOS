@@ -89,7 +89,7 @@ function new(_sizeX, _sizeY, _color)
 	end
 	redirect.setTextColor = function(clr)
 		if clr and clr <= 32768 and clr >= 1 then
-			if redirect.target.isColor() then
+			if redirect.buffer.color then
 				redirect.buffer.curTextColor = string.format("%x", math.floor(math.log(clr) / math.log(2)))
 			elseif clr == 1 or clr == 32768 then
 				redirect.buffer.curTextColor = string.format("%x", math.floor(math.log(clr) / math.log(2)))
@@ -101,7 +101,7 @@ function new(_sizeX, _sizeY, _color)
 	redirect.setTextColour = redirect.setTextColor
 	redirect.setBackgroundColor = function(clr)
 		if clr and clr <= 32768 and clr >= 1 then
-			if redirect.target.isColor() then
+			if redirect.buffer.color then
 				redirect.buffer.curBackColor = string.format("%x", math.floor(math.log(clr) / math.log(2)))
 			elseif clr == 32768 or clr == 1 then
 				redirect.buffer.curBackColor = string.format("%x", math.floor(math.log(clr) / math.log(2)))
@@ -116,7 +116,7 @@ function new(_sizeX, _sizeY, _color)
 	end
 	redirect.isColour = redirect.isColor
 	redirect.render = function(inputBuffer)
-		for i=1, #redirect.sizeY do
+		for i = 1, redirect.buffer.sizeY do
 			redirect.buffer.text[i] = inputBuffer.text[i]
 			redirect.buffer.textColor[i] = inputBuffer.textColor[i]
 			redirect.buffer.backColor[i] = inputBuffer.backColor[i]
