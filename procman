@@ -430,13 +430,6 @@ local function runProgramDialog()
 	process.focusWindow = #process.processTable
 	term.redirect(processTable[process.focusWindow].window.redirect)
 	local passback = {coroutine.resume(processTable[process.focusWindow].thread)}
-	do
-		local mon = peripheral.wrap("top")
-		mon.setCursorPos(1,6)
-		mon.write(tostring(passback[1]))
-		mon.setCursorPos(1,7)
-		mon.write(tostring(passback[2]))
-	end
 	term.restore()
 	processTable[process.focusWindow].special = "run_program"
 end
@@ -547,24 +540,6 @@ while true do
 		tasksClickable = tasksClickable + 1
 	end
 	titlebar.buffer.text[1] = "=LyqydOS="..taskText..string.rep("=", titlebarWidth - (#taskText + 9))
-	--[[do
-		local mon = peripheral.wrap("top")
-		mon.setCursorPos(1, 1)
-		mon.clearLine()
-		local b = windowCompositor.bufferStack[#windowCompositor.bufferStack]
-		mon.write(b.minX..", "..b.minY..", "..b.maxX..", "..b.maxY)
-		mon.setCursorPos(1, 2)
-		mon.clearLine()
-		mon.write(tostring(b))
-		mon.setCursorPos(1, 4)
-		mon.clearLine()
-		if process.focusWindow then
-			mon.write(tostring(processTable[process.focusWindow].window))
-			mon.setCursorPos(1,5)
-			mon.clearLine()
-			mon.write(coroutine.status(processTable[process.focusWindow].thread))
-		end
-	end]]
 	windowCompositor:draw()
 	event = {coroutine.yield()}
 	if event[1] == "key" and event[2] == 59 then
