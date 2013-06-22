@@ -20,7 +20,10 @@ else
 		pTable.path = path
 		pTable.thread = coroutine.create(function() shell.run(path, unpack(args)) end)
 		pTable.window = window.new(w, h, x, y, fs.getName(path), process.windowCompositor:newBuffer())
-		if process.windowCompositor.target.isColor() then pTable.window:setType("standard") end
+		if process.windowCompositor.target.isColor() then
+			pTable.window:setType("standard")
+			pTable.window:setDecorations("pretty")
+		end
 		if max == "true" then pTable.window:maximize() end
 		table.insert(process.processTable, pTable)
 		process.focusWindow = #process.processTable

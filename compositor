@@ -1,137 +1,32 @@
-local function newRedirect(_compTable, _buffer)
-	local redirect = {
-		buffer = _buffer,
-		compTable = _compTable
-	}
-	redirect.write = function(text)
-		local pos = redirect.buffer.cursorX
-		if pos + #text <= 1 then
-			--skip entirely.
-			redirect.buffer.cursorX = pos + #text
-			return
-		elseif pos < 1 then
-			--adjust text to fit on screen starting at one.
-			writeText = string.sub(text, math.abs(redirect.buffer.cursorX) + 2)
-			redirect.buffer.cursorX = 1
-		elseif pos >= redirect.compTable.x - 1 then
-			--if we're off the edge to the right, skip entirely.
-			redirect.buffer.cursorX = pos + #text
-			return
-		else
-			writeText = text
-		end
-		local lineText = redirect.buffer.text[redirect.buffer.cursorY]
-		local lineColor = redirect.buffer.textColor[redirect.buffer.cursorY]
-		local lineBack = redirect.buffer.backColor[redirect.buffer.cursorY]
-		local preStop = redirect.buffer.cursorX - 1
-		local preStart = math.min(1, preStop)
-		local postStart = redirect.buffer.cursorX + string.len(writeText)
-		local postStop = redirect.compTable.x - 2
-		redirect.buffer.text[redirect.buffer.cursorY] = string.sub(lineText, preStart, preStop)..writeText..string.sub(lineText, postStart, postStop)
-		redirect.buffer.textColor[redirect.buffer.cursorY] = string.sub(lineColor, preStart, preStop)..string.rep(redirect.buffer.curTextColor, #writeText)..string.sub(lineColor, postStart, postStop)
-		redirect.buffer.backColor[redirect.buffer.cursorY] = string.sub(lineBack, preStart, preStop)..string.rep(redirect.buffer.curBackColor, #writeText)..string.sub(lineBack, postStart, postStop)
-		redirect.buffer.cursorX = pos + string.len(text)
-		if not redirect.compTable.deferDraw then redirect.compTable:draw() end
-	end
-	redirect.clear = function()
-		for i=1, redirect.compTable.y do
-			redirect.buffer.text[i] = string.rep(" ", redirect.compTable.x)
-			redirect.buffer.textColor[i] = string.rep(redirect.buffer.curTextColor, redirect.compTable.x)
-			redirect.buffer.backColor[i] = string.rep(redirect.buffer.curBackColor, redirect.compTable.x)
-		end
-		if not redirect.compTable.deferDraw then redirect.compTable:draw() end
-	end
-	redirect.clearLine = function()
-		redirect.buffer[redirect.buffer.cursorY] = string.rep(" ", redirect.compTable.x)
-		redirect.buffer.textColor[redirect.buffer.cursorY] = string.rep(redirect.buffer.curTextColor, redirect.compTable.x)
-		redirect.buffer.backColor[redirect.buffer.cursorY] = string.rep(redirect.buffer.curBackColor, redirect.compTable.x)
-		if not redirect.compTable.deferDraw then redirect.compTable:draw() end
-	end
-	redirect.getCursorPos = function()
-		return redirect.buffer.cursorX, redirect.buffer.cursorY
-	end
-	redirect.setCursorPos = function(x, y)
-		redirect.buffer.cursorX = math.floor(tonumber(x)) or redirect.buffer.cursorX
-		redirect.buffer.cursorY = math.floor(tonumber(y)) or redirect.buffer.cursorY
-		if not redirect.compTable.deferDraw then redirect.compTable:draw("cursor") end
-	end
-	redirect.setCursorBlink = function(b)
-		redirect.buffer.cursorBlink = b
-		if not redirect.compTable.deferDraw then redirect.compTable:draw("cursor") end
-	end
-	redirect.getSize = function()
-		return redirect.compTable.x, redirect.compTable.y
-	end
-	redirect.scroll = function(n)
-		for i=1, redirect.compTable.y - 1 do
-			if redirect.buffer.text[i + n] then
-				redirect.buffer.text[i] = redirect.buffer.text[i + n]
-				redirect.buffer.textColor[i] = redirect.buffer.textColor[i + n]
-				redirect.buffer.backColor[i] = redirect.buffer.backColor[i + n]
-			end
-		end
-		for i=1,n do
-			redirect.buffer.text[redirect.compTable.y - (1 + n)] = string.rep(" ", redirect.compTable.x)
-			redirect.buffer.textColor[redirect.compTable.y - (1 + n)] = string.rep(redirect.buffer.curTextColor, redirect.compTable.x)
-			redirect.buffer.backColor[redirect.compTable.y - (1 + n)] = string.rep(redirect.buffer.curBackColor, redirect.compTable.x)
-		end
-		if not redirect.compTable.deferDraw then redirect.compTable:draw() end
-	end
-	redirect.setTextColor = function(clr)
-		if clr and clr <= 32768 and clr >= 1 then
-			if redirect.compTable.target.isColor() then
-				redirect.buffer.curTextColor = string.format("%x", math.floor(math.log(clr) / math.log(2)))
-			elseif clr == 1 or clr == 32768 then
-				redirect.buffer.curTextColor = string.format("%x", math.floor(math.log(clr) / math.log(2)))
-			else
-				return nil, "Colour not supported"
-			end
-		end
-	end
-	redirect.setTextColour = redirect.setTextColor
-	redirect.setBackgroundColor = function(clr)
-		if clr and clr <= 32768 and clr >= 1 then
-			if redirect.compTable.target.isColor() then
-				redirect.buffer.curBackColor = string.format("%x", math.floor(math.log(clr) / math.log(2)))
-			elseif clr == 32768 or clr == 1 then
-				redirect.buffer.curBackColor = string.format("%x", math.floor(math.log(clr) / math.log(2)))
-			else
-				return nil, "Colour not supported"
-			end
-		end
-	end
-	redirect.setBackgroundColour = redirect.setBackgroundColor
-	redirect.isColor = function()
-		return redirect.compTable.target.isColor()
-	end
-	redirect.isColour = redirect.isColor
-	redirect.render = function(inputBuffer)
-		for i=1, redirect.compTable.y do
-			redirect.buffer.text[i] = inputBuffer.text[i]
-			redirect.buffer.textColor[i] = inputBuffer.textColor[i]
-			redirect.buffer.backColor[i] = inputBuffer.backColor[i]
-		end
-		if not redirect.compTable.deferDraw then redirect.compTable:draw() end
-	end
-	redirect.setBounds = function(x_min, y_min, x_max, y_max)
-		redirect.buffer.minX = x_min
-		redirect.buffer.maxX = x_max
-		redirect.buffer.minY = y_min
-		redirect.buffer.maxY = y_max
-	end
-	return redirect
-end
-
 local compositor = {
 	newBuffer = function(self)
-		local buffer = {cursorX = 1, cursorY = 1, cursorBlink = false, text = {}, textColor = {}, backColor = {}, curTextColor = "0", curBackColor = "f", minX = 1, minY = 1, maxX = self.x, maxY = self.y}
-		for i=1, self.y do
-			buffer.text[i] = string.rep(" ", self.x)
-			buffer.textColor[i] = string.rep("0", self.x)
-			buffer.backColor[i] = string.rep("f", self.x)
+		local _redirect = framebuffer.new(self.x, self.y, self.target.isColor())
+		local redirect = {}
+		for k, v in pairs(_redirect) do
+			if type(k) == "string" and type(v) == "function" then
+				redirect[k] = function(...)
+					local result = {_redirect[k](...)}
+					if not self.deferDraw then self:draw() end
+					return unpack(result)
+				end
+			else
+				redirect[k] = _redirect[k]
+			end
 		end
-		table.insert(self.bufferStack, buffer)
-		return newRedirect(self, buffer)
+
+		redirect.setBounds = function(x_min, y_min, x_max, y_max)
+			redirect.buffer.minX = x_min
+			redirect.buffer.maxX = x_max
+			redirect.buffer.minY = y_min
+			redirect.buffer.maxY = y_max
+		end
+
+		redirect.setBounds(1, 1, self.x, self.y)
+		--redirect.setBounds(1, 1, 2, 2)
+
+		table.insert(self.bufferStack, redirect.buffer)
+
+		return redirect
 	end,
 	draw = function(self, mode, ...)
 		args = {...}
@@ -146,11 +41,15 @@ local compositor = {
 			end
 			for i=1, #self.bufferStack do
 				if self.bufferStack[i].minY > 0 then
+					local preStop = self.bufferStack[i].minX - 1
+					local preStart = math.min(1, preStop)
+					local postStart = self.bufferStack[i].maxX + 1
+					local postStop = self.x
 					local j = self.bufferStack[i].minY
 					repeat
-						finalBuffer.text[j] = string.sub(string.sub(finalBuffer.text[j], math.min(1, self.bufferStack[i].minX - 1), self.bufferStack[i].minX - 1)..string.sub(self.bufferStack[i].text[j], self.bufferStack[i].minX, self.bufferStack[i].maxX)..string.sub(finalBuffer.text[j], self.bufferStack[i].maxX + 1, self.x), 1, self.x)
-						finalBuffer.textColor[j] = string.sub(string.sub(finalBuffer.textColor[j], math.min(1, self.bufferStack[i].minX - 1), self.bufferStack[i].minX - 1)..string.sub(self.bufferStack[i].textColor[j], self.bufferStack[i].minX, self.bufferStack[i].maxX)..string.sub(finalBuffer.textColor[j], self.bufferStack[i].maxX + 1, self.x), 1, self.x)
-						finalBuffer.backColor[j] = string.sub(string.sub(finalBuffer.backColor[j], math.min(1, self.bufferStack[i].minX - 1), self.bufferStack[i].minX - 1)..string.sub(self.bufferStack[i].backColor[j], self.bufferStack[i].minX, self.bufferStack[i].maxX)..string.sub(finalBuffer.backColor[j], self.bufferStack[i].maxX + 1, self.x), 1, self.x)
+						finalBuffer.text[j] = string.sub(string.sub(finalBuffer.text[j], preStart, preStop)..string.sub(self.bufferStack[i].text[j], self.bufferStack[i].minX, self.bufferStack[i].maxX)..string.sub(finalBuffer.text[j], postStart, postStop), 1, self.x)
+						finalBuffer.textColor[j] = string.sub(string.sub(finalBuffer.textColor[j], preStart, preStop)..string.sub(self.bufferStack[i].textColor[j], self.bufferStack[i].minX, self.bufferStack[i].maxX)..string.sub(finalBuffer.textColor[j], postStart, postStop), 1, self.x)
+						finalBuffer.backColor[j] = string.sub(string.sub(finalBuffer.backColor[j], preStart, preStop)..string.sub(self.bufferStack[i].backColor[j], self.bufferStack[i].minX, self.bufferStack[i].maxX)..string.sub(finalBuffer.backColor[j], postStart, postStop), 1, self.x)
 						j = j + 1
 					until j > self.bufferStack[i].maxY
 				end

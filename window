@@ -1,264 +1,172 @@
 decorationsTable = {
 	standard = {
-		ul = "+",
-		ur = "+",
-		ll = "+",
-		lr = "+",
-		top = "-",
-		bottom = "-",
-		left = "|",
-		right = "|",
+		ul = {"+", "0", "f"},
+		ur = {"+", "0", "f"},
+		ll = {"+", "0", "f"},
+		lr = {"+", "0", "f"},
+		top = {"-", "0", "f"},
+		bottom = {"-", "0", "f"},
+		left = {"|", "0", "f"},
+		right = {"|", "0", "f"},
+		min = {"_", "0", "f"},
+		max = {"M", "0", "f"},
+		restore = {"R", "0", "f"},
+		close = {"X", "e", "f"},
+		caption = {"", "0", "f"},
 	},
 	menu = {
-		ul = "/",
-		ur = "\\",
-		ll = "\\",
-		lr = "/",
-		top = "-",
-		bottom = "-",
-		left = "|",
-		right = "|",
+		ul = {"/", "0", "f"},
+		ur = {"\\", "0", "f"},
+		ll = {"\\", "0", "f"},
+		lr = {"/", "0", "f"},
+		top = {"-", "0", "f"},
+		bottom = {"-", "0", "f"},
+		left = {"|", "0", "f"},
+		right = {"|", "0", "f"},
+		min = {"_", "0", "f"},
+		max = {"M", "0", "f"},
+		restore = {"R", "0", "f"},
+		close = {"X", "e", "f"},
+		caption = {"", "0", "f"},
+	},
+	pretty = {
+		ul = {" ", "0", "8"},
+		ur = {" ", "0", "8"},
+		ll = {" ", "0", "8"},
+		lr = {" ", "0", "8"},
+		top = {" ", "0", "8"},
+		bottom = {" ", "0", "8"},
+		left = {" ", "0", "8"},
+		right = {" ", "0", "8"},
+		min = {"-", "0", "b"},
+		max = {"M", "0", "b"},
+		restore = {"R", "0", "b"},
+		close = {"X", "0", "e"},
+		caption = {"", "f", "8"},
 	},
 }
 
-local function newRedirect(_windowTable)
-	local redirect = {windowTable = _windowTable}
-	redirect.write = function(text)
-		local pos = redirect.windowTable.cursorX
-		if pos + #text <= 1 then
-			--skip entirely.
-			redirect.windowTable.cursorX = pos + #text
-			return
-		elseif pos < 1 then
-			--adjust text to fit on screen starting at one.
-			writeText = string.sub(text, math.abs(redirect.windowTable.cursorX) + 2)
-			redirect.windowTable.cursorX = 1
-		elseif pos >= redirect.windowTable.w - 1 then
-			--if we're off the edge to the right, skip entirely.
-			redirect.windowTable.cursorX = pos + #text
-			return
-		elseif redirect.windowTable.cursorY > redirect.windowTable.h - 2 then
-			redirect.windowTable.cursorX = pos + #text
-			return
-		else
-			writeText = text
-		end
-		local lineText = redirect.windowTable.buffer.text[redirect.windowTable.cursorY]
-		local lineColor = redirect.windowTable.buffer.textColor[redirect.windowTable.cursorY]
-		local lineBack = redirect.windowTable.buffer.backColor[redirect.windowTable.cursorY]
-		local preStop = redirect.windowTable.cursorX - 1
-		local preStart = math.min(1, preStop)
-		local postStart = redirect.windowTable.cursorX + string.len(writeText)
-		local postStop = redirect.windowTable.w - 2
-		redirect.windowTable.buffer.text[redirect.windowTable.cursorY] = string.sub(lineText, preStart, preStop)..writeText..string.sub(lineText, postStart, postStop)
-		redirect.windowTable.buffer.textColor[redirect.windowTable.cursorY] = string.sub(lineColor, preStart, preStop)..string.rep(redirect.windowTable.buffer.curTextColor, #writeText)..string.sub(lineColor, postStart, postStop)
-		redirect.windowTable.buffer.backColor[redirect.windowTable.cursorY] = string.sub(lineBack, preStart, preStop)..string.rep(redirect.windowTable.buffer.curBackColor, #writeText)..string.sub(lineBack, postStart, postStop)
-		redirect.windowTable.cursorX = pos + string.len(text)
-		redirect.windowTable:draw()
-	end
-	redirect.clear = function()
-		for i=1, redirect.windowTable.h - 2 do
-			redirect.windowTable.buffer.text[i] = string.rep(" ", redirect.windowTable.w - 2)
-			redirect.windowTable.buffer.textColor[i] = string.rep(redirect.windowTable.buffer.curTextColor, redirect.windowTable.w - 2)
-			redirect.windowTable.buffer.backColor[i] = string.rep(redirect.windowTable.buffer.curBackColor, redirect.windowTable.w - 2)
-		end
-		redirect.windowTable:draw()
-	end
-	redirect.clearLine = function()
-		redirect.windowTable.buffer.text[redirect.windowTable.cursorY] = string.rep(" ", redirect.windowTable.w - 2)
-		redirect.windowTable.buffer.textColor[redirect.windowTable.cursorY] = string.rep(redirect.windowTable.buffer.curTextColor, redirect.windowTable.w - 2)
-		redirect.windowTable.buffer.backColor[redirect.windowTable.cursorY] = string.rep(redirect.windowTable.buffer.curBackColor, redirect.windowTable.w - 2)
-		redirect.windowTable:draw()
-	end
-	redirect.getCursorPos = function()
-		return redirect.windowTable.cursorX, redirect.windowTable.cursorY
-	end
-	redirect.setCursorPos = function(x, y)
-		redirect.windowTable.cursorX = math.floor(tonumber(x)) or redirect.windowTable.cursorX
-		redirect.windowTable.cursorY = math.floor(tonumber(y)) or redirect.windowTable.cursorY
-		redirect.windowTable:draw("curosr")
-	end
-	redirect.setCursorBlink = function(b)
-		redirect.windowTable.cursorBlink = b
-		redirect.windowTable:draw("cursor")
-	end
-	redirect.getSize = function()
-		return redirect.windowTable.w - 2, redirect.windowTable.h - 2
-	end
-	redirect.scroll = function(n)
-		for i=1, redirect.windowTable.h - 3 do
-			if redirect.windowTable.buffer.text[i + n] then
-				redirect.windowTable.buffer.text[i] = redirect.windowTable.buffer.text[i + n]
-				redirect.windowTable.buffer.textColor[i] = redirect.windowTable.buffer.textColor[i + n]
-				redirect.windowTable.buffer.backColor[i] = redirect.windowTable.buffer.backColor[i + n]
-			end
-		end
-		for i=1,n do
-			redirect.windowTable.buffer.text[redirect.windowTable.h - (1 + n)] = string.rep(" ", redirect.windowTable.w - 2)
-			redirect.windowTable.buffer.textColor[redirect.windowTable.h - (1 + n)] = string.rep(redirect.windowTable.buffer.curTextColor, redirect.windowTable.w - 2)
-			redirect.windowTable.buffer.backColor[redirect.windowTable.h - (1 + n)] = string.rep(redirect.windowTable.buffer.curBackColor, redirect.windowTable.w - 2)
-		end
-		redirect.windowTable:draw()
-	end
-	redirect.setTextColor = function(clr)
-		if clr and clr <= 32768 and clr >= 1 then
-			if redirect.windowTable.target.isColor() then
-				redirect.windowTable.buffer.curTextColor = string.format("%x", math.floor(math.log(clr) / math.log(2)))
-			elseif clr == 1 or clr == 32768 then
-				redirect.windowTable.buffer.curTextColor = string.format("%x", math.floor(math.log(clr) / math.log(2)))
-			else
-				return nil, "Colour not supported"
-			end
-		end
-	end
-	redirect.setTextColour = redirect.setTextColor
-	redirect.setBackgroundColor = function(clr)
-		if clr and clr <= 32768 and clr >= 1 then
-			if redirect.windowTable.target.isColor() then
-				redirect.windowTable.buffer.curBackColor = string.format("%x", math.floor(math.log(clr) / math.log(2)))
-			elseif clr == 32768 or clr == 1 then
-				redirect.windowTable.buffer.curBackColor = string.format("%x", math.floor(math.log(clr) / math.log(2)))
-			else
-				return nil, "Colour not supported"
-			end
-		end
-	end
-	redirect.setBackgroundColour = redirect.setBackgroundColor
-	redirect.isColor = function()
-		return redirect.windowTable.target.isColor()
-	end
-	redirect.isColour = redirect.isColor
-	redirect.render = function(inputBuffer)
-		for i=1, #redirect.windowTable.y do
-			redirect.buffer.text[i] = inputBuffer.text[i]
-			redirect.buffer.textColor[i] = inputBuffer.textColor[i]
-			redirect.buffer.backColor[i] = inputBuffer.backColor[i]
-		end
-		redirect.windowTable:draw()
-	end
-	return redirect
-end
-
 local window = {
 	draw = function(self, mode)
-		if mode == "cursor" then
-			term.redirect(self.target)
-			term.setCursorPos(self.x + self.cursorX, self.y + self.cursorY)
-			term.setCursorBlink(self.cursorBlink)
-			term.restore()
-		else
-			--render window to table of appropriate size.
-			if not self.target.render then
-				if not self.minimized then
-					term.redirect(self.target)
-					term.clear()
-					local top = nil
-					if self.caption then
-						if string.len(self.caption) > self.w - 4 then
-							top = self.decorations.ul..self.decorations.top..string.sub(self.caption, 1, self.w - 4)
-						else
-							top = self.decorations.ul..self.decorations.top..self.caption
-						end
-						top = top..string.rep(self.decorations.top, self.w - (string.len(top) + 1))..self.decorations.ur
-					else
-						top = self.decorations.ul..string.rep(self.decorations.top, self.w - 2)..self.decorations.ur
-					end
-					term.setCursorPos(self.x, self.y)
-					term.setTextColor(1)
-					term.setBackgroundColor(32768)
-					term.write(top)
-					if self.windowType == "modal" or self.windowType == "standard" then
-						term.setCursorPos(self.x + self.w - 4)
-						term.write("-")
-						if term.isColor() then term.setTextColor(16384) end
-						term.write("X")
-						term.setTextColor(1)
-						if self.windowType == "standard" then
-							term.setCursorPos(self.x + self.w - 6)
-							if self.maximized then
-								term.write("-_R")
-							else
-								term.write("-_M")
-							end
-						end
-					end
-					for i=1, self.h - 2 do
-						term.setCursorPos(self.x, self.y + i)
-						term.setTextColor(colors.white)
-						term.setBackgroundColor(colors.black)
-						term.write(self.decorations.left)
-						for j=1, self.w - 2 do
-							term.setTextColor(2 ^ tonumber(string.sub(self.buffer.textColor[i], j, j), 16))
-							term.setBackgroundColor(2 ^ tonumber(string.sub(self.buffer.backColor[i], j, j), 16))
-							term.write(string.sub(self.buffer.text[i], j, j))
-						end
-						term.setTextColor(colors.white)
-						term.setBackgroundColor(colors.black)
-						term.write(self.decorations.right)
-					end
-					term.setCursorPos(self.x, self.y + self.h - 1)
-					term.write(self.decorations.ll..string.rep(self.decorations.bottom, self.w - 2)..self.decorations.lr)
-					term.setCursorPos(self.x + self.cursorX, self.y + self.cursorY)
-					term.setCursorBlink(self.cursorBlink)
-					term.restore()
-				end
-			else
-				--use the render method.
+		--render window to table of appropriate size.
+		if not self.target.render then
+			if not self.minimized then
 				term.redirect(self.target)
-				local maxX, maxY = term.getSize()
-				local isColor = term.isColor()
-				local outputBuffer = {text = {}, textColor = {}, backColor = {}}
-				if not self.minimized then
-					for i=1, maxY do
-						if i == self.y then
-							if self.caption then
-								local caption = string.sub(self.caption, 1, self.w - 4)
-								outputBuffer.text[i] = string.rep(" ", self.x - 1)..self.decorations.ul..self.decorations.top..caption..string.rep(self.decorations.top, self.w - (string.len(caption) + 3))..self.decorations.ur..string.rep(" ", maxX - (self.x + self.w - 1))
-							else
-								outputBuffer.text[i] = string.rep(" ", self.x - 1)..self.decorations.ul..string.rep(self.decorations.top, self.w - 2)..self.decorations.ur..string.rep(" ", maxX - (self.x + self.w - 1))
-							end
-							outputBuffer.textColor[i] = string.rep("0", maxX)
-							outputBuffer.backColor[i] = string.rep("f", maxX)
-							if self.windowType == "modal" then
-								outputBuffer.text[i] = string.sub(outputBuffer.text[i], 1, self.x + self.w - 5).."-X"..string.sub(outputBuffer.text[i], self.x + self.w - 2)
-								if isColor then outputBuffer.textColor[i] = string.rep("0", self.x + self.w - 4).."e"..string.rep("0", maxX - (self.x + self.w - 3)) end
-							elseif self.windowType == "standard" then
-								if self.maximized then
-									outputBuffer.text[i] = string.sub(outputBuffer.text[i], 1, self.x + self.w - 7).."-_RX"..string.sub(outputBuffer.text[i], self.x + self.w - 2)
-								else
-									outputBuffer.text[i] = string.sub(outputBuffer.text[i], 1, self.x + self.w - 7).."-_MX"..string.sub(outputBuffer.text[i], self.x + self.w - 2)
-								end
-								if isColor then outputBuffer.textColor[i] = string.rep("0", self.x + self.w - 4).."e"..string.rep("0", maxX - (self.x + self.w - 3)) end
-							end
-						elseif i > self.y and i < self.y + self.h - 1 then
-							outputBuffer.text[i] = string.rep(" ", self.x - 1)..self.decorations.left..string.sub(self.buffer.text[i - self.y], 1, self.w - 2)..self.decorations.right..string.rep(" ", maxX - (self.x + self.w - 1))
-							--initial -1 isn't necessary, to catch leading window decoration, trailing edge uses -2 to pick up the window decoration as well.
-							outputBuffer.textColor[i] = string.rep("0", self.x)..string.sub(self.buffer.textColor[i - self.y], 1, self.w - 2)..string.rep("0", maxX - (self.x + self.w - 2))
-							outputBuffer.backColor[i] = string.rep("f", self.x)..string.sub(self.buffer.backColor[i - self.y], 1, self.w - 2)..string.rep("f", maxX - (self.x + self.w - 2))
-						elseif i == self.y + self.h - 1 then
-							outputBuffer.text[i] = string.rep(" ", self.x - 1)..self.decorations.ll..string.rep(self.decorations.bottom, self.w - 2)..self.decorations.lr..string.rep(" ", maxX - (self.x + self.w - 1))
-							outputBuffer.textColor[i] = string.rep("0", maxX)
-							outputBuffer.backColor[i] = string.rep("f", maxX)
+				term.clear()
+				local top = nil
+				if self.caption then
+					if string.len(self.caption) > self.w - 4 then
+						top = self.decorations.ul[1]..self.decorations.top[1]..string.sub(self.caption, 1, self.w - 4)
+					else
+						top = self.decorations.ul[1]..self.decorations.top[1]..self.caption
+					end
+					top = top..string.rep(self.decorations.top[1], self.w - (string.len(top) + 1))..self.decorations.ur[1]
+				else
+					top = self.decorations.ul[1]..string.rep(self.decorations.top[1], self.w - 2)..self.decorations.ur[1]
+				end
+				term.setCursorPos(self.x, self.y)
+				term.setTextColor(1)
+				term.setBackgroundColor(32768)
+				term.write(top)
+				if self.windowType == "modal" or self.windowType == "standard" then
+					term.setCursorPos(self.x + self.w - 4)
+					term.write("-")
+					if term.isColor() then term.setTextColor(16384) end
+					term.write("X")
+					term.setTextColor(1)
+					if self.windowType == "standard" then
+						term.setCursorPos(self.x + self.w - 6)
+						if self.maximized then
+							term.write("-_R")
 						else
-							outputBuffer.text[i] = string.rep(" ", maxX)
-							outputBuffer.textColor[i] = string.rep("0", maxX)
-							outputBuffer.backColor[i] = string.rep("f", maxX)
+							term.write("-_M")
 						end
 					end
-					if self.target.setBounds then self.target.setBounds(self.x, self.y, self.x + self.w - 1, self.y + self.h - 1) end
-				else
-					for i=1, maxY do
-						outputBuffer.text[i] = string.rep(" ", maxX)
-						outputBuffer.textColor[i] = string.rep("0", maxX)
-						outputBuffer.backColor[i] = string.rep("f", maxX)
-					end
-					if self.target.setBounds then self.target.setBounds(0, 0, 0, 0) end
 				end
-				self.target.render(outputBuffer)
+				for i=1, self.h - 2 do
+					term.setCursorPos(self.x, self.y + i)
+					term.setTextColor(colors.white)
+					term.setBackgroundColor(colors.black)
+					term.write(self.decorations.left[1])
+					for j=1, self.w - 2 do
+						term.setTextColor(2 ^ tonumber(string.sub(self.redirect.buffer.textColor[i], j, j), 16))
+						term.setBackgroundColor(2 ^ tonumber(string.sub(self.redirect.buffer.backColor[i], j, j), 16))
+						term.write(string.sub(self.redirect.buffer.text[i], j, j))
+					end
+					term.setTextColor(colors.white)
+					term.setBackgroundColor(colors.black)
+					term.write(self.decorations.right[1])
+				end
+				term.setCursorPos(self.x, self.y + self.h - 1)
+				term.write(self.decorations.ll[1]..string.rep(self.decorations.bottom[1], self.w - 2)..self.decorations.lr[1])
 				term.setCursorPos(self.x + self.cursorX, self.y + self.cursorY)
 				term.setCursorBlink(self.cursorBlink)
 				term.restore()
 			end
+		else
+			--use the render method.
+			term.redirect(self.target)
+			local maxX, maxY = term.getSize()
+			local isColor = term.isColor()
+			local outputBuffer = {text = {}, textColor = {}, backColor = {}}
+			if not self.minimized then
+				local prelineBuffer = self.x - 1
+				local postlineBuffer = maxX - (self.x + self.w - 1)
+				for i=1, maxY do
+					if i == self.y then
+						if self.caption then
+							local caption = string.sub(self.caption, 1, self.w - 4)
+							outputBuffer.text[i] = string.rep(" ", prelineBuffer)..self.decorations.ul[1]..self.decorations.top[1]..caption..string.rep(self.decorations.top[1], self.w - (string.len(caption) + 3))..self.decorations.ur[1]..string.rep(" ", postlineBuffer)
+							outputBuffer.textColor[i] = string.rep("0", prelineBuffer)..self.decorations.ul[2]..self.decorations.top[2]..string.rep(self.decorations.caption[2], string.len(caption))..string.rep(self.decorations.top[2], self.w - (string.len(caption) + 3))..self.decorations.ur[2]..string.rep("0", postlineBuffer)
+							outputBuffer.backColor[i] = string.rep("f", prelineBuffer)..self.decorations.ul[3]..self.decorations.top[3]..string.rep(self.decorations.caption[3], string.len(caption))..string.rep(self.decorations.top[3], self.w - (string.len(caption) + 3))..self.decorations.ur[3]..string.rep("f", postlineBuffer)
+						else
+							outputBuffer.text[i] = string.rep(" ", prelineBuffer)..self.decorations.ul[1]..string.rep(self.decorations.top[1], self.w - 2)..self.decorations.ur[1]..string.rep(" ", postlineBuffer)
+							outputBuffer.textColor[i] = string.rep("0", prelineBuffer)..self.decorations.ul[2]..string.rep(self.decorations.top[2], self.w - 2)..self.decorations.ur[2]..string.rep("0", postlineBuffer)
+							outputBuffer.backColor[i] = string.rep("f", prelineBuffer)..self.decorations.ul[3]..string.rep(self.decorations.top[3], self.w - 2)..self.decorations.ur[3]..string.rep("f", postlineBuffer)
+						end
+						if self.windowType == "modal" then
+							outputBuffer.text[i] = string.sub(outputBuffer.text[i], 1, self.x + self.w - 5)..self.decorations.top[1]..self.decorations.close[1]..string.sub(outputBuffer.text[i], self.x + self.w - 2)
+							outputBuffer.textColor[i] = string.sub(outputBuffer.textColor[i], 1, self.x + self.w - 5)..self.decorations.top[2]..self.decorations.close[2]..string.sub(outputBuffer.textColor[i], self.x + self.w - 2)
+							outputBuffer.backColor[i] = string.sub(outputBuffer.backColor[i], 1, self.x + self.w - 5)..self.decorations.top[3]..self.decorations.close[3]..string.sub(outputBuffer.backColor[i], self.x + self.w - 2)
+						elseif self.windowType == "standard" then
+							if self.maximized then
+								outputBuffer.text[i] = string.sub(outputBuffer.text[i], 1, self.x + self.w - 7)..self.decorations.top[1]..self.decorations.min[1]..self.decorations.restore[1]..self.decorations.close[1]..string.sub(outputBuffer.text[i], self.x + self.w - 2)
+								outputBuffer.textColor[i] = string.sub(outputBuffer.textColor[i], 1, self.x + self.w - 7)..self.decorations.top[2]..self.decorations.min[2]..self.decorations.restore[2]..self.decorations.close[2]..string.sub(outputBuffer.textColor[i], self.x + self.w - 2)
+								outputBuffer.backColor[i] = string.sub(outputBuffer.backColor[i], 1, self.x + self.w - 7)..self.decorations.top[3]..self.decorations.min[3]..self.decorations.restore[3]..self.decorations.close[3]..string.sub(outputBuffer.backColor[i], self.x + self.w - 2)
+							else
+								outputBuffer.text[i] = string.sub(outputBuffer.text[i], 1, self.x + self.w - 7)..self.decorations.top[1]..self.decorations.min[1]..self.decorations.max[1]..self.decorations.close[1]..string.sub(outputBuffer.text[i], self.x + self.w - 2)
+								outputBuffer.textColor[i] = string.sub(outputBuffer.textColor[i], 1, self.x + self.w - 7)..self.decorations.top[2]..self.decorations.min[2]..self.decorations.max[2]..self.decorations.close[2]..string.sub(outputBuffer.textColor[i], self.x + self.w - 2)
+								outputBuffer.backColor[i] = string.sub(outputBuffer.backColor[i], 1, self.x + self.w - 7)..self.decorations.top[3]..self.decorations.min[3]..self.decorations.max[3]..self.decorations.close[3]..string.sub(outputBuffer.backColor[i], self.x + self.w - 2)
+							end
+						end
+					elseif i > self.y and i < self.y + self.h - 1 then
+						outputBuffer.text[i] = string.rep(" ", prelineBuffer)..self.decorations.left[1]..string.sub(self.redirect.buffer.text[i - self.y], 1, self.w - 2)..self.decorations.right[1]..string.rep(" ", postlineBuffer)
+						--initial -1 means we don't catch the window decoration, final -1 for same reason (was 0 and -2 when we were catching the decorations.)
+						outputBuffer.textColor[i] = string.rep("0", prelineBuffer)..self.decorations.left[2]..string.sub(self.redirect.buffer.textColor[i - self.y], 1, self.w - 2)..self.decorations.right[2]..string.rep("0", postlineBuffer)
+						outputBuffer.backColor[i] = string.rep("f", prelineBuffer)..self.decorations.left[3]..string.sub(self.redirect.buffer.backColor[i - self.y], 1, self.w - 2)..self.decorations.right[3]..string.rep("f", postlineBuffer)
+					elseif i == self.y + self.h - 1 then
+						outputBuffer.text[i] = string.rep(" ", prelineBuffer)..self.decorations.ul[1]..string.rep(self.decorations.bottom[1], self.w - 2)..self.decorations.ur[1]..string.rep(" ", postlineBuffer)
+						outputBuffer.textColor[i] = string.rep("0", prelineBuffer)..self.decorations.ul[2]..string.rep(self.decorations.bottom[2], self.w - 2)..self.decorations.ur[2]..string.rep("0", postlineBuffer)
+						outputBuffer.backColor[i] = string.rep("f", prelineBuffer)..self.decorations.ul[3]..string.rep(self.decorations.bottom[3], self.w - 2)..self.decorations.ur[3]..string.rep("f", postlineBuffer)
+					else
+						outputBuffer.text[i] = string.rep(" ", maxX)
+						outputBuffer.textColor[i] = string.rep("0", maxX)
+						outputBuffer.backColor[i] = string.rep("f", maxX)
+					end
+				end
+				if self.target.setBounds then self.target.setBounds(self.x, self.y, self.x + self.w - 1, self.y + self.h - 1) end
+			else
+				for i=1, maxY do
+					outputBuffer.text[i] = string.rep(" ", maxX)
+					outputBuffer.textColor[i] = string.rep("0", maxX)
+					outputBuffer.backColor[i] = string.rep("f", maxX)
+				end
+				if self.target.setBounds then self.target.setBounds(0, 0, 0, 0) end
+			end
+			self.target.render(outputBuffer)
+			term.setCursorPos(self.x + self.cursorX, self.y + self.cursorY)
+			term.setCursorBlink(self.cursorBlink)
+			term.restore()
 		end
 	end,
 	move = function(self, x, y)
@@ -287,37 +195,39 @@ local window = {
 			if self.x + w - 1 > xlim or self.y + h - 1 > ylim then
 				return nil, "window sized out of bounds"
 			end
+			self.redirect.buffer.sizeX = w - 2
+			self.redirect.buffer.sizeY = h - 2
 			if w >= 5 and h >= 3 then
 				--adjust buffer horizontal size, but don't bother adjusting things below the new window bottom if smaller
 				if w < self.w then
-					for i=1, math.min(#self.buffer.text, math.max(self.h, h) - 2) do
+					for i=1, math.min(#self.redirect.buffer.text, math.max(self.h, h) - 2) do
 						--w less two because the window border is part of the size, but not the buffer.
-						self.buffer.text[i] = string.sub(self.buffer.text[i],1,w - 2)
-						self.buffer.textColor[i] = string.sub(self.buffer.textColor[i],1,w - 2)
-						self.buffer.backColor[i] = string.sub(self.buffer.backColor[i],1,w - 2)
+						self.redirect.buffer.text[i] = string.sub(self.redirect.buffer.text[i],1,w - 2)
+						self.redirect.buffer.textColor[i] = string.sub(self.redirect.buffer.textColor[i],1,w - 2)
+						self.redirect.buffer.backColor[i] = string.sub(self.redirect.buffer.backColor[i],1,w - 2)
 					end
 				elseif w > self.w then
-					for i=1, math.min(#self.buffer.text, math.max(self.h, h) - 2) do
+					for i=1, math.min(#self.redirect.buffer.text, math.max(self.h, h) - 2) do
 						--no need for width subtractions, since we are adjusting based on the difference between the two.
-						self.buffer.text[i] = self.buffer.text[i]..string.rep(" ", w - self.w)
-						self.buffer.textColor[i] = self.buffer.textColor[i]..string.rep(self.buffer.curTextColor, w - self.w)
-						self.buffer.backColor[i] = self.buffer.backColor[i]..string.rep(self.buffer.curBackColor, w - self.w)
+						self.redirect.buffer.text[i] = self.redirect.buffer.text[i]..string.rep(" ", w - self.w)
+						self.redirect.buffer.textColor[i] = self.redirect.buffer.textColor[i]..string.rep(self.redirect.buffer.curTextColor, w - self.w)
+						self.redirect.buffer.backColor[i] = self.redirect.buffer.backColor[i]..string.rep(self.redirect.buffer.curBackColor, w - self.w)
 					end
 				end
 				self.w = w
 				if h < self.h then
 					repeat
 					--remove the last entry to trim the buffer.
-					table.remove(self.buffer.text)
-					table.remove(self.buffer.textColor)
-					table.remove(self.buffer.backColor)
-					until #self.buffer.text == h - 2
+					table.remove(self.redirect.buffer.text)
+					table.remove(self.redirect.buffer.textColor)
+					table.remove(self.redirect.buffer.backColor)
+					until #self.redirect.buffer.text == h - 2
 				elseif h > self.h then
 					repeat
-						table.insert(self.buffer.text, string.rep(" ", self.w - 2))
-						table.insert(self.buffer.textColor, string.rep(self.buffer.curTextColor, self.w - 2))
-						table.insert(self.buffer.backColor, string.rep(self.buffer.curBackColor, self.w - 2))
-					until #self.buffer.text == h - 2
+						table.insert(self.redirect.buffer.text, string.rep(" ", self.w - 2))
+						table.insert(self.redirect.buffer.textColor, string.rep(self.redirect.buffer.curTextColor, self.w - 2))
+						table.insert(self.redirect.buffer.backColor, string.rep(self.redirect.buffer.curBackColor, self.w - 2))
+					until #self.redirect.buffer.text == h - 2
 				end
 				self.h = h
 				self:draw()
@@ -341,7 +251,7 @@ local window = {
 		elseif type(decoration) == "string" then
 			if decorationsTable[decoration] then
 				for k,v in pairs(decorationsTable[decoration]) do
-					self.decorations[k] = string.sub(v, 1, 1)
+					self.decorations[k] = v
 				end
 			else
 				return nil, "Invalid decoration"
@@ -349,7 +259,7 @@ local window = {
 		elseif type(decoration == "table") then
 			for k,v in pairs(decorationsTable.standard) do
 				--check for completeness.
-				if type(decoration[k]) ~= "string" then
+				if type(decoration[k]) ~= "table" or #decoration[k] < 3 then
 					return nil, "Invalid decoration"
 				end
 			end
@@ -396,10 +306,6 @@ local wmetatable = {
 
 function new(w, h, x, y, caption, target)
 	local win = {
-		buffer = {text = {}, textColor = {}, backColor = {}, curTextColor = "0", curBackColor = "f"},
-		cursorX = 1,
-		cursorY = 1,
-		cursorBlink = false,
 		target = target or term.native,
 		w = tonumber(w) or 19,
 		h = tonumber(h) or 8,
@@ -410,14 +316,19 @@ function new(w, h, x, y, caption, target)
 		--clean is normal window, standard includes _MX controls, modal includes X control only.
 		windowType = "clean",
 		decorations = {
-			ul = "+",
-			ur = "+",
-			ll = "+",
-			lr = "+",
-			top = "-",
-			bottom = "-",
-			left = "|",
-			right = "|",
+			ul = {"+", "0", "f"},
+			ur = {"+", "0", "f"},
+			ll = {"+", "0", "f"},
+			lr = {"+", "0", "f"},
+			top = {"-", "0", "f"},
+			bottom = {"-", "0", "f"},
+			left = {"|", "0", "f"},
+			right = {"|", "0", "f"},
+			min = {"_", "0", "f"},
+			max = {"M", "0", "f"},
+			restore = {"R", "0", "f"},
+			close = {"X", "e", "f"},
+			caption = {"", "0", "f"},
 		},
 		maximized = false,
 		minimized = false,
@@ -434,11 +345,18 @@ function new(w, h, x, y, caption, target)
 	elseif win.y + win.h - 1 > ylim then
 		win.y = ylim - win.h + 1
 	end
-	win.redirect = newRedirect(win)
-	for i=1, win.h-2 do
-		win.buffer.text[i] = string.rep(" ", win.w - 2)
-		win.buffer.textColor[i] = string.rep("0", win.w - 2)
-		win.buffer.backColor[i] = string.rep("f", win.w - 2)
+	local _redirect = framebuffer.new(w - 2, h - 2, target.isColor())
+	win.redirect = {}
+	for k, v in pairs(_redirect) do
+		if type(k) == "string" and type(v) == "function" then
+			win.redirect[k] = function(...)
+				local result = {_redirect[k](...)}
+				win:draw()
+				return unpack(result)
+			end
+		else
+			win.redirect[k] = _redirect[k]
+		end
 	end
 	setmetatable( win, wmetatable )
 	return win

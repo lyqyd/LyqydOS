@@ -1,3 +1,4 @@
+if not framebuffer then if fs.exists("/LyqydOS/framebuffer") then if not os.loadAPI("/LyqydOS/famebuffer") then print("Could not load framebuffer API!") return end else print("Could not find framebuffer API!") return end end
 if not compositor then if fs.exists("/LyqydOS/compositor") then if not os.loadAPI("/LyqydOS/compositor") then print("Could not load compositor API!") return end else print("Could not find compositor API!") return end end
 if not menu then if fs.exists("/LyqydOS/menu") then if not os.loadAPI("/LyqydOS/menu") then print("Could not load menu API!") return end else print("Could not find menu API!") return end end
 if not process then if fs.exists("/LyqydOS/process") then if not os.loadAPI("/LyqydOS/process") then print("Could not load process API!") return end else print("Could not find process API!") return end end
@@ -196,6 +197,8 @@ local function selectWindow()
 end
 
 local function startProgram()
+	term.setTextColor(colors.white)
+	term.setBackgroundColor(colors.black)
 	write("> ")
 	local line = read(nil, runHistory)
         --don't save empty or repeated lines
@@ -237,7 +240,10 @@ local function startProgram()
 		pTable.path = path
 		pTable.thread = coroutine.create(function() shell.run(path, unpack(args)) end)
 		pTable.window = window.new(w, h, x, y, fs.getName(path), process.windowCompositor:newBuffer())
-		if windowCompositor.target.isColor() then pTable.window:setType("standard") end
+		if windowCompositor.target.isColor() then
+			pTable.window:setType("standard")
+			pTable.window:setDecorations("pretty")
+		end
 		if max == "true" then pTable.window:maximize() end
 		table.insert(process.processTable, pTable)
 		process.focusWindow = #process.processTable
