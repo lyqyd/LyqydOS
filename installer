@@ -1,4 +1,4 @@
-local versionNumber = 1.2
+local versionNumber = 1.3
 
 local args = {...}
 
@@ -6,16 +6,19 @@ if #args == 1 and args[1] == "remove" then
 	if fs.exists("/LyqydOS") then
 		fs.delete("/LyqydOS")
 		if fs.exists("/.lyqwin") then fs.delete("/.lyqwin") end
-		if fs.exists("/.runhistory") then fs.delete("/.runhistory") end
+		if fs.exists("/.lyqrunhistory") then fs.delete("/.lyqrunhistory") end
 	end
 	return
 end
 
 local fileList = {
 	"compositor",
+	"framebuffer",
+	"kill",
 	"menu",
 	"process",
 	"procman",
+	"ps",
 	"start",
 	"window",
 }
@@ -90,7 +93,6 @@ end
 if not fs.exists("/.lyqwin") then
 	local handle = io.open("/.lyqwin", "w")
 	if handle then
-		handle:write([[1,1,9,4,false,rom/programs/reboot]].."\n")
 		handle:write([[1,1,9,4,false,rom/programs/reboot]].."\n")
 		handle:write([[1,1,9,4,false,rom/programs/shutdown]].."\n")
 		handle:write([[1,1,19,9,true,rom/programs/color/paint]].."\n")
