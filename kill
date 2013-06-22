@@ -1,0 +1,4 @@
+local pID = tonumber((...))
+if process.processTable[pID] then
+	return process.kill(pID)
+end

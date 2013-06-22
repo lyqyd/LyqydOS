@@ -17,8 +17,8 @@ local oldTredirect = term.redirect
 local oldTrestore = term.restore
 
 local runHistory = {}
-if fs.exists("/.runhistory") then
-	local histFile=io.open("/.runhistory","r")
+if fs.exists("/.lyqrunhistory") then
+	local histFile=io.open("/.lyqrunhistory","r")
 	if histFile then
 		for line in histFile:lines() do
 			table.insert(runHistory, line)
@@ -206,10 +206,10 @@ local function startProgram()
 		--should never be able to get above 255, but just in case, the while doesn't hurt
 	        table.insert(runHistory,line)		
 		while #runHistory>255 do
-			table.remove(runHistory)
+			table.remove(runHistory, 1)
 		end
 		--update history on disk
-		local histFile=io.open("/.runhistory","w")
+		local histFile=io.open("/.lyqrunhistory","w")
 		if histFile then
 			for i=1, #runHistory do
 				histFile:write(runHistory[i].."\n")
@@ -451,22 +451,24 @@ local function resumeProcess(pID, eventTable)
 	windowCompositor:draw()
 	process.activeProcess = nil
 	--if the process had a window, recover its redirect stack and restore the redirect functions.
-	if redir then
-		rawset(term, "redirect", oldTredirect)
-		rawset(term, "restore", oldTrestore)
-		processTable[pID].redirectStack = {}
-		for i=1, #process.redirectStack do
+	if processTable[pID] then
+		if redir then
+			rawset(term, "redirect", oldTredirect)
+			rawset(term, "restore", oldTrestore)
+			processTable[pID].redirectStack = {}
+			for i=1, #process.redirectStack do
+				term.restore()
+				processTable[pID].redirectStack[i] = process.redirectStack[i]
+			end
 			term.restore()
-			processTable[pID].redirectStack[i] = process.redirectStack[i]
 		end
-		term.restore()
-	end
-	--handle filters being sent back in passback.
-	if passback[1] and passback[2] then
-		if type(passback[2]) == "string" then
-			processTable[pID].listening = {passback[2]}
-		elseif type(passback[2]) == "table" then
-			processTable[pID].listening = passback[2]
+		--handle filters being sent back in passback.
+		if passback[1] and passback[2] then
+			if type(passback[2]) == "string" then
+				processTable[pID].listening = {passback[2]}
+			elseif type(passback[2]) == "table" then
+				processTable[pID].listening = passback[2]
+			end
 		end
 	end
 	--former checkProcess function.

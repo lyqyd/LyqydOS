@@ -53,3 +53,15 @@ function id()
 		return nil, "No active process!"
 	end
 end
+
+function kill(pID)
+	if process.processTable[pID] then
+		if process.processTable[pID].window then
+			process.processTable[pID].window:destroy()
+		end
+		process.processTable[pID] = false
+		return true
+	end
+	return false
+end
+
