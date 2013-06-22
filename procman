@@ -389,49 +389,34 @@ local function checkWindow(proc)
 	return true
 end
 
+local function runSpecialDialog(w, h, x, y, caption, special, func, decor)
+	local pTable = {}
+	pTable.thread = coroutine.create(func)
+	pTable.window = window.new(w, h, x, y, caption, windowCompositor:newBuffer())
+	pTable.window:setDecorations(decor)
+	table.insert(processTable, pTable)
+	process.focusWindow = #process.processTable
+	term.redirect(processTable[process.focusWindow].window.redirect)
+	coroutine.resume(processTable[process.focusWindow].thread)
+	term.restore()
+	processTable[process.focusWindow].special = special
+end
+
 local function windowOptionsMenu()
 	--initiates the window options menu window.
 	if processTable[process.focusWindow] and not processTable[process.focusWindow].special then
 		local pTable = {}
 		local parent = process.focusWindow
 		pTable.thread = coroutine.create(windowAction)
-		pTable.window = window.new(15, 9, processTable[parent].window.x, processTable[parent].window.y, "Action Menu", windowCompositor:newBuffer())
-		pTable.window:setDecorations("menu")
+		pTable.window = window.new(15, 9, processTable[parent].window.x, processTable[parent].window.y + 1, "Action Menu", windowCompositor:newBuffer())
+		pTable.window:setDecorations(term.isColor() and "pretty_menu" or "menu")
 		table.insert(processTable, pTable)
 		process.focusWindow = #processTable
 		term.redirect(processTable[process.focusWindow].window.redirect)
-		passback = {coroutine.resume(processTable[process.focusWindow].thread, parent)}
+		coroutine.resume(processTable[process.focusWindow].thread, parent)
 		term.restore()
 		processTable[process.focusWindow].special = "window_action"
 	end
-end
-
-local function chooseWindowMenu()
-	--initiates the window choice menu window.
-	if processTable[process.focusWindow] then
-		local pTable = {}
-		pTable.thread = coroutine.create(selectWindow)
-		pTable.window = window.new(19, 11, 1, 1, "Select Window", windowCompositor:newBuffer())
-		table.insert(processTable, pTable)
-		process.focusWindow = #process.processTable
-		term.redirect(processTable[process.focusWindow].window.redirect)
-		coroutine.resume(processTable[process.focusWindow].thread)
-		term.restore()
-		processTable[process.focusWindow].special = "select_window"
-	end
-end
-
-local function runProgramDialog()
-	--initiates the run program dialog box.
-	local pTable = {}
-	pTable.thread = coroutine.create(startProgram)
-	pTable.window = window.new(30, 3, 2, 2, "Run Program", windowCompositor:newBuffer())
-	table.insert(processTable, pTable)
-	process.focusWindow = #process.processTable
-	term.redirect(processTable[process.focusWindow].window.redirect)
-	local passback = {coroutine.resume(processTable[process.focusWindow].thread)}
-	term.restore()
-	processTable[process.focusWindow].special = "run_program"
 end
 
 local function resumeProcess(pID, eventTable)
@@ -500,10 +485,18 @@ local function resumeProcess(pID, eventTable)
 	end
 end
 
+local titlebarFillChar = term.isColor() and " " or "="
 term.clear()
 local titlebar = windowCompositor:newBuffer()
 local titlebarWidth, titlebarHeight = titlebar.getSize()
-titlebar.buffer.text[1] = "=LyqydOS"..string.rep("=", titlebarWidth - 8)
+titlebar.buffer.text[1] = titlebarFillChar.."LyqydOS"..string.rep(titlebarFillChar, titlebarWidth - 8)
+if term.isColor() then
+	titlebar.buffer.textColor[1] = "fbbbbbbb"..string.rep("f", titlebarWidth - 8)
+	titlebar.buffer.backColor[1] = string.rep("8", titlebarWidth)
+	for i=2, titlebarHeight do
+		titlebar.buffer.backColor[i] = string.rep("3", titlebarWidth)
+	end
+end
 windowCompositor:draw()
 
 local watchMouseDragging = false
@@ -539,15 +532,17 @@ while true do
 		taskText = taskText..str.."|"
 		tasksClickable = tasksClickable + 1
 	end
-	titlebar.buffer.text[1] = "=LyqydOS="..taskText..string.rep("=", titlebarWidth - (#taskText + 9))
+	titlebar.buffer.text[1] = titlebarFillChar.."LyqydOS"..titlebarFillChar..taskText..string.rep(titlebarFillChar, titlebarWidth - (#taskText + 9))
 	windowCompositor:draw()
 	event = {coroutine.yield()}
 	if event[1] == "key" and event[2] == 59 then
 		--run menu for keyboard users.
-		runProgramDialog()
+		runSpecialDialog(30, 3, 2, 2, "Run Program", "run_program", startProgram, term.isColor() and "pretty_menu" or "standard")
 	elseif event[1] == "key" and event[2] == 61 then
 		--window switching menu
-		chooseWindowMenu()
+		if processTable[process.focusWindow] then
+			runSpecialDialog(19, 11, 1, 1, "Select Window", "select_window", selectWindow, term.isColor() and "pretty_menu" or "menu")
+		end
 	elseif event[1] == "key" and event[2] == 62 then
 		--window controls menu
 		windowOptionsMenu()
@@ -618,7 +613,7 @@ while true do
 			--click on titlebar with no window covering it.
 			if event[3] > 1 and event[3] < 9 and event[2] == 1 then
 				--clicked on the LyqydOS button
-				runProgramDialog()
+				runSpecialDialog(30, 3, 2, 2, "Run Program", "run_program", startProgram, term.isColor() and "pretty_menu" or "standard")
 			elseif event[3] > 9 then
 				--clicked on task bar.
 				clickItem = math.floor((event[3] - 1) / 9)
@@ -626,7 +621,9 @@ while true do
 					--they clicked on the name itself, not the boundary line.
 					if clickItem == tasksClickable and clickItem < #titlebarItems then
 						--display the window choice dialog
-						chooseWindowMenu()
+						if processTable[process.focusWindow] then
+							runSpecialDialog(19, 11, 1, 1, "Select Window", "select_window", selectWindow, term.isColor() and "pretty_menu" or "menu")
+						end
 					else
 						if process.focusWindow ~= titlebarItems[clickItem].pID then
 							process.focusWindow = titlebarItems[clickItem].pID
