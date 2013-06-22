@@ -75,6 +75,7 @@ local compositor = {
 			end
 		end
 		term.setCursorPos(self.bufferStack[#self.bufferStack].cursorX, self.bufferStack[#self.bufferStack].cursorY)
+		term.setTextColor(2 ^ tonumber(self.bufferStack[#self.bufferStack].curTextColor, 16))
 		--ensure cursor is inside opaque area before setting blink.
 		if self.bufferStack[#self.bufferStack].cursorX >= self.bufferStack[#self.bufferStack].minX and self.bufferStack[#self.bufferStack].cursorX <= self.bufferStack[#self.bufferStack].maxX and self.bufferStack[#self.bufferStack].cursorY >= self.bufferStack[#self.bufferStack].minY and self.bufferStack[#self.bufferStack].cursorY <= self.bufferStack[#self.bufferStack].maxY then
 			term.setCursorBlink(self.bufferStack[#self.bufferStack].cursorBlink)
