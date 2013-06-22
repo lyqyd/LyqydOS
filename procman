@@ -1,4 +1,4 @@
-if not framebuffer then if fs.exists("/LyqydOS/framebuffer") then if not os.loadAPI("/LyqydOS/famebuffer") then print("Could not load framebuffer API!") return end else print("Could not find framebuffer API!") return end end
+if not framebuffer then if fs.exists("/LyqydOS/framebuffer") then if not os.loadAPI("/LyqydOS/framebuffer") then print("Could not load framebuffer API!") return end else print("Could not find framebuffer API!") return end end
 if not compositor then if fs.exists("/LyqydOS/compositor") then if not os.loadAPI("/LyqydOS/compositor") then print("Could not load compositor API!") return end else print("Could not find compositor API!") return end end
 if not menu then if fs.exists("/LyqydOS/menu") then if not os.loadAPI("/LyqydOS/menu") then print("Could not load menu API!") return end else print("Could not find menu API!") return end end
 if not process then if fs.exists("/LyqydOS/process") then if not os.loadAPI("/LyqydOS/process") then print("Could not load process API!") return end else print("Could not find process API!") return end end

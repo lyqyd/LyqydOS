@@ -39,12 +39,26 @@ function removeChildWindow(pID, childWindow)
 end
 
 function getWindow()
-	if processTable[activeProcess].window then
-		return processTable[activeProcess].window
+	if process.processTable[process.activeProcess].window then
+		return process.processTable[process.activeProcess].window
 	else
 		return nil, "No window!"
 	end
 end
+
+function setWindowProperty(window, parameters)
+	if type(window) == "string" then
+		--table.insert()
+	elseif type(window) == "table" then
+		for k, v in pairs(parameters) do
+			if window[k] then
+				window[k] = v
+			end
+		end
+	end
+end
+
+
 
 function id()
 	if activeProcess and processTable[activeProcess] then
