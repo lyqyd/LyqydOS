@@ -85,10 +85,6 @@ if #args < 1 or args[1] ~= "setup" then
 	print("Finished fetching!")
 	sleep(1)
 end
-if fs.exists("/LyqydOS/start") then
-	if fs.exists("/start") then fs.delete("/start") end
-	fs.move("/LyqydOS/start", "/start")
-end
 
 --write sane default window sizes
 if not fs.exists("/.lyqwin") then
