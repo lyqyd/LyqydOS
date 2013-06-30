@@ -13,6 +13,17 @@ windowCompositor.deferDraw = true
 rawset(process, "windowCompositor", windowCompositor)
 rawset(process, "processTable", processTable)
 
+do
+	local pTable = {}
+	pTable.queue = {}
+	pTable.path = "lws"
+	pTable.thread = coroutine.create(function() shell.run("lws") end)
+	table.insert(processTable, pTable)
+	coroutine.resume(pTable.thread)
+end
+
+local lws = #processTable
+
 local oldTredirect = term.redirect
 local oldTrestore = term.restore
 
@@ -50,373 +61,20 @@ if winDims then
 	winDims:close()
 end
 
-local function nextWindow(default)
-	if processTable[process.focusWindow] and processTable[process.focusWindow].parent then
-		if processTable[processTable[process.focusWindow].parent] and processTable[processTable[process.focusWindow].parent].window then
-			return processTable[process.focusWindow].parent
-		end
-	else
-		local nextBuf = windowCompositor.bufferStack[#windowCompositor.bufferStack]
-		local nextActive = default
-		for tNum, tInfo in ipairs(processTable) do
-			if tInfo and tInfo.window then
-				if tInfo.window.target.buffer == nextBuf then
-					nextActive = tNum
-				end
-			end
-		end
-		return nextActive
-	end
-end
-
-local function processToFront(proc)
-	--brings a process and all children windows (in order) to the top of the stack.
-	if proc and proc.window then
-		if proc.children then
-			--process has children windows, so we need to iterate all of these.
-			local currWindow
-			for i=1, #proc.children do
-				if proc.children[i] == "rootWindow" then
-					currWindow = proc.window
-				else
-					currWindow = proc.children[i]
-				end
-				local pos = nil
-				for j=1, #windowCompositor.bufferStack do
-					if windowCompositor.bufferStack[j] == currWindow.target.buffer then
-						windowCompositor:toFront(j)
-						break
-					end
-				end
-			end
-		else
-			for j=1, #windowCompositor.bufferStack do
-				if windowCompositor.bufferStack[j] == proc.window.target.buffer then
-					windowCompositor:toFront(j)
-					break
-				end
-			end
-		end
-	end					
-end
-
-local function processToBack(proc)
-	if proc and proc.window then
-		if proc.children then
-			--stub
-		else
-			for j = #windowCompositor.bufferStack, 1, -1 do
-				if windowCompositor.bufferStack[j] == proc.window.target.buffer then
-					--use 2 here because the title bar is layer 1.
-					if j and j > 2 then
-						tempbuffer = windowCompositor.bufferStack[j]
-						for i=j, 2, -1 do
-							windowCompositor.bufferStack[i] = windowCompositor.bufferStack[i - 1]
-						end
-						windowCompositor.bufferStack[2] = tempbuffer
-						windowCompositor:draw()
-					end
-					break
-				end
-			end
-		end
-		--set active window to new top of stack.
-		process.focusWindow = nextWindow(1)
-		if processTable[process.focusWindow] then
-			processToFront(processTable[process.focusWindow])
-		end
-	end
-end
-
-local function saveDimensions(proc)
-	--saves window dimensions when closing windows
-	if proc.path then
-		local pathFound = false
-		winDims = io.open("/.lyqwin", "w")
-		if winDims then
-			for wNum, wInfo in ipairs(windowDimensions) do
-				if wInfo.path == proc.path then
-					pathFound = true
-					if proc.window.maximized then
-						wInfo.x = proc.window.normalSize.x
-						wInfo.y = proc.window.normalSize.y
-						wInfo.w = proc.window.normalSize.w
-						wInfo.h = proc.window.normalSize.h
-					else
-						wInfo.x = proc.window.x
-						wInfo.y = proc.window.y
-						wInfo.w = proc.window.w
-						wInfo.h = proc.window.h
-					end
-					wInfo.max = tostring(proc.window.maximized)
-				end
-				winDims:write(wInfo.x..","..wInfo.y..","..wInfo.w..","..wInfo.h..","..wInfo.max..","..wInfo.path.."\n")
-			end
-			if not pathFound then
-				local winInfo = {}
-				if proc.window.maximized then
-					winInfo.x = proc.window.normalSize.x
-					winInfo.y = proc.window.normalSize.y
-					winInfo.w = proc.window.normalSize.w
-					winInfo.h = proc.window.normalSize.h
-				else
-					winInfo.x = proc.window.x
-					winInfo.y = proc.window.y
-					winInfo.w = proc.window.w
-					winInfo.h = proc.window.h
-				end
-				winInfo.max = tostring(proc.window.maximized)
-				winInfo.path = proc.path
-				table.insert(windowDimensions, winInfo)
-				winDims:write(winInfo.x..","..winInfo.y..","..winInfo.w..","..winInfo.h..","..winInfo.max..","..proc.path.."\n")
-			end
-			winDims:close()
-		end
-	end
-end
-
-local function selectWindow()
-	--started as a process to choose a window.
-	local pList, menuList = {}, {}
-	for tNum, tInfo in ipairs(process.processTable) do
-		if tInfo and tInfo.window then
-			table.insert(pList, tNum)
-			table.insert(menuList, tInfo.window.caption)
-		end
-	end
-	--removes self from list of running programs.
-	table.remove(menuList)
-	table.remove(pList)
-	table.insert(menuList, "Cancel")
-	local selection = menu.select(menuList)
-	if pList[selection] then
-		process.focusWindow = pList[selection]
-		if processTable[process.focusWindow].window.minimized then processTable[process.focusWindow].window:unMinimize() end
-		processToFront(processTable[process.focusWindow])
-	end
-end
-
-local function startProgram()
-	term.setTextColor(colors.white)
-	term.setBackgroundColor(colors.black)
-	write("> ")
-	local line = read(nil, runHistory)
-        --don't save empty or repeated lines
-	if line~="" and (#runHistory==0 or line~=runHistory[#runHistory]) then
-		--should never be able to get above 255, but just in case, the while doesn't hurt
-	        table.insert(runHistory,line)		
-		while #runHistory>255 do
-			table.remove(runHistory, 1)
-		end
-		--update history on disk
-		local histFile=io.open("/.lyqrunhistory","w")
-		if histFile then
-			for i=1, #runHistory do
-				histFile:write(runHistory[i].."\n")
-			end
-			histFile:close()
-		end
-	end
-	local args = {}
-	for match in string.gmatch( line, "[^ \t]+" ) do
-		table.insert( args, match )
-	end
-	--fix for previously-changed working directory
-	shell.setDir("")
-	path = shell.resolveProgram(table.remove(args, 1))
-	if path then
-		local w, h, x, y, max = 19, 9, 1, 1, "false"
-		for dNum, dInfo in ipairs(windowDimensions) do
-			if dInfo.path == path then
-				w = dInfo.w
-				h = dInfo.h
-				x = dInfo.x
-				y = dInfo.y
-				max = dInfo.max
-				break
-			end
-		end
-		local pTable = {}
-		pTable.path = path
-		pTable.thread = coroutine.create(function() shell.run(path, unpack(args)) end)
-		pTable.window = window.new(w, h, x, y, fs.getName(path), process.windowCompositor:newBuffer())
-		if windowCompositor.target.isColor() then
-			pTable.window:setType("standard")
-			pTable.window:setDecorations("pretty")
-		end
-		if max == "true" then pTable.window:maximize() end
-		table.insert(process.processTable, pTable)
-		process.focusWindow = #process.processTable
-		term.redirect(process.processTable[process.focusWindow].window.redirect)
-		coroutine.resume(process.processTable[process.focusWindow].thread)
-		term.restore()
-	end
-end
-
-local function windowAction(actionProc)
-	--various actions performed on windows.
-	if processTable[actionProc] and processTable[actionProc].window then
-		local selection = menu.select({"Restore", "Move", "Resize", "Minimize", "Maximize", "Close", "Cancel"})
-		return actionProc, selection
-	end
-end
-
-local function changeWindow(manipulationWindow, action)
-	--handles the results of the menu from windowAction().
-	if action == 1 then
-		--restore
-		if processTable[manipulationWindow].window.maximized then
-			processTable[manipulationWindow].window:restore()
-			os.queueEvent("window_resize")
-		end
-	elseif action == 2 then
-		--move
-		while true do
-			e, p1, p2, p3 = os.pullEvent()
-			if e == "key" then
-				if p1 == 200 then
-					--up
-					processTable[manipulationWindow].window:move(processTable[manipulationWindow].window.x, processTable[manipulationWindow].window.y - 1)
-				elseif p1 == 203 then
-					--left
-					processTable[manipulationWindow].window:move(processTable[manipulationWindow].window.x - 1, processTable[manipulationWindow].window.y)
-				elseif p1 == 205 then
-					--right
-					processTable[manipulationWindow].window:move(processTable[manipulationWindow].window.x + 1, processTable[manipulationWindow].window.y)
-				elseif p1 == 208 then
-					--down
-					processTable[manipulationWindow].window:move(processTable[manipulationWindow].window.x, processTable[manipulationWindow].window.y + 1)
-				elseif p1 == 28 then
-					--enter
-					break
-				end
-			elseif e == "mouse_click" and p1 == 1 then
-				--mouse click
-				processTable[manipulationWindow].window:move(p2, p3)
-				break
-			end
-			windowCompositor:draw()
-		end
-	elseif action == 3 then
-		--resize
-		local newX, newY = processTable[manipulationWindow].window.x + processTable[manipulationWindow].window.w - 1, processTable[manipulationWindow].window.y + processTable[manipulationWindow].window.h - 1
-		term.setCursorPos(newX, newY)
-		term.write("*")
-		term.setCursorPos(newX, newY)
-		term.setCursorBlink(true)
-		local xlim, ylim = windowCompositor.target.getSize()
-		while true do
-			e, p1, p2, p3 = os.pullEvent()
-			term.setCursorBlink(false)
-			if e == "key" then
-				if p1 == 200 then
-					--up
-					if newY > processTable[manipulationWindow].window.y + 2 then
-						windowCompositor.currentBuffer.text[newY] = string.sub(windowCompositor.currentBuffer.text[newY], 1, newX - 1).."*"..string.sub(windowCompositor.currentBuffer.text[newY], newX + 1)
-						newY = newY - 1
-					end
-				elseif p1 == 203 then
-					--left
-					if newX > processTable[manipulationWindow].window.x + 4 then
-						windowCompositor.currentBuffer.text[newY] = string.sub(windowCompositor.currentBuffer.text[newY], 1, newX - 1).."*"..string.sub(windowCompositor.currentBuffer.text[newY], newX + 1)
-						newX = newX - 1
-					end
-				elseif p1 == 205 then
-					--right
-					if newX < xlim then
-						windowCompositor.currentBuffer.text[newY] = string.sub(windowCompositor.currentBuffer.text[newY], 1, newX - 1).."*"..string.sub(windowCompositor.currentBuffer.text[newY], newX + 1)
-						newX = newX + 1
-					end
-				elseif p1 == 208 then
-					--down
-					if newY < ylim then
-						windowCompositor.currentBuffer.text[newY] = string.sub(windowCompositor.currentBuffer.text[newY], 1, newX - 1).."*"..string.sub(windowCompositor.currentBuffer.text[newY], newX + 1)
-						newY = newY + 1
-					end
-				elseif p1 == 28 then
-					--enter
-					break
-				end
-				windowCompositor:draw()
-				term.setCursorPos(newX, newY)
-				term.write("*")
-				term.setCursorPos(newX, newY)
-				term.setCursorBlink(true)
-			elseif e == "mouse_click" and p1 == 1 then
-				if p2 > processTable[manipulationWindow].window.x + 4 and p3 > processTable[manipulationWindow].window.y + 2 then
-					newX, newY = p2, p3
-					break
-				end
-			end
-		end
-		processTable[manipulationWindow].window:resize(newX - processTable[manipulationWindow].window.x + 1, newY - processTable[manipulationWindow].window.y + 1)
-		processTable[manipulationWindow].window.maximized = false
-		os.queueEvent("window_resize")
-	elseif action == 4 then
-		--minimize
-		processTable[manipulationWindow].window:minimize()
-		--also move the window to the bottom of the buffer stack.
-		processToBack(processTable[manipulationWindow])
-	elseif action == 5 then
-		--maximize
-		if not processTable[manipulationWindow].window.maximized then
-			processTable[manipulationWindow].window:maximize()
-			os.queueEvent("window_resize")
-		end
-	elseif action == 6 then
-		--close
-		saveDimensions(processTable[manipulationWindow])
-		processTable[manipulationWindow].window:destroy()
-		processTable[manipulationWindow] = false
-		process.focusWindow = nextWindow(1)
-		if processTable[process.focusWindow] then
-			processToFront(processTable[process.focusWindow])
-		end
-	end
-end
-
-local function checkWindow(proc)
+local function checkWindow(pID)
+	local proc = processTable[pID]
 	if (proc and coroutine.status(proc.thread) == "dead") or (proc and proc.special and proc ~= processTable[process.focusWindow]) then
 		if proc.window then
-			saveDimensions(proc)
-			proc.window:destroy()
-			if proc == processTable[process.focusWindow] then
-				process.focusWindow = nextWindow()
+			if pID == lws then
+				--send terminate signal; pcall wrappers will allow current windows to close without killing process.
+				process.queueEvent(lws, "terminate")
+			else
+				process.queueEvent(lws, "close_window", pID)
 			end
 		end
 		return false
 	end
 	return true
-end
-
-local function runSpecialDialog(w, h, x, y, caption, special, func, decor)
-	local pTable = {}
-	pTable.thread = coroutine.create(func)
-	pTable.window = window.new(w, h, x, y, caption, windowCompositor:newBuffer())
-	pTable.window:setDecorations(decor)
-	table.insert(processTable, pTable)
-	process.focusWindow = #process.processTable
-	term.redirect(processTable[process.focusWindow].window.redirect)
-	coroutine.resume(processTable[process.focusWindow].thread)
-	term.restore()
-	processTable[process.focusWindow].special = special
-end
-
-local function windowOptionsMenu()
-	--initiates the window options menu window.
-	if processTable[process.focusWindow] and not processTable[process.focusWindow].special then
-		local pTable = {}
-		local parent = process.focusWindow
-		pTable.thread = coroutine.create(windowAction)
-		pTable.window = window.new(15, 9, processTable[parent].window.x, processTable[parent].window.y + 1, "Action Menu", windowCompositor:newBuffer())
-		pTable.window:setDecorations(term.isColor() and "pretty_menu" or "menu")
-		table.insert(processTable, pTable)
-		process.focusWindow = #processTable
-		term.redirect(processTable[process.focusWindow].window.redirect)
-		coroutine.resume(processTable[process.focusWindow].thread, parent)
-		term.restore()
-		processTable[process.focusWindow].special = "window_action"
-	end
 end
 
 local function resumeProcess(pID, eventTable)
@@ -472,16 +130,11 @@ local function resumeProcess(pID, eventTable)
 		end
 	end
 	--former checkProcess function.
-	if not checkWindow(processTable[pID]) then
-		if processTable[pID].special then
-			if processTable[pID].special == "window_action" then
-				changeWindow(passback[2], passback[3])
-			end
-		end
+	if not checkWindow(pID) then
 		if pID == process.focusWindow then
-			process.focusWindow = nextWindow(1)
+			process.focusWindow = process.nextWindow(1)
 			if processTable[process.focusWindow] then
-				processToFront(processTable[process.focusWindow])
+				process.toFront(process.focusWindow)
 			end
 		end
 	end
@@ -507,15 +160,21 @@ local mouseStartY = nil
 local mouseDragAction = nil
 
 while true do
+	--process individually-queued events.
+	for i=1, #processTable do
+		checkWindow(i)
+		if processTable[i] and processTable[i].queue and #processTable[i].queue >= 1 then
+			repeat
+				resumeProcess(i, table.remove(processTable[i].queue, 1))
+			until #processTable[i].queue == 0
+		end
+	end
+	--prepare titlebar.
 	local titlebarItems = {}
 	for i=1, #processTable do
-		if not checkWindow(processTable[i]) then
-			processTable[i] = false
-		else
-			if processTable[i] and processTable[i].window and not processTable[i].special then
-				local tBarEntry = {pID = i, text = processTable[i].window.caption}
-				table.insert(titlebarItems, tBarEntry)
-			end
+		if processTable[i] and processTable[i].window and not processTable[i].special then
+			local tBarEntry = {pID = i, text = processTable[i].window.caption}
+			table.insert(titlebarItems, tBarEntry)
 		end
 	end
 	local taskText = ""
@@ -539,15 +198,15 @@ while true do
 	event = {coroutine.yield()}
 	if event[1] == "key" and event[2] == 59 then
 		--run menu for keyboard users.
-		runSpecialDialog(30, 3, 2, 2, "Run Program", "run_program", startProgram, term.isColor() and "pretty_menu" or "standard")
+		process.queueEvent(lws, "run_program")
 	elseif event[1] == "key" and event[2] == 61 then
 		--window switching menu
 		if processTable[process.focusWindow] then
-			runSpecialDialog(19, 11, 1, 1, "Select Window", "select_window", selectWindow, term.isColor() and "pretty_menu" or "menu")
+			process.queueEvent(lws, "select_window")
 		end
 	elseif event[1] == "key" and event[2] == 62 then
 		--window controls menu
-		windowOptionsMenu()
+		process.queueEvent(lws, "window_action", process.focusWindow, processTable[process.focusWindow].window)
 	elseif event[1] == "mouse_click" then
 		watchMouseDragging = false
 		local windowFound = false
@@ -559,7 +218,7 @@ while true do
 						windowFound = true
 						if process.focusWindow ~= pNum then
 							process.focusWindow = pNum
-							processToFront(processTable[process.focusWindow])
+							process.toFront(process.focusWindow)
 						end
 						event[3] = event[3] - pInfo.window.x
 						event[4] = event[4] - pInfo.window.y
@@ -568,29 +227,23 @@ while true do
 							resumeProcess(process.focusWindow, event)
 						elseif event[4] == 0 and event[2] == 2 then
 							--right click on window title bar, open window menu.
-							windowOptionsMenu()
+							process.queueEvent(lws, "window_action", pNum, pInfo.window)
 						elseif (pInfo.window.windowType == "modal" and event[4] == 0 and event[2] == 1 and pInfo.window.w - event[3] == 3) or (pInfo.window.windowType == "standard" and event[4] == 0 and event[2] == 1 and pInfo.window.w - event[3] > 2 and pInfo.window.w - event[3] < 6) then
 							local action = pInfo.window.w - event[3] - 2
 							if action == 1 then
 								--close window
-								saveDimensions(processTable[process.focusWindow])
-								processTable[process.focusWindow].window:destroy()
-								processTable[process.focusWindow] = false
-								process.focusWindow = nextWindow(1)
-								if processTable[process.focusWindow] then
-									processToFront(processTable[process.focusWindow])
-								end
+								process.queueEvent(lws, "close_window", process.focusWindow)
 							elseif action == 2 then
 								if pInfo.window.maximized then
 									pInfo.window:restore()
-									os.queueEvent("window_resize")
+									process.queueEvent(pNum, "window_resize")
 								else
 									pInfo.window:maximize()
-									os.queueEvent("window_resize")
+									process.queueEvent(pNum, "window_resize")
 								end
 							elseif action == 3 then
 								pInfo.window:minimize()
-								processToBack(pInfo)
+								process.toBack(pNum)
 							end
 						elseif event[4] == 0 and event[2] == 1 and not pInfo.special then
 							--clicked on titlebar, set variables to see if we drag.
@@ -615,7 +268,7 @@ while true do
 			--click on titlebar with no window covering it.
 			if event[3] > 1 and event[3] < 9 and event[2] == 1 then
 				--clicked on the LyqydOS button
-				runSpecialDialog(30, 3, 2, 2, "Run Program", "run_program", startProgram, term.isColor() and "pretty_menu" or "standard")
+				process.queueEvent(lws, "run_program")
 			elseif event[3] > 9 then
 				--clicked on task bar.
 				clickItem = math.floor((event[3] - 1) / 9)
@@ -624,17 +277,17 @@ while true do
 					if clickItem == tasksClickable and clickItem < #titlebarItems then
 						--display the window choice dialog
 						if processTable[process.focusWindow] then
-							runSpecialDialog(19, 11, 1, 1, "Select Window", "select_window", selectWindow, term.isColor() and "pretty_menu" or "menu")
+							process.queueEvent(lws, "select_window")
 						end
 					else
 						if process.focusWindow ~= titlebarItems[clickItem].pID then
 							process.focusWindow = titlebarItems[clickItem].pID
 						end
-						processToFront(processTable[process.focusWindow])
+						process.toFront(process.focusWindow)
 						if processTable[process.focusWindow].window.minimized then processTable[process.focusWindow].window:unMinimize() end
 						if event[2] == 2 then
 							--they right-clicked, so let's also display the window action menu.
-							windowOptionsMenu()
+							process.queueEvent(lws, "window_action", process.focusWindow, processTable[process.focusWindow].window)
 						end
 					end
 				end
@@ -652,7 +305,7 @@ while true do
 				mouseStartX = event[3]
 				mouseStartY = event[4]
 				processTable[process.focusWindow].window.maximized = false
-				os.queueEvent("window_resize")
+				process.queueEvent(process.focusWindow, "window_resize")
 			end
 		elseif processTable[process.focusWindow] and processTable[process.focusWindow].window then
 			event[3] = event[3] - processTable[process.focusWindow].window.x

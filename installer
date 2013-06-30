@@ -1,4 +1,4 @@
-local versionNumber = 1.3
+local versionNumber = 1.4
 
 local args = {...}
 
@@ -15,6 +15,7 @@ local fileList = {
 	"compositor",
 	"framebuffer",
 	"kill",
+	"lws",
 	"menu",
 	"process",
 	"procman",

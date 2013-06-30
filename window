@@ -255,7 +255,7 @@ local window = {
 		end
 	end,
 	destroy = function(self)
-		if process.windowCompositor then
+		if process and process.windowCompositor then
 			process.windowCompositor:removeWindow(self)
 		end
 		self = nil

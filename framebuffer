@@ -67,7 +67,7 @@ function new(_sizeX, _sizeY, _color)
 					redirect.buffer.backColor[i] = redirect.buffer.backColor[i + n]
 				end
 			end
-			for i = redirect.buffer.sizeY, n, -1 do
+			for i = redirect.buffer.sizeY, redirect.buffer.sizeY - n + 1, -1 do
 				redirect.buffer.text[i] = string.rep(" ", redirect.buffer.sizeX)
 				redirect.buffer.textColor[i] = string.rep(redirect.buffer.curTextColor, redirect.buffer.sizeX)
 				redirect.buffer.backColor[i] = string.rep(redirect.buffer.curBackColor, redirect.buffer.sizeX)

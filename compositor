@@ -102,7 +102,7 @@ local compositor = {
 		end
 		if pos then
 			table.remove(self.bufferStack, pos)
-			self:draw()
+			if not self.deferDraw then self:draw() end
 		end
 	end,
 }

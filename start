@@ -18,6 +18,7 @@ else
 		end
 		local pTable = {}
 		pTable.path = path
+		pTable.queue = {}
 		pTable.thread = coroutine.create(function() shell.run(path, unpack(args)) end)
 		pTable.window = window.new(w, h, x, y, fs.getName(path), process.windowCompositor:newBuffer())
 		if process.windowCompositor.target.isColor() then

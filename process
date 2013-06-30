@@ -58,11 +58,98 @@ function setWindowProperty(window, parameters)
 	end
 end
 
+function queueEvent(pID, ...)
+	if process.processTable[pID] and process.processTable[pID].queue then
+		table.insert(process.processTable[pID].queue, {...})
+		return true
+	else
+		return false
+	end
+end
 
+function nextWindow(default)
+	if process.processTable[process.focusWindow] and process.processTable[process.focusWindow].parent then
+		if process.processTable[process.processTable[process.focusWindow].parent] and process.processTable[process.processTable[process.focusWindow].parent].window then
+			return process.processTable[process.focusWindow].parent
+		end
+	else
+		local nextBuf = process.windowCompositor.bufferStack[#process.windowCompositor.bufferStack]
+		local nextActive = default
+		for tNum, tInfo in ipairs(process.processTable) do
+			if tInfo and tInfo.window then
+				if tInfo.window.target.buffer == nextBuf then
+					nextActive = tNum
+				end
+			end
+		end
+		return nextActive
+	end
+end
+
+function toFront(pID)
+	--brings a process and all children windows (in order) to the top of the stack.
+	if process.processTable[pID] and process.processTable[pID].window then
+		local proc = process.processTable[pID]
+		if proc.children then
+			--process has children windows, so we need to iterate all of these.
+			local currWindow
+			for i=1, #proc.children do
+				if proc.children[i] == "rootWindow" then
+					currWindow = proc.window
+				else
+					currWindow = proc.children[i]
+				end
+				local pos = nil
+				for j=1, #process.windowCompositor.bufferStack do
+					if process.windowCompositor.bufferStack[j] == currWindow.target.buffer then
+						process.windowCompositor:toFront(j)
+						break
+					end
+				end
+			end
+		else
+			for j=1, #process.windowCompositor.bufferStack do
+				if process.windowCompositor.bufferStack[j] == proc.window.target.buffer then
+					process.windowCompositor:toFront(j)
+					break
+				end
+			end
+		end
+	end					
+end
+
+function toBack(pID)
+	if process.processTable[pID] and process.processTable[pID].window then
+		local proc = process.processTable[pID]
+		if proc.children then
+			--stub
+		else
+			for j = #process.windowCompositor.bufferStack, 1, -1 do
+				if process.windowCompositor.bufferStack[j] == proc.window.target.buffer then
+					--use 2 here because the title bar is layer 1.
+					if j and j > 2 then
+						tempbuffer = process.windowCompositor.bufferStack[j]
+						for i=j, 2, -1 do
+							process.windowCompositor.bufferStack[i] = process.windowCompositor.bufferStack[i - 1]
+						end
+						process.windowCompositor.bufferStack[2] = tempbuffer
+						process.windowCompositor:draw()
+					end
+					break
+				end
+			end
+		end
+		--set active window to new top of stack.
+		process.focusWindow = nextWindow(1)
+		if process.processTable[process.focusWindow] then
+			process.toFront(process.focusWindow)
+		end
+	end
+end
 
 function id()
-	if activeProcess and processTable[activeProcess] then
-		return activeProcess
+	if process.activeProcess and process.processTable[process.activeProcess] then
+		return process.activeProcess
 	else
 		return nil, "No active process!"
 	end

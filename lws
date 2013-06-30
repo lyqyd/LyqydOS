@@ -1,0 +1,281 @@
+local function saveDimensions(proc)
+	--saves window dimensions when closing windows
+	if proc.path then
+		local pathFound = false
+		winDims = io.open("/.lyqwin", "w")
+		if winDims then
+			for wNum, wInfo in ipairs(windowDimensions) do
+				if wInfo.path == proc.path then
+					pathFound = true
+					if proc.window.maximized then
+						wInfo.x = proc.window.normalSize.x
+						wInfo.y = proc.window.normalSize.y
+						wInfo.w = proc.window.normalSize.w
+						wInfo.h = proc.window.normalSize.h
+					else
+						wInfo.x = proc.window.x
+						wInfo.y = proc.window.y
+						wInfo.w = proc.window.w
+						wInfo.h = proc.window.h
+					end
+					wInfo.max = tostring(proc.window.maximized)
+				end
+				winDims:write(wInfo.x..","..wInfo.y..","..wInfo.w..","..wInfo.h..","..wInfo.max..","..wInfo.path.."\n")
+			end
+			if not pathFound then
+				local winInfo = {}
+				if proc.window.maximized then
+					winInfo.x = proc.window.normalSize.x
+					winInfo.y = proc.window.normalSize.y
+					winInfo.w = proc.window.normalSize.w
+					winInfo.h = proc.window.normalSize.h
+				else
+					winInfo.x = proc.window.x
+					winInfo.y = proc.window.y
+					winInfo.w = proc.window.w
+					winInfo.h = proc.window.h
+				end
+				winInfo.max = tostring(proc.window.maximized)
+				winInfo.path = proc.path
+				table.insert(windowDimensions, winInfo)
+				winDims:write(winInfo.x..","..winInfo.y..","..winInfo.w..","..winInfo.h..","..winInfo.max..","..proc.path.."\n")
+			end
+			winDims:close()
+		end
+	end
+end
+
+local runHistory = {}
+if fs.exists("/.lyqrunhistory") then
+	local histFile=io.open("/.lyqrunhistory","r")
+	if histFile then
+		for line in histFile:lines() do
+			table.insert(runHistory, line)
+		end
+		histFile:close()
+	end
+end
+
+while true do
+	local event = {os.pullEventRaw()}
+	if event[1] == "window_action" then
+		--index 2 should be the pID and 3 should be the window, forward compat for child windows.
+		if process.processTable[process.focusWindow] and not process.processTable[process.focusWindow].special then
+			local parent = process.focusWindow
+			local lws = process.id()
+			process.processTable[lws].special = true
+			local x, y
+			if process.processTable[parent].window.minimized then
+				x, y = 1, 2
+			else
+				x, y = processTable[event[2]].window.x, processTable[event[2]].window.y + 1
+			end
+			process.processTable[lws].window = window.new(15, 9, x, y, "Action Menu", windowCompositor:newBuffer())
+			process.processTable[lws].window:setDecorations(term.isColor() and "pretty_menu" or "menu")
+			process.focusWindow = lws
+			term.redirect(processTable[process.focusWindow].window.redirect)
+			local success, selection = pcall(menu.select, {"Restore", "Move", "Resize", "Minimize", "Maximize", "Close", "Cancel"})
+			term.restore()
+			process.processTable[lws].window:destroy()
+			process.processTable[lws].window = nil
+			process.processTable[lws].special = nil
+			if success then
+				if selection == 1 then
+					--restore
+					if process.processTable[parent].window.maximized then
+						process.processTable[parent].window:restore()
+						process.queueEvent(event[2], "window_resize")
+					elseif process.processTable[parent].window.minimized then
+						process.processTable[parent].window:unMinimize()
+						process.toFront(parent)
+					end
+				elseif selection == 2 then
+					--move
+					while true do
+						e, p1, p2, p3 = os.pullEvent()
+						if e == "key" then
+							if p1 == 200 then
+								--up
+								process.processTable[parent].window:move(process.processTable[parent].window.x, process.processTable[parent].window.y - 1)
+							elseif p1 == 203 then
+								--left
+								process.processTable[parent].window:move(process.processTable[parent].window.x - 1, process.processTable[parent].window.y)
+							elseif p1 == 205 then
+								--right
+								process.processTable[parent].window:move(process.processTable[parent].window.x + 1, process.processTable[parent].window.y)
+							elseif p1 == 208 then
+								--down
+								process.processTable[parent].window:move(process.processTable[parent].window.x, process.processTable[parent].window.y + 1)
+							elseif p1 == 28 then
+								--enter
+								break
+							end
+						elseif e == "mouse_click" and p1 == 1 then
+							--mouse click
+							process.processTable[parent].window:move(p2, p3)
+							break
+						end
+					end
+				elseif selection == 3 then
+					--resize
+					process.processTable[parent].window.maximized = false
+					while true do
+						e, p1 = os.pullEvent()
+						if e == "key" then
+							if p1 == 200 then
+								--up
+								process.processTable[parent].window:resize(process.processTable[parent].window.w, process.processTable[parent].window.h - 1)
+								process.queueEvent(event[2], "window_resize")
+							elseif p1 == 203 then
+								--left
+								process.processTable[parent].window:resize(process.processTable[parent].window.w - 1, process.processTable[parent].window.h)
+								process.queueEvent(event[2], "window_resize")
+							elseif p1 == 205 then
+								--right
+								process.processTable[parent].window:resize(process.processTable[parent].window.w + 1, process.processTable[parent].window.h)
+								process.queueEvent(event[2], "window_resize")
+							elseif p1 == 208 then
+								--down
+								process.processTable[parent].window:resize(process.processTable[parent].window.w, process.processTable[parent].window.h + 1)
+								process.queueEvent(event[2], "window_resize")
+							elseif p1 == 28 then
+								--enter
+								break
+							end
+						end
+					end
+				elseif selection == 4 then
+					--minimize
+					if not process.processTable[parent].window.minimized then
+						process.processTable[parent].window:minimize()
+						--also move the window to the bottom of the buffer stack.
+						process.toBack(parent)
+					end
+				elseif selection == 5 then
+					--maximize
+					if not process.processTable[parent].window.maximized then
+						process.processTable[parent].window:maximize()
+						if process.processTable[parent].window.minimized then process.processTable[parent].window:unMinimize() end
+						process.queueEvent(event[2], "window_resize")
+					end
+				elseif selection == 6 then
+					--close
+					saveDimensions(process.processTable[parent])
+					process.processTable[parent].window:destroy()
+					process.processTable[parent] = false
+					process.focusWindow = nextWindow(1)
+					if process.processTable[process.focusWindow] then
+						process.toFront(process.focusWindow)
+					end
+				end
+				process.focusWindow = parent
+			end
+		end
+	elseif event[1] == "run_program" then
+		local lws = process.id()
+		process.processTable[lws].special = true
+		process.processTable[lws].window = window.new(30, 3, 2, 2, "Run Program", windowCompositor:newBuffer())
+		process.processTable[lws].window:setDecorations(term.isColor() and "pretty_menu" or "standard")
+		process.focusWindow = lws
+		term.redirect(processTable[process.focusWindow].window.redirect)
+		term.setTextColor(colors.white)
+		term.setBackgroundColor(colors.black)
+		write("> ")
+		local success, line = pcall(read, nil, runHistory)
+		--clean up window
+		term.restore()
+		process.processTable[lws].window:destroy()
+		process.processTable[lws].window = nil
+		process.processTable[lws].special = nil
+		if success then
+			--don't save empty or repeated lines
+			if line~="" and (#runHistory==0 or line~=runHistory[#runHistory]) then
+				--should never be able to get above 255, but just in case, the while doesn't hurt
+					table.insert(runHistory,line)		
+				while #runHistory>255 do
+					table.remove(runHistory, 1)
+				end
+				--update history on disk
+				local histFile=io.open("/.lyqrunhistory","w")
+				if histFile then
+					for i=1, #runHistory do
+						histFile:write(runHistory[i].."\n")
+					end
+					histFile:close()
+				end
+			end
+			local args = {}
+			for match in string.gmatch( line, "[^ \t]+" ) do
+				table.insert( args, match )
+			end
+			--fix for previously-changed working directory
+			shell.setDir("")
+			path = shell.resolveProgram(table.remove(args, 1))
+			if path then
+				local w, h, x, y, max = 19, 9, 1, 1, "false"
+				for dNum, dInfo in ipairs(windowDimensions) do
+					if dInfo.path == path then
+						w = dInfo.w
+						h = dInfo.h
+						x = dInfo.x
+						y = dInfo.y
+						max = dInfo.max
+						break
+					end
+				end
+				local pTable = {}
+				pTable.path = path
+				pTable.queue = {}
+				pTable.thread = coroutine.create(function() shell.run(path, unpack(args)) end)
+				pTable.window = window.new(w, h, x, y, fs.getName(path), process.windowCompositor:newBuffer())
+				if windowCompositor.target.isColor() then
+					pTable.window:setType("standard")
+					pTable.window:setDecorations("pretty")
+				end
+				if max == "true" then pTable.window:maximize() end
+				table.insert(process.processTable, pTable)
+				process.focusWindow = #process.processTable
+				term.redirect(process.processTable[process.focusWindow].window.redirect)
+				coroutine.resume(process.processTable[process.focusWindow].thread)
+				term.restore()
+			end
+		end
+	elseif event[1] == "select_window" then
+		local lws = process.id()
+		process.processTable[lws].special = true
+		process.processTable[lws].window = window.new(19, 11, 1, 1, "Select Window", windowCompositor:newBuffer())
+		process.processTable[lws].window:setDecorations(term.isColor() and "pretty_menu" or "standard")
+		process.focusWindow = lws
+		term.redirect(processTable[process.focusWindow].window.redirect)
+		local pList, menuList = {}, {}
+		for tNum, tInfo in ipairs(process.processTable) do
+			if tInfo and tInfo.window then
+				table.insert(pList, tNum)
+				table.insert(menuList, tInfo.window.caption)
+			end
+		end
+		--removes self from list of running programs.
+		table.remove(menuList, 1)
+		table.remove(pList, 1)
+		table.insert(menuList, "Cancel")
+		local success, selection = pcall(menu.select, menuList)
+		term.restore()
+		process.processTable[lws].window:destroy()
+		process.processTable[lws].window = nil
+		process.processTable[lws].special = nil
+		if success then
+			if pList[selection] then
+				process.focusWindow = pList[selection]
+				if processTable[process.focusWindow].window.minimized then processTable[process.focusWindow].window:unMinimize() end
+				process.toFront(process.focusWindow)
+			end
+		end
+	elseif event[1] == "close_window" then
+		saveDimensions(process.processTable[event[2]])
+		process.processTable[event[2]].window:destroy()
+		process.processTable[event[2]] = false
+		if event[2] == process.focusWindow then
+			process.focusWindow = process.nextWindow()
+		end
+	end
+end
