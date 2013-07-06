@@ -241,6 +241,7 @@ while true do
 			end
 		end
 	elseif event[1] == "select_window" then
+		local oldFocus = process.focusWindow
 		local lws = process.id()
 		process.processTable[lws].special = true
 		process.processTable[lws].window = window.new(19, 11, 1, 1, "Select Window", windowCompositor:newBuffer())
@@ -268,6 +269,8 @@ while true do
 				process.focusWindow = pList[selection]
 				if processTable[process.focusWindow].window.minimized then processTable[process.focusWindow].window:unMinimize() end
 				process.toFront(process.focusWindow)
+			else
+				process.focusWindow = oldFocus
 			end
 		end
 	elseif event[1] == "close_window" then
