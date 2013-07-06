@@ -238,6 +238,9 @@ while true do
 				term.redirect(process.processTable[process.focusWindow].window.redirect)
 				coroutine.resume(process.processTable[process.focusWindow].thread)
 				term.restore()
+				if coroutine.status(process.processTable[process.focusWindow].thread) == "dead" then
+					process.queueEvent(lws, "close_window", process.focusWindow)
+				end
 			end
 		end
 	elseif event[1] == "select_window" then
