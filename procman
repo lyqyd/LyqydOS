@@ -14,6 +14,10 @@ windowCompositor = compositor.new()
 windowCompositor.deferDraw = true
 rawset(process, "windowCompositor", windowCompositor)
 rawset(process, "processTable", processTable)
+do
+	local x, y = term.getSize()
+	process.nullRedirect = framebuffer.new(x, y, term.isColor())
+end
 
 do
 	local pTable = {}
@@ -21,10 +25,25 @@ do
 	pTable.path = "lws"
 	pTable.thread = coroutine.create(function() shell.run("lws") end)
 	table.insert(processTable, pTable)
+	process.activeProcess = #process.processTable
 	coroutine.resume(pTable.thread)
+	process.activeProcess = nil
 end
 
-local lws = #processTable
+local lws = #process.processTable
+
+do
+	local pTable = {}
+	pTable.queue = {}
+	pTable.path = "desktop"
+	pTable.thread = coroutine.create(function() shell.run("desktop") end)
+	table.insert(processTable, pTable)
+	process.activeProcess = #process.processTable
+	coroutine.resume(pTable.thread)
+	process.activeProcess = nil
+end
+
+local desktop = #process.processTable
 
 local oldTredirect = term.redirect
 local oldTrestore = term.restore
@@ -142,18 +161,7 @@ local function resumeProcess(pID, eventTable)
 	end
 end
 
-local titlebarFillChar = term.isColor() and " " or "="
-term.clear()
-local titlebar = windowCompositor:newBuffer()
-local titlebarWidth, titlebarHeight = titlebar.getSize()
-titlebar.buffer.text[1] = titlebarFillChar.."LyqydOS"..string.rep(titlebarFillChar, titlebarWidth - 8)
-if term.isColor() then
-	titlebar.buffer.textColor[1] = "fbbbbbbb"..string.rep("f", titlebarWidth - 8)
-	titlebar.buffer.backColor[1] = string.rep("8", titlebarWidth)
-	for i=2, titlebarHeight do
-		titlebar.buffer.backColor[i] = string.rep("3", titlebarWidth)
-	end
-end
+--causes initial desktop and title bar to draw.
 windowCompositor:draw()
 
 local watchMouseDragging = false
@@ -171,31 +179,9 @@ while true do
 			until #processTable[i].queue == 0
 		end
 	end
-	--prepare titlebar.
-	local titlebarItems = {}
-	for i=1, #processTable do
-		if processTable[i] and processTable[i].window and not processTable[i].special then
-			local tBarEntry = {pID = i, text = processTable[i].window.caption}
-			table.insert(titlebarItems, tBarEntry)
-		end
-	end
-	local taskText = ""
-	local tasksClickable = 0
-	local usableWidth = titlebarWidth - 10
-	for eNum, eInfo in ipairs(titlebarItems) do
-		if #taskText + 9 > usableWidth then
-			if #taskText > 9 then
-				taskText = string.sub(taskText, 1, -10).."More... |"
-			end
-			break
-		end
-		local str = string.sub(eInfo.text, 1, 8)
-		str = str..string.rep(" ", 8 - #str)
-		if taskText == "" then taskText = "|" end
-		taskText = taskText..str.."|"
-		tasksClickable = tasksClickable + 1
-	end
-	titlebar.buffer.text[1] = titlebarFillChar.."LyqydOS"..titlebarFillChar..taskText..string.rep(titlebarFillChar, titlebarWidth - (#taskText + 9))
+	--build title bar items.
+	resumeProcess(desktop, {"redraw"})
+
 	windowCompositor:draw()
 	event = {coroutine.yield()}
 	if event[1] == "key" and event[2] == 59 then
@@ -266,34 +252,9 @@ while true do
 			end
 			if windowFound then break end
 		end
-		if not windowFound and event[4] == 1 then
-			--click on titlebar with no window covering it.
-			if event[3] > 1 and event[3] < 9 and event[2] == 1 then
-				--clicked on the LyqydOS button
-				process.queueEvent(lws, "run_program")
-			elseif event[3] > 9 then
-				--clicked on task bar.
-				clickItem = math.floor((event[3] - 1) / 9)
-				if (event[3] - 10 ) % 9 ~= 0 and clickItem <= tasksClickable then
-					--they clicked on the name itself, not the boundary line.
-					if clickItem == tasksClickable and clickItem < #titlebarItems then
-						--display the window choice dialog
-						if processTable[process.focusWindow] then
-							process.queueEvent(lws, "select_window")
-						end
-					else
-						if process.focusWindow ~= titlebarItems[clickItem].pID then
-							process.focusWindow = titlebarItems[clickItem].pID
-						end
-						process.toFront(process.focusWindow)
-						if processTable[process.focusWindow].window.minimized then processTable[process.focusWindow].window:unMinimize() end
-						if event[2] == 2 then
-							--they right-clicked, so let's also display the window action menu.
-							process.queueEvent(lws, "window_action", process.focusWindow, processTable[process.focusWindow].window)
-						end
-					end
-				end
-			end
+		if not windowFound then
+			--let desktop service handle this.
+			resumeProcess(desktop, event)
 		end
 	elseif event[1] == "mouse_drag" then
 		--mouse is dragging, see if we need to do something with windows.
