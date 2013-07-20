@@ -236,7 +236,9 @@ while true do
 				table.insert(process.processTable, pTable)
 				process.focusWindow = #process.processTable
 				term.redirect(process.processTable[process.focusWindow].window.redirect)
+				process.activeProcess = #process.processTable
 				coroutine.resume(process.processTable[process.focusWindow].thread)
+				process.activeProcess = nil
 				term.restore()
 				if coroutine.status(process.processTable[process.focusWindow].thread) == "dead" then
 					process.queueEvent(lws, "close_window", process.focusWindow)

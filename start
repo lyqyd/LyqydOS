@@ -29,7 +29,9 @@ else
 		table.insert(process.processTable, pTable)
 		process.focusWindow = #process.processTable
 		term.redirect(process.processTable[process.focusWindow].window.redirect)
+		process.activeProcess = #process.processTable
 		coroutine.resume(process.processTable[process.focusWindow].thread)
+		process.activeProcess = nil
 		term.restore()
 	end
 end
