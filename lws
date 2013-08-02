@@ -45,17 +45,6 @@ local function saveDimensions(proc)
 	end
 end
 
-local runHistory = {}
-if fs.exists("/.lyqrunhistory") then
-	local histFile=io.open("/.lyqrunhistory","r")
-	if histFile then
-		for line in histFile:lines() do
-			table.insert(runHistory, line)
-		end
-		histFile:close()
-	end
-end
-
 while true do
 	local event = {os.pullEventRaw()}
 	if event[1] == "window_action" then
@@ -169,80 +158,6 @@ while true do
 					end
 				end
 				process.focusWindow = parent
-			end
-		end
-	elseif event[1] == "run_program" then
-		local lws = process.id()
-		process.processTable[lws].special = true
-		process.processTable[lws].window = window.new(30, 3, 2, 2, "Run Program", windowCompositor:newBuffer())
-		process.processTable[lws].window:setDecorations(term.isColor() and "pretty_menu" or "standard")
-		process.focusWindow = lws
-		term.redirect(processTable[process.focusWindow].window.redirect)
-		term.setTextColor(colors.white)
-		term.setBackgroundColor(colors.black)
-		write("> ")
-		local success, line = pcall(read, nil, runHistory)
-		--clean up window
-		term.restore()
-		process.processTable[lws].window:destroy()
-		process.processTable[lws].window = nil
-		process.processTable[lws].special = nil
-		if success then
-			--don't save empty or repeated lines
-			if line~="" and (#runHistory==0 or line~=runHistory[#runHistory]) then
-				--should never be able to get above 255, but just in case, the while doesn't hurt
-					table.insert(runHistory,line)		
-				while #runHistory>255 do
-					table.remove(runHistory, 1)
-				end
-				--update history on disk
-				local histFile=io.open("/.lyqrunhistory","w")
-				if histFile then
-					for i=1, #runHistory do
-						histFile:write(runHistory[i].."\n")
-					end
-					histFile:close()
-				end
-			end
-			local args = {}
-			for match in string.gmatch( line, "[^ \t]+" ) do
-				table.insert( args, match )
-			end
-			--fix for previously-changed working directory
-			shell.setDir("")
-			path = shell.resolveProgram(table.remove(args, 1))
-			if path then
-				local w, h, x, y, max = 19, 9, 1, 1, "false"
-				for dNum, dInfo in ipairs(windowDimensions) do
-					if dInfo.path == path then
-						w = dInfo.w
-						h = dInfo.h
-						x = dInfo.x
-						y = dInfo.y
-						max = dInfo.max
-						break
-					end
-				end
-				local pTable = {}
-				pTable.path = path
-				pTable.queue = {}
-				pTable.thread = coroutine.create(function() shell.run(path, unpack(args)) end)
-				pTable.window = window.new(w, h, x, y, fs.getName(path), process.windowCompositor:newBuffer())
-				if windowCompositor.target.isColor() then
-					pTable.window:setType("standard")
-					pTable.window:setDecorations("pretty")
-				end
-				if max == "true" then pTable.window:maximize() end
-				table.insert(process.processTable, pTable)
-				process.focusWindow = #process.processTable
-				term.redirect(process.processTable[process.focusWindow].window.redirect)
-				process.activeProcess = #process.processTable
-				coroutine.resume(process.processTable[process.focusWindow].thread)
-				process.activeProcess = nil
-				term.restore()
-				if coroutine.status(process.processTable[process.focusWindow].thread) == "dead" then
-					process.queueEvent(lws, "close_window", process.focusWindow)
-				end
 			end
 		end
 	elseif event[1] == "select_window" then

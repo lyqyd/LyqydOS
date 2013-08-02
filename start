@@ -24,23 +24,13 @@ else
 			end
 			winDims:close()
 		end
-		local pTable = {}
-		pTable.path = path
-		pTable.queue = {}
-		pTable.thread = coroutine.create(function() shell.run(path, unpack(args)) end)
-		pTable.window = window.new(w, h, x, y, fs.getName(path), process.windowCompositor:newBuffer())
-		if process.windowCompositor.target.isColor() then
-			pTable.window:setType("standard")
-			pTable.window:setDecorations("pretty")
+		local win = window.new(w, h, x, y, fs.getName(path), process.windowCompositor:newBuffer())
+		if windowCompositor.target.isColor() then
+			win:setType("standard")
+			win:setDecorations("pretty")
 		end
-		if max == "true" then pTable.window:maximize() end
-		table.insert(process.processTable, pTable)
-		process.focusWindow = #process.processTable
-		term.redirect(process.processTable[process.focusWindow].window.redirect)
-		process.activeProcess = #process.processTable
-		coroutine.resume(process.processTable[process.focusWindow].thread)
-		process.activeProcess = startProcess
-		term.restore()
+		if max == "true" then win:maximize() end
+		process.addWindowed(function() shell.run(path, unpack(args)) end, path, win)
 		if coroutine.status(process.processTable[process.focusWindow].thread) == "dead" then
 			process.queueEvent(lws, "close_window", process.focusWindow)
 			process.focusWindow = startProcess

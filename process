@@ -3,7 +3,36 @@ focusWindow = nil
 activeProcess = nil
 windowCompositor = {}
 redirectStack = {}
-nullRedirect = nil
+nullRedirect = framebuffer.new()
+
+function add(func, path)
+	local pTable = {}
+	pTable.thread = coroutine.create(func)
+	pTable.path = path
+	pTable.queue = {}
+	table.insert(process.processTable, pTable)
+	term.redirect(nullRedirect)
+	local active = process.activeProcess
+	process.activeProcess = #process.processTable
+	coroutine.resume(process.processTable[process.focusWindow].thread)
+	process.activeProcess = active
+	term.restore()
+end
+
+function addWindowed(func, path, win)
+	local pTable = {}
+	pTable.thread = coroutine.create(func)
+	pTable.path = path
+	pTable.queue = {}
+	pTable.window = win
+	table.insert(process.processTable, pTable)
+	process.focusWindow = #process.processTable
+	term.redirect(process.processTable[process.focusWindow].window.redirect)
+	process.activeProcess = #process.processTable
+	coroutine.resume(process.processTable[process.focusWindow].thread)
+	process.activeProcess = nil
+	term.restore()
+end
 
 function setFocus(num)
 	focusWindow = num

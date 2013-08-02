@@ -86,9 +86,9 @@ local function checkWindow(pID)
 	local proc = processTable[pID]
 	if (proc and coroutine.status(proc.thread) == "dead") or (proc and proc.special and proc ~= processTable[process.focusWindow]) then
 		if proc.window then
-			if pID == lws then
+			if pID == desktop then
 				--send terminate signal; pcall wrappers will allow current windows to close without killing process.
-				process.queueEvent(lws, "terminate")
+				process.queueEvent(desktop, "terminate")
 			else
 				process.queueEvent(lws, "close_window", pID)
 			end
@@ -186,7 +186,7 @@ while true do
 	event = {coroutine.yield()}
 	if event[1] == "key" and event[2] == 59 then
 		--run menu for keyboard users.
-		process.queueEvent(lws, "run_program")
+		process.queueEvent(desktop, "run_program")
 	elseif event[1] == "key" and event[2] == 61 then
 		--window switching menu
 		if processTable[process.focusWindow] then

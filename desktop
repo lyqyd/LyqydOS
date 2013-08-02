@@ -1,6 +1,17 @@
 local deskID = process.id()
 local deskRedirect = process.windowCompositor:newBuffer()
 
+local runHistory = {}
+if fs.exists("/.lyqrunhistory") then
+	local histFile=io.open("/.lyqrunhistory","r")
+	if histFile then
+		for line in histFile:lines() do
+			table.insert(runHistory, line)
+		end
+		histFile:close()
+	end
+end
+
 local function getLws()
 	for k,v in pairs(process.processTable) do
 		if v.path == "lws" then
@@ -8,6 +19,72 @@ local function getLws()
 		end
 	end
 	return nil
+end
+
+local function runProgram()
+	local desk = process.id()
+	process.processTable[desk].special = true
+	process.processTable[desk].window = window.new(30, 3, 2, 2, "Run Program", windowCompositor:newBuffer())
+	process.processTable[desk].window:setDecorations(term.isColor() and "pretty_menu" or "standard")
+	process.focusWindow = desk
+	term.redirect(processTable[process.focusWindow].window.redirect)
+	term.setTextColor(colors.white)
+	term.setBackgroundColor(colors.black)
+	write("> ")
+	local success, line = pcall(read, nil, runHistory)
+	--clean up window
+	term.restore()
+	process.processTable[desk].window:destroy()
+	process.processTable[desk].window = nil
+	process.processTable[desk].special = nil
+	if success then
+		--don't save empty or repeated lines
+		if line~="" and (#runHistory==0 or line~=runHistory[#runHistory]) then
+			--should never be able to get above 255, but just in case, the while doesn't hurt
+			table.insert(runHistory,line)		
+			while #runHistory>255 do
+				table.remove(runHistory, 1)
+			end
+			--update history on disk
+			local histFile=io.open("/.lyqrunhistory","w")
+			if histFile then
+				for i=1, #runHistory do
+					histFile:write(runHistory[i].."\n")
+				end
+				histFile:close()
+			end
+		end
+		local args = {}
+		for match in string.gmatch( line, "[^ \t]+" ) do
+			table.insert( args, match )
+		end
+		--fix for previously-changed working directory
+		shell.setDir("")
+		path = shell.resolveProgram(table.remove(args, 1))
+		if path then
+			local w, h, x, y, max = 19, 9, 1, 1, "false"
+			for dNum, dInfo in ipairs(windowDimensions) do
+				if dInfo.path == path then
+					w = dInfo.w
+					h = dInfo.h
+					x = dInfo.x
+					y = dInfo.y
+					max = dInfo.max
+					break
+				end
+			end
+			local win = window.new(w, h, x, y, fs.getName(path), process.windowCompositor:newBuffer())
+			if windowCompositor.target.isColor() then
+				win:setType("standard")
+				win:setDecorations("pretty")
+			end
+			if max == "true" then win:maximize() end
+			process.addWindowed(function() shell.run(path, unpack(args)) end, path, win)
+			if coroutine.status(process.processTable[process.focusWindow].thread) == "dead" then
+				process.queueEvent(lws, "close_window", process.focusWindow)
+			end
+		end
+	end
 end
 
 --set up initial view.
@@ -53,12 +130,14 @@ while true do
 			tasksClickable = tasksClickable + 1
 		end
 		deskRedirect.buffer.text[1] = titlebarFillChar.."LyqydOS"..titlebarFillChar..taskText..string.rep(titlebarFillChar, x - (#taskText + 9))
+	elseif event[1] == "run_program" then
+		runProgram()
 	elseif event[1] == "mouse_click" then
 		if event[4] == 1 then
 			--click on titlebar with no window covering it.
 			if event[3] > 1 and event[3] < 9 and event[2] == 1 then
 				--clicked on the LyqydOS button
-				process.queueEvent(getLws(), "run_program")
+				runProgram()
 			elseif event[3] > 9 then
 				--clicked on task bar.
 				clickItem = math.floor((event[3] - 1) / 9)
