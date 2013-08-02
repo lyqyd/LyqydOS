@@ -2,6 +2,14 @@ local args = {...}
 if #args < 1 then
 	print("No program specified!")
 else
+	local startProcess = process.id()
+	local lws = 1
+	for pID, proc in pairs(process.processTable) do
+		if proc.path == "lws" then
+			lws = pID
+			break
+		end
+	end
 	path = shell.resolveProgram(table.remove(args, 1))
 	if path then
 		local w, h, x, y, max = 19, 9, 1, 1, "false"
@@ -31,7 +39,12 @@ else
 		term.redirect(process.processTable[process.focusWindow].window.redirect)
 		process.activeProcess = #process.processTable
 		coroutine.resume(process.processTable[process.focusWindow].thread)
-		process.activeProcess = nil
+		process.activeProcess = startProcess
 		term.restore()
+		if coroutine.status(process.processTable[process.focusWindow].thread) == "dead" then
+			peripheral.call("top", "write", "isdead")
+			process.queueEvent(lws, "close_window", process.focusWindow)
+			process.focusWindow = startProcess
+		end
 	end
 end

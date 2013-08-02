@@ -3,6 +3,7 @@ focusWindow = nil
 activeProcess = nil
 windowCompositor = {}
 redirectStack = {}
+nullRedirect = nil
 
 function setFocus(num)
 	focusWindow = num

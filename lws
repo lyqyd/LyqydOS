@@ -279,11 +279,13 @@ while true do
 			end
 		end
 	elseif event[1] == "close_window" then
-		saveDimensions(process.processTable[event[2]])
-		process.processTable[event[2]].window:destroy()
-		process.processTable[event[2]] = false
-		if event[2] == process.focusWindow then
-			process.focusWindow = process.nextWindow()
+		if process.processTable[event[2]] and process.processTable[event[2]].window then
+			saveDimensions(process.processTable[event[2]])
+			process.processTable[event[2]].window:destroy()
+			process.processTable[event[2]] = false
+			if event[2] == process.focusWindow then
+				process.focusWindow = process.nextWindow()
+			end
 		end
 	end
 end
