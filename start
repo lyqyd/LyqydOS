@@ -42,7 +42,6 @@ else
 		process.activeProcess = startProcess
 		term.restore()
 		if coroutine.status(process.processTable[process.focusWindow].thread) == "dead" then
-			peripheral.call("top", "write", "isdead")
 			process.queueEvent(lws, "close_window", process.focusWindow)
 			process.focusWindow = startProcess
 		end
