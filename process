@@ -48,7 +48,7 @@ function addChildWindow(pID, childWindow)
 			end
 		end
 		if not isChild then
-			table.insert(process.processTable[pID].children, childWindow)
+			table.insert(process.processTable[pID].children, childWindow, 1)
 		end
 	else
 		process.processTable[pID].children = {childWindow, "rootWindow"}
@@ -152,19 +152,27 @@ function toBack(pID)
 	if process.processTable[pID] and process.processTable[pID].window then
 		local proc = process.processTable[pID]
 		if proc.children then
-			--stub
+			local lookup, buffStackLookup = {}, {}
+			for i = 1, #proc.children do
+				if proc.children[i] == "rootWindow" then
+					lookup[proc.window] = i
+				else
+					lookup[proc.children[i]] = i
+				end
+			end
+			for i = 1, #process.windowCompositor.bufferStack do
+				if lookup[process.windowCompositor.bufferStack[i]] then
+					buffStackLookup[process.windowCompositor.bufferStack[i]] = i
+				end
+			end
+			for win, index in pairs(lookup) do
+				table.insert(process.windowCompositor.bufferStack, table.remove(process.windowCompositor.bufferStack, buffStackLookup[win]), index + 1)
+			end
 		else
 			for j = #process.windowCompositor.bufferStack, 1, -1 do
 				if process.windowCompositor.bufferStack[j] == proc.window.target.buffer then
 					--use 2 here because the title bar is layer 1.
-					if j and j > 2 then
-						tempbuffer = process.windowCompositor.bufferStack[j]
-						for i=j, 2, -1 do
-							process.windowCompositor.bufferStack[i] = process.windowCompositor.bufferStack[i - 1]
-						end
-						process.windowCompositor.bufferStack[2] = tempbuffer
-						process.windowCompositor:draw()
-					end
+					table.insert(process.windowCompositor.bufferStack, table.remove(process.windowCompositor.bufferStack, j), 2)
 					break
 				end
 			end

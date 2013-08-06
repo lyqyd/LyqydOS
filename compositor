@@ -22,7 +22,6 @@ local compositor = {
 		end
 
 		redirect.setBounds(1, 1, self.x, self.y)
-		--redirect.setBounds(1, 1, 2, 2)
 
 		table.insert(self.bufferStack, redirect.buffer)
 
@@ -83,14 +82,8 @@ local compositor = {
 		term.restore()
 	end,
 	toFront = function(self, pos)
-		if pos and pos < #self.bufferStack then
-			tempbuffer = self.bufferStack[pos]
-			for i = pos, #self.bufferStack - 1 do
-				self.bufferStack[i] = self.bufferStack[i + 1]
-			end
-			self.bufferStack[#self.bufferStack] = tempbuffer
-			self:draw()
-		end
+		table.insert(self.bufferStack, (table.remove(self.bufferStack, pos)))
+		if not self.deferDraw then self:draw() end
 	end,
 	removeWindow = function(self, win)
 		local pos = nil
