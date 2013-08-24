@@ -2,6 +2,10 @@ function new(_sizeX, _sizeY, _color)
 	local redirect = {buffer = {text = {}, textColor = {}, backColor = {}, cursorX = 1, cursorY = 1, cursorBlink = false, curTextColor = "0", curBackColor = "f", sizeX = _sizeX or 51, sizeY = _sizeY or 19, color = _color}}
 	redirect.write = function(text)
 		local pos = redirect.buffer.cursorX
+		if redirect.buffer.cursorY > redirect.buffer.sizeY or redirect.buffer.cursorY < 1 then
+			redirect.buffer.cursorX = pos + #text
+			return
+		end
 		if pos + #text <= 1 then
 			--skip entirely.
 			redirect.buffer.cursorX = pos + #text
@@ -12,9 +16,6 @@ function new(_sizeX, _sizeY, _color)
 			redirect.buffer.cursorX = 1
 		elseif pos > redirect.buffer.sizeX then
 			--if we're off the edge to the right, skip entirely.
-			redirect.buffer.cursorX = pos + #text
-			return
-		elseif redirect.buffer.cursorY > redirect.buffer.sizeY then
 			redirect.buffer.cursorX = pos + #text
 			return
 		else
