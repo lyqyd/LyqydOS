@@ -39,7 +39,7 @@ local function runProgram()
 	process.processTable[desk].special = nil
 	if success then
 		--don't save empty or repeated lines
-		if line~="" and (#runHistory==0 or line~=runHistory[#runHistory]) then
+		if line ~= "" and (#runHistory == 0 or line ~= runHistory[#runHistory]) then
 			--should never be able to get above 255, but just in case, the while doesn't hurt
 			table.insert(runHistory,line)		
 			while #runHistory>255 do
@@ -54,34 +54,36 @@ local function runProgram()
 				histFile:close()
 			end
 		end
-		local args = {}
-		for match in string.gmatch( line, "[^ \t]+" ) do
-			table.insert( args, match )
-		end
-		--fix for previously-changed working directory
-		shell.setDir("")
-		path = shell.resolveProgram(table.remove(args, 1))
-		if path then
-			local w, h, x, y, max = 19, 9, 1, 1, "false"
-			for dNum, dInfo in ipairs(windowDimensions) do
-				if dInfo.path == path then
-					w = dInfo.w
-					h = dInfo.h
-					x = dInfo.x
-					y = dInfo.y
-					max = dInfo.max
-					break
+		if line ~= "" then
+			local args = {}
+			for match in string.gmatch( line, "[^ \t]+" ) do
+				table.insert( args, match )
+			end
+			--fix for previously-changed working directory
+			shell.setDir("")
+			path = shell.resolveProgram(table.remove(args, 1))
+			if path then
+				local w, h, x, y, max = 19, 9, 1, 1, "false"
+				for dNum, dInfo in ipairs(windowDimensions) do
+					if dInfo.path == path then
+						w = dInfo.w
+						h = dInfo.h
+						x = dInfo.x
+						y = dInfo.y
+						max = dInfo.max
+						break
+					end
 				end
-			end
-			local win = window.new(w, h, x, y, fs.getName(path), process.windowCompositor:newBuffer())
-			if windowCompositor.target.isColor() then
-				win:setType("standard")
-				win:setDecorations("pretty")
-			end
-			if max == "true" then win:maximize() end
-			process.addWindowed(function() shell.run(path, unpack(args)) end, path, win)
-			if coroutine.status(process.processTable[process.focusWindow].thread) == "dead" then
-				process.queueEvent(lws, "close_window", process.focusWindow)
+				local win = window.new(w, h, x, y, fs.getName(path), process.windowCompositor:newBuffer())
+				if windowCompositor.target.isColor() then
+					win:setType("standard")
+					win:setDecorations("pretty")
+				end
+				if max == "true" then win:maximize() end
+				process.addWindowed(function() shell.run(path, unpack(args)) end, path, win)
+				if coroutine.status(process.processTable[process.focusWindow].thread) == "dead" then
+					process.queueEvent(lws, "close_window", process.focusWindow)
+				end
 			end
 		end
 	end
