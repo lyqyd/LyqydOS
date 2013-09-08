@@ -48,7 +48,7 @@ function addChildWindow(pID, childWindow)
 			end
 		end
 		if not isChild then
-			table.insert(process.processTable[pID].children, childWindow, 1)
+			table.insert(process.processTable[pID].children, 1, childWindow)
 		end
 	else
 		process.processTable[pID].children = {childWindow, "rootWindow"}
@@ -166,13 +166,13 @@ function toBack(pID)
 				end
 			end
 			for win, index in pairs(lookup) do
-				table.insert(process.windowCompositor.bufferStack, table.remove(process.windowCompositor.bufferStack, buffStackLookup[win]), index + 1)
+				table.insert(process.windowCompositor.bufferStack,  index + 1, table.remove(process.windowCompositor.bufferStack, buffStackLookup[win]))
 			end
 		else
 			for j = #process.windowCompositor.bufferStack, 1, -1 do
 				if process.windowCompositor.bufferStack[j] == proc.window.target.buffer then
 					--use 2 here because the title bar is layer 1.
-					table.insert(process.windowCompositor.bufferStack, table.remove(process.windowCompositor.bufferStack, j), 2)
+					table.insert(process.windowCompositor.bufferStack, 2, table.remove(process.windowCompositor.bufferStack, j))
 					break
 				end
 			end
