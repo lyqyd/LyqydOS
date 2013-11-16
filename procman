@@ -20,33 +20,33 @@ do
 end
 
 do
-	local pTable = {}
-	pTable.queue = {}
-	pTable.path = "lws"
-	pTable.thread = coroutine.create(function() shell.run("lws") end)
-	table.insert(processTable, pTable)
-	process.activeProcess = #process.processTable
-	coroutine.resume(pTable.thread)
-	process.activeProcess = nil
+	local initPath = ""
+	if fs.exists("/LyqydOS/.init") then
+		initPath = "/LyqydOS/.init"
+	else
+		initPath = shell.resolveProgram(".init")
+	end
+	if #initPath > 0 then
+		local handle = io.open(initPath, "r")
+		if handle then
+			for line in handle:lines() do
+				process.add(function() shell.run(line) end, line)
+			end
+			handle:close()
+		end
+	end
 end
 
-local lws = #process.processTable
+local lws, desktop
 
-do
-	local pTable = {}
-	pTable.queue = {}
-	pTable.path = "desktop"
-	pTable.thread = coroutine.create(function() shell.run("desktop") end)
-	table.insert(processTable, pTable)
-	process.activeProcess = #process.processTable
-	coroutine.resume(pTable.thread)
-	process.activeProcess = nil
+for k,v in pairs(process.processTable) do
+	if v.path == "lws" then
+		lws = k
+	elseif v.path == "desktop" then
+		desktop = k
+	end
+	if lws and desktop then break end
 end
-
-local desktop = #process.processTable
-
-local oldTredirect = term.redirect
-local oldTrestore = term.restore
 
 local runHistory = {}
 if fs.exists("/.lyqrunhistory") then
@@ -58,6 +58,10 @@ if fs.exists("/.lyqrunhistory") then
 		histFile:close()
 	end
 end
+
+local oldTredirect = term.redirect
+local oldTrestore = term.restore
+local oldPeripheralCall = peripheral.call
 
 local function newTredirect(target)
 	table.insert(process.redirectStack, target)

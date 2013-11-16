@@ -14,7 +14,7 @@ function add(func, path)
 	term.redirect(nullRedirect)
 	local active = process.activeProcess
 	process.activeProcess = #process.processTable
-	coroutine.resume(process.processTable[process.focusWindow].thread)
+	coroutine.resume(process.processTable[process.activeProcess].thread)
 	process.activeProcess = active
 	term.restore()
 end
@@ -28,9 +28,10 @@ function addWindowed(func, path, win)
 	table.insert(process.processTable, pTable)
 	process.focusWindow = #process.processTable
 	term.redirect(process.processTable[process.focusWindow].window.redirect)
+	local active = process.activeProcess
 	process.activeProcess = #process.processTable
 	coroutine.resume(process.processTable[process.focusWindow].thread)
-	process.activeProcess = nil
+	process.activeProcess = active
 	term.restore()
 end
 
