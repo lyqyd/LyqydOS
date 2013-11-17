@@ -28,9 +28,9 @@ local compositor = {
 		return redirect
 	end,
 	draw = function(self, mode, ...)
-		args = {...}		
+		args = {...}
+		local finalBuffer = {text = {}, textColor = {}, backColor = {}, color = self.target.isColor()}
 		if mode ~= "cursor" then
-			local finalBuffer = {text = {}, textColor = {}, backColor = {}, color = self.target.isColor()}
 			finalBuffer.sizeX, finalBuffer.sizeY = self.target.getSize()
 			for i=1, self.y do
 				finalBuffer.text[i] = string.rep(" ", self.x)
@@ -53,7 +53,8 @@ local compositor = {
 				end
 			end
 		end
-		finalBuffer.cursorX, finalBuffer.cursorY = self.bufferStack[#self.bufferStack].cursorX, self.bufferStack[#self.bufferStack].cursorY
+		finalBuffer.cursorX = self.bufferStack[#self.bufferStack].cursorX
+		finalBuffer.cursorY = self.bufferStack[#self.bufferStack].cursorY
 		finalBuffer.curTextColor = self.bufferStack[#self.bufferStack].curTextColor
 		finalBuffer.curBackColor = self.bufferStack[#self.bufferStack].curBackColor
 		--ensure cursor is inside opaque area before setting blink.
