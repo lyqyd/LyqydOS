@@ -1,4 +1,4 @@
-local versionNumber = 1.6
+local versionNumber = 1.7
 
 local args = {...}
 
@@ -12,16 +12,20 @@ if #args == 1 and args[1] == "remove" then
 end
 
 local fileList = {
+	".init",
 	"compositor",
 	"debug",
 	"desktop",
+	"env",
 	"framebuffer",
 	"kill",
+	"lrnd",
 	"lws",
 	"menu",
 	"process",
 	"procman",
 	"ps",
+	"service",
 	"start",
 	"window",
 }
