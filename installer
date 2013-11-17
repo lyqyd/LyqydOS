@@ -1,4 +1,4 @@
-local versionNumber = 1.7
+local versionNumber = 1.8
 
 local args = {...}
 
@@ -19,6 +19,7 @@ local fileList = {
 	"env",
 	"framebuffer",
 	"kill",
+	"LICENSE",
 	"lrnd",
 	"lws",
 	"menu",
