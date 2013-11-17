@@ -199,6 +199,9 @@ while true do
 	elseif event[1] == "key" and event[2] == 62 then
 		--window controls menu
 		process.queueEvent(lws, "window_action", process.focusWindow, processTable[process.focusWindow].window)
+	elseif event[1] == "key" and event[2] == 63 then
+		--full screen toggle
+
 	elseif event[1] == "mouse_click" then
 		watchMouseDragging = false
 		local windowFound = false

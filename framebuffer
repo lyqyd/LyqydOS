@@ -126,3 +126,32 @@ function new(_sizeX, _sizeY, _color)
 	redirect.clear()
 	return redirect
 end
+
+function draw(buffer, current)
+	for i=1, buffer.sizeY do
+		term.setCursorPos(1,i)
+		if (current and (buffer.text[i] ~= current.text[i] or buffer.textColor[i] ~= current.textColor[i] or buffer.backColor[i] ~= current.backColor[i])) or not current then
+			local lineEnd = false
+			local offset = 1
+			while not lineEnd do
+				local textColorString = string.match(string.sub(buffer.textColor[i], offset), string.sub(buffer.textColor[i], offset, offset).."*")
+				local backColorString = string.match(string.sub(buffer.backColor[i], offset), string.sub(buffer.backColor[i], offset, offset).."*")
+				term.setTextColor(2 ^ tonumber(string.sub(textColorString, 1, 1), 16))
+				term.setBackgroundColor(2 ^ tonumber(string.sub(backColorString, 1, 1), 16))
+				term.write(string.sub(buffer.text[i], offset, offset + math.min(#textColorString, #backColorString) - 1))
+				offset = offset + math.min(#textColorString, #backColorString)
+				if offset > buffer.sizeX then lineEnd = true end
+			end
+			if current then
+				current.text[i] = buffer.text[i]
+				current.textColor[i] = buffer.textColor[i]
+				current.backColor[i] = buffer.backColor[i]
+			end
+		end
+	end
+	term.setCursorPos(buffer.cursorX, buffer.cursorY)
+	term.setTextColor(2 ^ tonumber(buffer.curTextColor, 16))
+	term.setBackgroundColor(2 ^ tonumber(buffer.curBackColor, 16))
+	term.setCursorBlink(buffer.cursorBlink)
+	return current
+end

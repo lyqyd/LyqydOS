@@ -28,11 +28,10 @@ local compositor = {
 		return redirect
 	end,
 	draw = function(self, mode, ...)
-		args = {...}
-		term.redirect(self.target)
-		term.setCursorBlink(false)
+		args = {...}		
 		if mode ~= "cursor" then
-			local finalBuffer = {text = {}, textColor = {}, backColor = {}}
+			local finalBuffer = {text = {}, textColor = {}, backColor = {}, color = self.target.isColor()}
+			finalBuffer.sizeX, finalBuffer.sizeY = self.target.getSize()
 			for i=1, self.y do
 				finalBuffer.text[i] = string.rep(" ", self.x)
 				finalBuffer.textColor[i] = string.rep("0", self.x)
@@ -53,32 +52,20 @@ local compositor = {
 					until j > self.bufferStack[i].maxY
 				end
 			end
-			for i=1, self.y do
-				term.setCursorPos(1,i)
-				if finalBuffer.text[i] ~= self.currentBuffer.text[i] or finalBuffer.textColor[i] ~= self.currentBuffer.textColor[i] or finalBuffer.backColor[i] ~= self.currentBuffer.backColor[i] then
-					local lineEnd = false
-					local offset = 1
-					while not lineEnd do
-						local textColorString = string.match(string.sub(finalBuffer.textColor[i], offset), string.sub(finalBuffer.textColor[i], offset, offset).."*")
-						local backColorString = string.match(string.sub(finalBuffer.backColor[i], offset), string.sub(finalBuffer.backColor[i], offset, offset).."*")
-						term.setTextColor(2 ^ tonumber(string.sub(textColorString, 1, 1), 16))
-						term.setBackgroundColor(2 ^ tonumber(string.sub(backColorString, 1, 1), 16))
-						term.write(string.sub(finalBuffer.text[i], offset, offset + math.min(#textColorString, #backColorString) - 1))
-						offset = offset + math.min(#textColorString, #backColorString)
-						if offset > self.x then lineEnd = true end
-					end
-				end
-				self.currentBuffer.text[i] = finalBuffer.text[i]
-				self.currentBuffer.textColor[i] = finalBuffer.textColor[i]
-				self.currentBuffer.backColor[i] = finalBuffer.backColor[i]
-			end
 		end
-		term.setCursorPos(self.bufferStack[#self.bufferStack].cursorX, self.bufferStack[#self.bufferStack].cursorY)
-		term.setTextColor(2 ^ tonumber(self.bufferStack[#self.bufferStack].curTextColor, 16))
+		finalBuffer.cursorX, finalBuffer.cursorY = self.bufferStack[#self.bufferStack].cursorX, self.bufferStack[#self.bufferStack].cursorY
+		finalBuffer.curTextColor = self.bufferStack[#self.bufferStack].curTextColor
+		finalBuffer.curBackColor = self.bufferStack[#self.bufferStack].curBackColor
 		--ensure cursor is inside opaque area before setting blink.
 		if self.bufferStack[#self.bufferStack].cursorX >= self.bufferStack[#self.bufferStack].minX and self.bufferStack[#self.bufferStack].cursorX <= self.bufferStack[#self.bufferStack].maxX and self.bufferStack[#self.bufferStack].cursorY >= self.bufferStack[#self.bufferStack].minY and self.bufferStack[#self.bufferStack].cursorY <= self.bufferStack[#self.bufferStack].maxY then
-			term.setCursorBlink(self.bufferStack[#self.bufferStack].cursorBlink)
+			finalBuffer.cursorBlink = self.bufferStack[#self.bufferStack].cursorBlink
+		else
+			finalBuffer.cursorBlink = false
 		end
+		--farm out actual drawing procedures to framebuffer API.
+		term.redirect(self.target)
+		term.setCursorBlink(false)
+		self.currentBuffer = framebuffer.draw(finalBuffer, self.currentBuffer)
 		term.restore()
 	end,
 	toFront = function(self, pos)
