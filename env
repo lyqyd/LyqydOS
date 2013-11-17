@@ -1,0 +1,102 @@
+function peripheral.call(side, func, ...)
+	if peripheral.getType(side) == "modem" then
+		if func == "isOpen" then
+			local proc = process.id() and process.processTable[process.id()]
+			if not proc then return false end
+			if not proc.modem then return false end
+			if proc.modem[number] then return true end
+			return false
+		elseif func == "open" then
+			local proc = process.processTable[process.id()]
+			if not proc.modem then proc.modem = {} end
+			local channel = (...)
+			proc.modem[channel] = true
+			oldPeripheralCall(side, func, channel)
+		elseif func == "close" then
+			local proc = process.processTable[process.id()]
+			if not proc.modem then return nil end
+			local channel = (...)
+			if proc.modem[channel] then
+				proc.modem[channel] = nil
+				local close = true
+				for pID, pInfo in pairs(process.processTable) do
+					if pInfo and pInfo.modem and pInfo.modem[channel] then
+						close = false
+						break
+					end
+				end
+				if close then return oldPeripheralCall(side, func, channel) end
+			end
+		elseif func == "closeAll" then
+			local proc = process.processTable[process.id()]
+			if not proc.modem then return nil end
+			for channel in pairs(proc.modem) do
+				peripheral.call(side, "close", channel)
+			end
+		else
+			return oldPeripheralCall(side, func, ...)
+		end
+	else
+		return oldPeripheralCall(side, func, ...)
+	end
+end
+
+local validSides = {}
+for k, v in pairs(rs.getSides()) do
+	validSides[v] = true
+end
+
+local function validateSide(side)
+	if type(side) ~= "string" then
+		error("string expected")
+	end
+	if not validSides[side] then
+		error("Invalid side")
+	end
+	if peripheral.getType(side) ~= "modem" then	
+		error("No modem on "..side.." side")
+	end
+	return true
+end
+
+function rednet.open(side)
+	if validateSide(side) then
+		local proc = process.processTable[process.id()]
+		if not proc.rednet then proc.rednet = {} end
+		proc.rednet.open[side] = true
+		peripheral.call(side, "open", os.getComputerID())
+		peripheral.call(side, "open", 65535)
+	end
+end
+
+function rednet.close(side)
+	if validateSide(side) then
+		local proc = process.processTable[process.id()]
+		if not proc.rednet then return nil end
+		proc.rednet.open[side] = nil
+		peripheral.call(side, "close", os.getComputerID())
+		peripheral.call(side, "close", 65535)
+	end
+end
+
+function rednet.isOpen(side)
+	if validateSide(side) then
+		local proc = process.processTable[process.id()]
+		if not proc.modem then return false end
+		return (proc.modem[os.getComputerID()] and proc.modem[65535]) or false
+	end
+end
+
+function rednet.send(recipient, message)
+	for _, side in pairs(rs.getSides()) do
+		if rednet.isOpen(side) then
+			peripheral.call(side, "transmit", recipient, os.getComputerID(), message)
+			return true
+		end
+	end
+	error("No open sides")
+end
+
+function rednet.broadcast(message)
+	return rednet.send(65535, message)
+end

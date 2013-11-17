@@ -19,6 +19,22 @@ do
 	process.nullRedirect = framebuffer.new(x, y, term.isColor())
 end
 
+local oldTredirect = term.redirect
+local oldTrestore = term.restore
+local oldPeripheralCall = peripheral.call
+
+local function newTredirect(target)
+	table.insert(process.redirectStack, target)
+	oldTredirect(target)
+end
+
+local function newTrestore()
+	table.remove(process.redirectStack)
+	oldTrestore()
+end
+
+dofile("env")
+
 do
 	local initPath = ""
 	if fs.exists("/LyqydOS/.init") then
@@ -57,20 +73,6 @@ if fs.exists("/.lyqrunhistory") then
 		end
 		histFile:close()
 	end
-end
-
-local oldTredirect = term.redirect
-local oldTrestore = term.restore
-local oldPeripheralCall = peripheral.call
-
-local function newTredirect(target)
-	table.insert(process.redirectStack, target)
-	oldTredirect(target)
-end
-
-local function newTrestore()
-	table.remove(process.redirectStack)
-	oldTrestore()
 end
 
 windowDimensions = {}

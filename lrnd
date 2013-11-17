@@ -1,0 +1,14 @@
+local RN_BROADCAST = 65535
+
+while true do
+	event = {os.pullEventRaw()}
+	if event[1] == "modem_message" then
+		if event[3] == os.getComputerID() or event[3] == RN_BROADCAST then
+			for pNum, pInfo in pairs(process.processTable) do
+				if pInfo.rednet[event[2]] then
+					process.queueEvent(pNum, "rednet_message", event[4], event[5], event[6])
+				end
+			end
+		end
+	end
+end
