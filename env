@@ -1,3 +1,5 @@
+local oldPeripheralCall = peripheral.call
+
 function peripheral.call(side, func, ...)
 	if peripheral.getType(side) == "modem" then
 		if func == "isOpen" then

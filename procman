@@ -21,7 +21,6 @@ end
 
 local oldTredirect = term.redirect
 local oldTrestore = term.restore
-local oldPeripheralCall = peripheral.call
 
 local function newTredirect(target)
 	table.insert(process.redirectStack, target)
@@ -33,7 +32,7 @@ local function newTrestore()
 	oldTrestore()
 end
 
-dofile("env")
+dofile(shell.resolveProgram("env"))
 
 do
 	local initPath = ""
