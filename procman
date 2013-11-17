@@ -199,12 +199,14 @@ while true do
 		process.queueEvent(desktop, "run_program")
 	elseif event[1] == "key" and event[2] == 61 then
 		--window switching menu
-		if processTable[process.focusWindow] then
+		if process.focusWindow and process.processTable[process.focusWindow] then
 			process.queueEvent(lws, "select_window")
 		end
 	elseif event[1] == "key" and event[2] == 62 then
 		--window controls menu
-		process.queueEvent(lws, "window_action", process.focusWindow, processTable[process.focusWindow].window)
+		if process.focusWindow and process.processTable[process.focusWindow] then
+			process.queueEvent(lws, "window_action", process.focusWindow, processTable[process.focusWindow].window)
+		end
 	elseif event[1] == "key" and event[2] == 63 then
 		--full screen toggle
 
