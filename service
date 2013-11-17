@@ -1,0 +1,17 @@
+local args = {...}
+if #args >= 2 and args[1] == "start" then
+	local path = shell.resolveProgram(table.remove(args, 1))
+	if path then
+		process.add(function() shell.run(path, unpack(args)) end, path)
+	end
+elseif #args == 2 and args[1] == "stop" then
+	local pID = process.getIDFromName(args[2])
+	if pID then
+		process.kill(pID)
+	end
+else
+	print("Usage:")
+	print(fs.getName(shell.getRunningProgram()).." start <path>")
+	print(fs.getName(shell.getRunningProgram()).." stop <path>")
+	return
+end

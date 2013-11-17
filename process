@@ -194,6 +194,14 @@ function id()
 	end
 end
 
+function getIDFromName(path)
+	for pNum, pInfo in pairs(process.processTable) do
+		if pInfo.path == path then
+			return pNum
+		end
+	end
+end
+
 function kill(pID)
 	if process.processTable[pID] then
 		if process.processTable[pID].window then
