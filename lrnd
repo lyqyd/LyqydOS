@@ -1,14 +1,35 @@
 local RN_BROADCAST = 65535
+local lyqydnet = false
+
+local function checkLyqydNet()
+	for pNum, pInfo in pairs(process.processTable) do
+		if pInfo.path = "lyqydnet" then
+			lyqydnet = pNum
+			break
+		end
+	end
+end
 
 while true do
 	event = {os.pullEventRaw()}
 	if event[1] == "modem_message" then
 		if event[3] == os.getComputerID() or event[3] == RN_BROADCAST then
+			if lyqydnet then
+				process.queueEvent(lyqydnet, "rednet_message", event[4], event[5], event[6])
+			else
+				for pNum, pInfo in pairs(process.processTable) do
+					if pInfo.rednet[event[2]] then
+						process.queueEvent(pNum, "rednet_message", event[4], event[5], event[6])
+					end
+				end
+			end
+		else
 			for pNum, pInfo in pairs(process.processTable) do
-				if pInfo.rednet[event[2]] then
-					process.queueEvent(pNum, "rednet_message", event[4], event[5], event[6])
+				if pInfo.modem[event[3]] then
+					process.queueEvent(pNum, unpack(event))
 				end
 			end
 		end
 	end
+	if not lyqydnet then checkLyqydNet() end
 end

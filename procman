@@ -53,15 +53,17 @@ do
 	end
 end
 
-local lws, desktop
+local lws, desktop, lrnd
 
 for k,v in pairs(process.processTable) do
 	if v.path == "lws" then
 		lws = k
 	elseif v.path == "desktop" then
 		desktop = k
+	elseif v.path == "lrnd" then
+		lrnd = k
 	end
-	if lws and desktop then break end
+	if lws and desktop and lrnd then break end
 end
 
 local runHistory = {}
@@ -162,6 +164,20 @@ local function resumeProcess(pID, eventTable)
 			process.focusWindow = process.nextWindow(1)
 			if processTable[process.focusWindow] then
 				process.toFront(process.focusWindow)
+			end
+		end
+	end
+end
+
+local function distributeEvent(event)
+	if processTable[process.focusWindow] then
+		resumeProcess(process.focusWindow, event)
+	end
+	--handle background processes.
+	if event[1] ~= "key" and event[1] ~= "char" and event[1] ~= "mouse_click" and event[1] ~= "mouse_drag" and event[1] ~= "mouse_scroll" and event[1] ~= "window_resize" and event[1] ~= "terminate" then
+		for tNum, tInfo in ipairs(processTable) do
+			if tNum ~= process.focusWindow and tInfo then
+				resumeProcess(tNum, event)
 			end
 		end
 	end
@@ -294,17 +310,13 @@ while true do
 				resumeProcess(process.focusWindow, event)
 			end
 		end
+	elseif event[1] == "modem_message" then
+		if lrnd then
+			process.queue(lrnd, unpack(event))
+		else
+			distributeEvent(event)
+		end
 	else
-		if processTable[process.focusWindow] then
-			resumeProcess(process.focusWindow, event)
-		end
-		--handle background processes.
-		if event[1] ~= "key" and event[1] ~= "char" and event[1] ~= "mouse_click" and event[1] ~= "mouse_drag" and event[1] ~= "mouse_scroll" and event[1] ~= "window_resize" and event[1] ~= "terminate" then
-			for tNum, tInfo in ipairs(processTable) do
-				if tNum ~= process.focusWindow and tInfo then
-					resumeProcess(tNum, event)
-				end
-			end
-		end
+		distributeEvent(event)
 	end
 end
