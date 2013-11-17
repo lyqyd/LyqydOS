@@ -65,17 +65,6 @@ for k,v in pairs(process.processTable) do
 	if lws and desktop and lrnd then break end
 end
 
-local runHistory = {}
-if fs.exists("/.lyqrunhistory") then
-	local histFile=io.open("/.lyqrunhistory","r")
-	if histFile then
-		for line in histFile:lines() do
-			table.insert(runHistory, line)
-		end
-		histFile:close()
-	end
-end
-
 windowDimensions = {}
 winDims = io.open("/.lyqwin", "r")
 if winDims then

@@ -27,6 +27,7 @@ local function runProgram()
 	process.processTable[desk].window = window.new(30, 3, 2, 2, "Run Program", windowCompositor:newBuffer())
 	process.processTable[desk].window:setDecorations(term.isColor() and "pretty_menu" or "standard")
 	process.focusWindow = desk
+
 	term.redirect(processTable[process.focusWindow].window.redirect)
 	term.setTextColor(colors.white)
 	term.setBackgroundColor(colors.black)
@@ -34,6 +35,7 @@ local function runProgram()
 	local success, line = pcall(read, nil, runHistory)
 	--clean up window
 	term.restore()
+
 	process.processTable[desk].window:destroy()
 	process.processTable[desk].window = nil
 	process.processTable[desk].special = nil
