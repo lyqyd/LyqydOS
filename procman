@@ -160,6 +160,11 @@ end
 local function distributeEvent(event)
 	if processTable[process.focusWindow] then
 		resumeProcess(process.focusWindow, event)
+	elseif event[1] == "key" or event[1] == "char" then
+		if desktop then
+			--events should fall through to desktop if there is no focus window.
+			resumeProcess(desktop, event)
+		end
 	end
 	--handle background processes.
 	if event[1] ~= "key" and event[1] ~= "char" and event[1] ~= "mouse_click" and event[1] ~= "mouse_drag" and event[1] ~= "mouse_scroll" and event[1] ~= "window_resize" and event[1] ~= "terminate" then
@@ -291,6 +296,9 @@ while true do
 			if event[3] > 0 and event[3] < processTable[process.focusWindow].window.w - 1 and event[4] > 0 and event[4] < processTable[process.focusWindow].window.h - 1 then
 				resumeProcess(process.focusWindow, event)
 			end
+		elseif desktop then
+			--fall through to desktop
+			resumeProcess(desktop, event)
 		end
 	elseif event[1] == "mouse_scroll" then
 		if processTable[process.focusWindow] and processTable[process.focusWindow].window then
@@ -299,6 +307,9 @@ while true do
 			if event[3] > 0 and event[3] < processTable[process.focusWindow].window.w - 1 and event[4] > 0 and event[4] < processTable[process.focusWindow].window.h - 1 then
 				resumeProcess(process.focusWindow, event)
 			end
+		elseif desktop then
+			--fall through to desktop
+			resumeProcess(desktop, event)
 		end
 	elseif event[1] == "modem_message" then
 		if lrnd then
