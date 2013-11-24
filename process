@@ -5,6 +5,87 @@ windowCompositor = {}
 redirectStack = {}
 nullRedirect = framebuffer.new()
 
+local oldTredirect = term.redirect
+local oldTrestore = term.restore
+
+local function newTredirect(target)
+	table.insert(process.redirectStack, target)
+	oldTredirect(target)
+end
+
+local function newTrestore()
+	table.remove(process.redirectStack)
+	oldTrestore()
+end
+
+function resume(pID, eventTable)
+	--evaluate whether this event should even go to this process.
+	if process.processTable[pID].listening then
+		local resumeProcess = false
+		for i=1, #process.processTable[pID].listening do
+			if eventTable[1] == process.processTable[pID].listening[i] then
+				resumeProcess = true
+				process.processTable[pID].listening = nil
+				break
+			end
+		end
+		if not resumeProcess then return end
+	end
+	--set up base redirect, be it window or null
+	local baseRedirect
+	if process.processTable[pID].window then
+		baseRedirect = process.processTable[pID].window.redirect
+	else
+		baseRedirect = process.nullRedirect
+	end
+	term.redirect(baseRedirect)
+
+	--restore redirect stack if necessary.
+	if process.processTable[pID].redirectStack then
+		for _,t in ipairs(process.processTable[pID].redirectStack) do
+			term.redirect(t)
+		end
+	end
+	rawset(term, "redirect", newTredirect)
+	rawset(term, "restore", newTrestore)
+
+	process.activeProcess = pID
+	passback = {coroutine.resume(process.processTable[pID].thread, unpack(eventTable))}
+	process.windowCompositor:draw()
+	process.activeProcess = nil
+	--if the process had a window, recover its redirect stack and restore the redirect functions.
+	if process.processTable[pID] then
+
+		--restore correct redirection level and save redirect stack for resume.
+		rawset(term, "redirect", oldTredirect)
+		rawset(term, "restore", oldTrestore)
+		process.processTable[pID].redirectStack = {}
+		for i=1, #process.redirectStack do
+			term.restore()
+			process.processTable[pID].redirectStack[i] = process.redirectStack[i]
+		end
+		term.restore()
+
+		--handle filters being sent back in passback.
+		if passback[1] and passback[2] then
+			if type(passback[2]) == "string" then
+				process.processTable[pID].listening = {passback[2]}
+			elseif type(passback[2]) == "table" then
+				process.processTable[pID].listening = passback[2]
+			end
+		end
+	end
+	--former checkProcess function.
+	if not process.check(pID) then
+		if pID == process.focusWindow then
+			process.focusWindow = process.nextWindow(1)
+			if processTable[process.focusWindow] then
+				process.toFront(process.focusWindow)
+			end
+		end
+	end
+end
+
 function add(func, path)
 	local pTable = {}
 	pTable.thread = coroutine.create(func)
@@ -186,6 +267,22 @@ function toBack(pID)
 	end
 end
 
+function check(pID)
+	local proc = process.processTable[pID]
+	if (proc and coroutine.status(proc.thread) == "dead") or (proc and proc.special and proc ~= process.processTable[process.focusWindow]) then
+		if proc.window then
+			if pID == desktop then
+				--send terminate signal; pcall wrappers will allow current windows to close without killing process.
+				process.queueEvent(desktop, "terminate")
+			else
+				process.queueEvent(lws, "close_window", pID)
+			end
+		end
+		return false
+	end
+	return true
+end
+
 function id()
 	if process.activeProcess and process.processTable[process.activeProcess] then
 		return process.activeProcess
@@ -212,4 +309,3 @@ function kill(pID)
 	end
 	return false
 end
-
