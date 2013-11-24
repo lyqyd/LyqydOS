@@ -27,47 +27,48 @@ local compositor = {
 
 		return redirect
 	end,
-	draw = function(self, mode, ...)
-		args = {...}
-		local finalBuffer = {text = {}, textColor = {}, backColor = {}, color = self.target.isColor()}
-		if mode ~= "cursor" then
-			finalBuffer.sizeX, finalBuffer.sizeY = self.target.getSize()
-			for i=1, self.y do
-				finalBuffer.text[i] = string.rep(" ", self.x)
-				finalBuffer.textColor[i] = string.rep("0", self.x)
-				finalBuffer.backColor[i] = string.rep("f", self.x)
-			end
-			for i=1, #self.bufferStack do
-				if self.bufferStack[i].minY > 0 then
-					local preStop = self.bufferStack[i].minX - 1
-					local preStart = math.min(1, preStop)
-					local postStart = self.bufferStack[i].maxX + 1
-					local postStop = self.x
-					local j = self.bufferStack[i].minY
-					repeat
-						finalBuffer.text[j] = string.sub(string.sub(finalBuffer.text[j], preStart, preStop)..string.sub(self.bufferStack[i].text[j], self.bufferStack[i].minX, self.bufferStack[i].maxX)..string.sub(finalBuffer.text[j], postStart, postStop), 1, self.x)
-						finalBuffer.textColor[j] = string.sub(string.sub(finalBuffer.textColor[j], preStart, preStop)..string.sub(self.bufferStack[i].textColor[j], self.bufferStack[i].minX, self.bufferStack[i].maxX)..string.sub(finalBuffer.textColor[j], postStart, postStop), 1, self.x)
-						finalBuffer.backColor[j] = string.sub(string.sub(finalBuffer.backColor[j], preStart, preStop)..string.sub(self.bufferStack[i].backColor[j], self.bufferStack[i].minX, self.bufferStack[i].maxX)..string.sub(finalBuffer.backColor[j], postStart, postStop), 1, self.x)
-						j = j + 1
-					until j > self.bufferStack[i].maxY
+	draw = function(self, mode)
+		if #self.bufferStack > 0 then
+			local finalBuffer = {text = {}, textColor = {}, backColor = {}, color = self.target.isColor()}
+			if mode ~= "cursor" then
+				finalBuffer.sizeX, finalBuffer.sizeY = self.target.getSize()
+				for i=1, self.y do
+					finalBuffer.text[i] = string.rep(" ", self.x)
+					finalBuffer.textColor[i] = string.rep("0", self.x)
+					finalBuffer.backColor[i] = string.rep("f", self.x)
+				end
+				for i=1, #self.bufferStack do
+					if self.bufferStack[i].minY > 0 then
+						local preStop = self.bufferStack[i].minX - 1
+						local preStart = math.min(1, preStop)
+						local postStart = self.bufferStack[i].maxX + 1
+						local postStop = self.x
+						local j = self.bufferStack[i].minY
+						repeat
+							finalBuffer.text[j] = string.sub(string.sub(finalBuffer.text[j], preStart, preStop)..string.sub(self.bufferStack[i].text[j], self.bufferStack[i].minX, self.bufferStack[i].maxX)..string.sub(finalBuffer.text[j], postStart, postStop), 1, self.x)
+							finalBuffer.textColor[j] = string.sub(string.sub(finalBuffer.textColor[j], preStart, preStop)..string.sub(self.bufferStack[i].textColor[j], self.bufferStack[i].minX, self.bufferStack[i].maxX)..string.sub(finalBuffer.textColor[j], postStart, postStop), 1, self.x)
+							finalBuffer.backColor[j] = string.sub(string.sub(finalBuffer.backColor[j], preStart, preStop)..string.sub(self.bufferStack[i].backColor[j], self.bufferStack[i].minX, self.bufferStack[i].maxX)..string.sub(finalBuffer.backColor[j], postStart, postStop), 1, self.x)
+							j = j + 1
+						until j > self.bufferStack[i].maxY
+					end
 				end
 			end
+			finalBuffer.cursorX = self.bufferStack[#self.bufferStack].cursorX
+			finalBuffer.cursorY = self.bufferStack[#self.bufferStack].cursorY
+			finalBuffer.curTextColor = self.bufferStack[#self.bufferStack].curTextColor
+			finalBuffer.curBackColor = self.bufferStack[#self.bufferStack].curBackColor
+			--ensure cursor is inside opaque area before setting blink.
+			if self.bufferStack[#self.bufferStack].cursorX >= self.bufferStack[#self.bufferStack].minX and self.bufferStack[#self.bufferStack].cursorX <= self.bufferStack[#self.bufferStack].maxX and self.bufferStack[#self.bufferStack].cursorY >= self.bufferStack[#self.bufferStack].minY and self.bufferStack[#self.bufferStack].cursorY <= self.bufferStack[#self.bufferStack].maxY then
+				finalBuffer.cursorBlink = self.bufferStack[#self.bufferStack].cursorBlink
+			else
+				finalBuffer.cursorBlink = false
+			end
+			--farm out actual drawing procedures to framebuffer API.
+			term.redirect(self.target)
+			term.setCursorBlink(false)
+			self.currentBuffer = framebuffer.draw(finalBuffer, self.currentBuffer)
+			term.restore()
 		end
-		finalBuffer.cursorX = self.bufferStack[#self.bufferStack].cursorX
-		finalBuffer.cursorY = self.bufferStack[#self.bufferStack].cursorY
-		finalBuffer.curTextColor = self.bufferStack[#self.bufferStack].curTextColor
-		finalBuffer.curBackColor = self.bufferStack[#self.bufferStack].curBackColor
-		--ensure cursor is inside opaque area before setting blink.
-		if self.bufferStack[#self.bufferStack].cursorX >= self.bufferStack[#self.bufferStack].minX and self.bufferStack[#self.bufferStack].cursorX <= self.bufferStack[#self.bufferStack].maxX and self.bufferStack[#self.bufferStack].cursorY >= self.bufferStack[#self.bufferStack].minY and self.bufferStack[#self.bufferStack].cursorY <= self.bufferStack[#self.bufferStack].maxY then
-			finalBuffer.cursorBlink = self.bufferStack[#self.bufferStack].cursorBlink
-		else
-			finalBuffer.cursorBlink = false
-		end
-		--farm out actual drawing procedures to framebuffer API.
-		term.redirect(self.target)
-		term.setCursorBlink(false)
-		self.currentBuffer = framebuffer.draw(finalBuffer, self.currentBuffer)
-		term.restore()
 	end,
 	toFront = function(self, pos)
 		table.insert(self.bufferStack, (table.remove(self.bufferStack, pos)))
