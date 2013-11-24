@@ -82,7 +82,7 @@ local function runProgram()
 					win:setDecorations("pretty")
 				end
 				if max == "true" then win:maximize() end
-				process.addWindowed(function() shell.run(path, unpack(args)) end, path, win)
+				process.add(function() shell.run(path, unpack(args)) end, path, win)
 				if coroutine.status(process.processTable[process.focusWindow].thread) == "dead" then
 					process.queueEvent(lws, "close_window", process.focusWindow)
 				end

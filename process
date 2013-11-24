@@ -86,34 +86,19 @@ function resume(pID, eventTable)
 	end
 end
 
-function add(func, path)
+function add(func, path, win)
 	local pTable = {}
 	pTable.thread = coroutine.create(func)
 	pTable.path = path
 	pTable.queue = {}
 	table.insert(process.processTable, pTable)
-	term.redirect(nullRedirect)
+	if win then
+		pTable.window = win
+		process.focusWindow = #process.processTable
+	end
 	local active = process.activeProcess
-	process.activeProcess = #process.processTable
-	coroutine.resume(process.processTable[process.activeProcess].thread)
+	process.resume(#process.processTable, {})
 	process.activeProcess = active
-	term.restore()
-end
-
-function addWindowed(func, path, win)
-	local pTable = {}
-	pTable.thread = coroutine.create(func)
-	pTable.path = path
-	pTable.queue = {}
-	pTable.window = win
-	table.insert(process.processTable, pTable)
-	process.focusWindow = #process.processTable
-	term.redirect(process.processTable[process.focusWindow].window.redirect)
-	local active = process.activeProcess
-	process.activeProcess = #process.processTable
-	coroutine.resume(process.processTable[process.focusWindow].thread)
-	process.activeProcess = active
-	term.restore()
 end
 
 function setFocus(num)
