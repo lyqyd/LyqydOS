@@ -131,7 +131,9 @@ function removeChildWindow(pID, childWindow)
 				break
 			end
 		end
-		if index then end
+		if index then
+			table.remove(processTable[pID].children, index)
+		end
 	end
 end
 
