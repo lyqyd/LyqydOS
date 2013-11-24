@@ -49,16 +49,18 @@ function resume(pID, eventTable)
 	rawset(term, "redirect", newTredirect)
 	rawset(term, "restore", newTrestore)
 
+	local active = process.activeProcess
 	process.activeProcess = pID
 	passback = {coroutine.resume(process.processTable[pID].thread, unpack(eventTable))}
 	process.windowCompositor:draw()
-	process.activeProcess = nil
+	process.activeProcess = active
 	--if the process had a window, recover its redirect stack and restore the redirect functions.
 	if process.processTable[pID] then
 
 		--restore correct redirection level and save redirect stack for resume.
 		rawset(term, "redirect", oldTredirect)
 		rawset(term, "restore", oldTrestore)
+
 		process.processTable[pID].redirectStack = {}
 		for i=1, #process.redirectStack do
 			term.restore()
@@ -79,7 +81,7 @@ function resume(pID, eventTable)
 	if not process.check(pID) then
 		if pID == process.focusWindow then
 			process.focusWindow = process.nextWindow(1)
-			if processTable[process.focusWindow] then
+			if process.processTable[process.focusWindow] then
 				process.toFront(process.focusWindow)
 			end
 		end
@@ -96,9 +98,7 @@ function add(func, path, win)
 		pTable.window = win
 		process.focusWindow = #process.processTable
 	end
-	local active = process.activeProcess
 	process.resume(#process.processTable, {})
-	process.activeProcess = active
 end
 
 function setFocus(num)
@@ -260,9 +260,9 @@ function check(pID)
 		if proc.window then
 			if pID == desktop then
 				--send terminate signal; pcall wrappers will allow current windows to close without killing process.
-				process.queueEvent(desktop, "terminate")
+				process.queueEvent(process.getIDFromName("desktop"), "terminate")
 			else
-				process.queueEvent(lws, "close_window", pID)
+				process.queueEvent(process.getIDFromName("lws"), "close_window", pID)
 			end
 		end
 		return false
@@ -280,7 +280,7 @@ end
 
 function getIDFromName(path)
 	for pNum, pInfo in pairs(process.processTable) do
-		if pInfo.path == path then
+		if pInfo and pInfo.path == path then
 			return pNum
 		end
 	end
