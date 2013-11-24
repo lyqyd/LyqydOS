@@ -105,7 +105,7 @@ while true do
 	--build title bar items.
 	process.resume(desktop, {"redraw"})
 
-	windowCompositor:draw()
+	--windowCompositor:draw()
 	event = {coroutine.yield()}
 	if event[1] == "key" and event[2] == 59 then
 		--run menu for keyboard users.
