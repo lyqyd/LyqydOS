@@ -39,18 +39,8 @@ do
 	end
 end
 
-local lws, desktop, lrnd
-
-for k,v in pairs(process.processTable) do
-	if v.path == "lws" then
-		lws = k
-	elseif v.path == "desktop" then
-		desktop = k
-	elseif v.path == "lrnd" then
-		lrnd = k
-	end
-	if lws and desktop and lrnd then break end
-end
+local desktop = process.getIDFromName("desktop")
+if not desktop then error("No desktop initialized!")
 
 windowDimensions = {}
 winDims = io.open("/.lyqwin", "r")
