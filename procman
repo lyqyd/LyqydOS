@@ -107,23 +107,22 @@ while true do
 
 	--windowCompositor:draw()
 	event = {coroutine.yield()}
-	if event[1] == "key" and event[2] == 59 then
-		--run menu for keyboard users.
-		process.queueEvent(desktop, "run_program")
-	elseif event[1] == "key" and event[2] == 61 then
-		--window switching menu
-		if process.focusWindow and process.processTable[process.focusWindow] then
-			process.queueEvent(lws, "select_window")
-		end
-	elseif event[1] == "key" and event[2] == 62 then
-		--window controls menu
-		if process.focusWindow and process.processTable[process.focusWindow] then
-			process.queueEvent(lws, "window_action", process.focusWindow, processTable[process.focusWindow].window)
-		end
-	elseif event[1] == "key" and event[2] == 63 then
-		--full screen toggle
 
-	elseif event[1] == "mouse_click" then
+	--process event hooks, like lws and desktop use for hotkeys.
+	for hNum, hInfo in pairs(process.eventHooks) do
+		local match = true
+		for i = 1, #hInfo.event do
+			if not event[i] or (event[i] and hInfo.event[i] ~= event[i]) then
+				match = false
+				break
+			end
+		end
+		if match then
+			process.resume(hInfo.pID, event)
+		end
+	end
+
+	if event[1] == "mouse_click" then
 		watchMouseDragging = false
 		local windowFound = false
 		for i = #windowCompositor.bufferStack, 1, -1 do

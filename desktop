@@ -1,6 +1,8 @@
 local deskID = process.id()
 local deskRedirect = process.windowCompositor:newBuffer()
 
+process.addHook(deskID, {"key", 59})
+
 local runHistory = {}
 if fs.exists("/.lyqrunhistory") then
 	local histFile=io.open("/.lyqrunhistory","r")
@@ -135,6 +137,8 @@ while true do
 		end
 		deskRedirect.buffer.text[1] = titlebarFillChar.."LyqydOS"..titlebarFillChar..taskText..string.rep(titlebarFillChar, x - (#taskText + 9))
 	elseif event[1] == "run_program" then
+		runProgram()
+	elseif event[1] == "key" and event[2] == 59 then
 		runProgram()
 	elseif event[1] == "mouse_click" then
 		if event[4] == 1 then

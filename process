@@ -4,6 +4,7 @@ activeProcess = nil
 windowCompositor = {}
 redirectStack = {}
 nullRedirect = framebuffer.new()
+eventHooks = {}
 
 local oldTredirect = term.redirect
 local oldTrestore = term.restore
@@ -99,6 +100,32 @@ function add(func, path, win)
 		process.focusWindow = #process.processTable
 	end
 	process.resume(#process.processTable, {})
+end
+
+function addHook(pID, hookMask)
+	local match = false
+	for hNum, hInfo in ipairs(process.eventHooks) do
+		if hInfo.pID == pID then
+			local setmatch = true
+			for i = 1, #hookMask do
+				if hInfo.event[i] and hInfo.event[i] ~= hookMask[i] then
+					setmatch = false
+					break
+				end
+			end
+			if setmatch then
+				match = true
+				break
+			end
+		end
+	end
+	if not match then
+		local entry = {
+			pID = pID,
+			event = hookMask,
+		}
+		table.insert(process.eventHooks, entry)
+	end
 end
 
 function setFocus(num)

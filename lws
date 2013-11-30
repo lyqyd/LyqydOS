@@ -45,9 +45,20 @@ local function saveDimensions(proc)
 	end
 end
 
+process.addHook(process.id(), {"key", 61})
+process.addHook(process.id(), {"key", 62})
+
 while true do
 	local event = {os.pullEventRaw()}
-	if event[1] == "window_action" then
+	if event[1] == "key" and event[2] == 61 then
+		if process.focusWindow and process.processTable[process.focusWindow] then
+			process.queueEvent(process.id(), "select_window")
+		end
+	elseif event[1] == "key" and event[2] == 62 then
+		if process.focusWindow and process.processTable[process.focusWindow] then
+			process.queueEvent(process.id(), "window_action", process.focusWindow, processTable[process.focusWindow].window)
+		end
+	elseif event[1] == "window_action" then
 		--index 2 should be the pID and 3 should be the window, forward compat for child windows.
 		if process.processTable[process.focusWindow] and not process.processTable[process.focusWindow].special then
 			local parent = process.focusWindow
