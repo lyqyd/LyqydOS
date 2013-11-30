@@ -1,0 +1,58 @@
+local deskID = process.id()
+local deskRedirect = process.windowCompositor:newBuffer()
+
+--new term, previous term, next term keys.
+process.addHook(deskID, {"key", 59})
+process.addHook(deskID, {"key", 61})
+process.addHook(deskID, {"key", 62})
+
+local terms = {}
+local focusTerm = nil
+
+while true do
+	event = {os.pullEvent()}
+	if event[1] == "key" and event[2] == 59 then
+		--add process
+		local redirect = framebuffer.new(process.windowCompositor.x, process.windowCompositor.y - 1, process.windowCompositor.target.isColor())
+		redirect.buffer.minX = 1
+		redirect.buffer.maxX = process.windowCompositor.x
+		redirect.buffer.minY = 1
+		redirect.buffer.maxY = process.windowCompositor.y - 1
+		table.insert(process.windowCompositor.bufferStack, 1, redirect.buffer)
+		process.add(function() shell.run("/rom/programs/shell") end, "shell", nil, redirect)
+		table.insert(terms, #process.processTable)
+		process.focusWindow = #process.processTable
+		focusTerm = #process.processTable
+	elseif event[1] == "key" and event[2] == 61 then
+		for i = 1, #terms do
+			if terms[i] == focusTerm then
+				if terms[i - 1] then
+					focusTerm = terms[i - 1]
+				elseif i == 1 then
+					focusTerm = terms[#terms]
+				end
+				process.focusWindow = focusTerm
+				break
+			end
+		end
+	elseif event[1] == "key" and event[2] == 62 then
+		for i = 1, #terms do
+			if terms[i] == focusTerm then
+				if terms[i + 1] then
+					focusTerm = terms[i + 1]
+				elseif i == #terms then
+					focusTerm = terms[1]
+				end
+				process.focusWindow = focusTerm
+				break
+			end
+		end
+	elseif event == "redraw" then
+		framebuffer.draw(process.processTable[focusTerm].redirect.buffer)
+		do
+			term.redirect(process.windowCompositor.target)
+			term.setCursorPos(1, process.windowCompositor.y)
+			term.write(string.rep("=", process.windowCompositor.x))
+		end
+	end
+end
