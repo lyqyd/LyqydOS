@@ -65,6 +65,21 @@ if winDims then
 	winDims:close()
 end
 
+local function findHook(event)
+	local ref
+	for i = 1, #event do
+		if ref[event[i]] then
+			if type(ref[event[i]]) == "table" then
+				ref = ref[event[i]]
+			elseif type(ref[event[i]]) == "number" then
+				return ref[event[i]]
+			end
+		else
+			return false
+		end
+	end
+end
+
 local function distributeEvent(event)
 	if processTable[process.focusWindow] then
 		process.resume(process.focusWindow, event)
@@ -87,11 +102,6 @@ end
 --causes initial desktop and title bar to draw.
 windowCompositor:draw()
 
-local watchMouseDragging = false
-local mouseStartX = nil
-local mouseStartY = nil
-local mouseDragAction = nil
-
 while true do
 	--process individually-queued events.
 	for i=1, #processTable do
@@ -105,126 +115,17 @@ while true do
 	--build title bar items.
 	process.resume(desktop, {"redraw"})
 
-	--windowCompositor:draw()
 	event = {coroutine.yield()}
 
 	--process event hooks, like lws and desktop use for hotkeys.
-	for hNum, hInfo in pairs(process.eventHooks) do
-		local match = true
-		for i = 1, #hInfo.event do
-			if not event[i] or (event[i] and hInfo.event[i] ~= event[i]) then
-				match = false
-				break
-			end
-		end
-		if match then
-			process.resume(hInfo.pID, event)
+	if process.eventHooks[event[1]] then
+		local pID = findHook(event)
+		if pID then
+			event = {process.resume(pID, event)}
 		end
 	end
 
-	if event[1] == "mouse_click" then
-		watchMouseDragging = false
-		local windowFound = false
-		for i = #windowCompositor.bufferStack, 1, -1 do
-			for pNum, pInfo in pairs(processTable) do
-				if pInfo and pInfo.window and pInfo.window.target.buffer and pInfo.window.target.buffer == windowCompositor.bufferStack[i] then
-					--correct window in order, break even if we don't get the click here.
-					if event[3] >= pInfo.window.x and event[3] <= pInfo.window.x + pInfo.window.w - 1 and event[4] >= pInfo.window.y and event[4] <= pInfo.window.y + pInfo.window.h - 1 and not pInfo.window.minimized then
-						windowFound = true
-						if process.focusWindow ~= pNum then
-							process.focusWindow = pNum
-							process.toFront(process.focusWindow)
-						end
-						event[3] = event[3] - pInfo.window.x
-						event[4] = event[4] - pInfo.window.y
-						if event[3] > 0 and event[3] < pInfo.window.w - 1 and event[4] > 0 and event[4] < pInfo.window.h - 1 then
-							--mouse click resume
-							process.resume(process.focusWindow, event)
-						elseif event[4] == 0 and event[2] == 2 then
-							--right click on window title bar, open window menu.
-							process.queueEvent(lws, "window_action", pNum, pInfo.window)
-						elseif (pInfo.window.windowType == "modal" and event[4] == 0 and event[2] == 1 and pInfo.window.w - event[3] == 3) or (pInfo.window.windowType == "standard" and event[4] == 0 and event[2] == 1 and pInfo.window.w - event[3] > 2 and pInfo.window.w - event[3] < 6) then
-							local action = pInfo.window.w - event[3] - 2
-							if action == 1 then
-								--close window
-								process.queueEvent(lws, "close_window", process.focusWindow)
-							elseif action == 2 then
-								if pInfo.window.maximized then
-									pInfo.window:restore()
-									process.queueEvent(pNum, "window_resize")
-								else
-									pInfo.window:maximize()
-									process.queueEvent(pNum, "window_resize")
-								end
-							elseif action == 3 then
-								pInfo.window:minimize()
-								process.toBack(pNum)
-							end
-						elseif event[4] == 0 and event[2] == 1 and not pInfo.special then
-							--clicked on titlebar, set variables to see if we drag.
-							watchMouseDragging = true
-							mouseDragAction = "move"
-							mouseStartX = event[3] + pInfo.window.x
-							mouseStartY = event[4] + pInfo.window.y
-						elseif event[3] == pInfo.window.w - 1 and event[4] == pInfo.window.h - 1 and event[2] == 1 and not pInfo.special then
-							--clicked on lower right corner, resize.
-							watchMouseDragging = true
-							mouseDragAction = "resize"
-							mouseStartX = event[3] + pInfo.window.x
-							mouseStartY = event[4] + pInfo.window.y
-						end
-					end
-					break
-				end
-			end
-			if windowFound then break end
-		end
-		if not windowFound then
-			--let desktop service handle this.
-			process.resume(desktop, event)
-		end
-	elseif event[1] == "mouse_drag" then
-		--mouse is dragging, see if we need to do something with windows.
-		if watchMouseDragging then
-			if mouseDragAction == "move" then
-				processTable[process.focusWindow].window:move(processTable[process.focusWindow].window.x + (event[3] - mouseStartX), processTable[process.focusWindow].window.y + (event[4] - mouseStartY))
-				mouseStartX = event[3]
-				mouseStartY = event[4]
-			elseif mouseDragAction == "resize" then
-				processTable[process.focusWindow].window:resize(processTable[process.focusWindow].window.w + (event[3] - mouseStartX), processTable[process.focusWindow].window.h + (event[4] - mouseStartY))
-				mouseStartX = event[3]
-				mouseStartY = event[4]
-				processTable[process.focusWindow].window.maximized = false
-				process.queueEvent(process.focusWindow, "window_resize")
-			end
-		elseif processTable[process.focusWindow] and processTable[process.focusWindow].window then
-			event[3] = event[3] - processTable[process.focusWindow].window.x
-			event[4] = event[4] - processTable[process.focusWindow].window.y
-			if event[3] > 0 and event[3] < processTable[process.focusWindow].window.w - 1 and event[4] > 0 and event[4] < processTable[process.focusWindow].window.h - 1 then
-				process.resume(process.focusWindow, event)
-			end
-		elseif desktop then
-			--fall through to desktop
-			process.resume(desktop, event)
-		end
-	elseif event[1] == "mouse_scroll" then
-		if processTable[process.focusWindow] and processTable[process.focusWindow].window then
-			event[3] = event[3] - processTable[process.focusWindow].window.x
-			event[4] = event[4] - processTable[process.focusWindow].window.y
-			if event[3] > 0 and event[3] < processTable[process.focusWindow].window.w - 1 and event[4] > 0 and event[4] < processTable[process.focusWindow].window.h - 1 then
-				process.resume(process.focusWindow, event)
-			end
-		elseif desktop then
-			--fall through to desktop
-			process.resume(desktop, event)
-		end
-	elseif event[1] == "modem_message" then
-		if lrnd then
-			process.queue(lrnd, unpack(event))
-		else
-			distributeEvent(event)
-		end
-	else
+	if #event > 0 then
 		distributeEvent(event)
 	end
 end

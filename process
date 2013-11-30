@@ -87,6 +87,7 @@ function resume(pID, eventTable)
 			end
 		end
 	end
+	return unpack(passback, 2)
 end
 
 function add(func, path, win)
@@ -102,29 +103,26 @@ function add(func, path, win)
 	process.resume(#process.processTable, {})
 end
 
-function addHook(pID, hookMask)
-	local match = false
-	for hNum, hInfo in ipairs(process.eventHooks) do
-		if hInfo.pID == pID then
-			local setmatch = true
-			for i = 1, #hookMask do
-				if hInfo.event[i] and hInfo.event[i] ~= hookMask[i] then
-					setmatch = false
-					break
-				end
-			end
-			if setmatch then
-				match = true
-				break
-			end
-		end
+local function tablify(baseTable, keyTable)
+	local key = table.remove(keyTable, 1)
+	if not baseTable[key then
+		baseTable[key = {}
+	elseif type(baseTable[key]) ~= "table" then
+		return false
 	end
-	if not match then
-		local entry = {
-			pID = pID,
-			event = hookMask,
-		}
-		table.insert(process.eventHooks, entry)
+	if #keyTable > 1 then
+		return tablify(baseTable[key], keyTable)
+	elseif #keyTable == 1 then
+		return baseTable, key
+	end
+end
+
+function addHook(pID, hookMask)
+	local ref, key = tablify(process.eventHooks, hookMask)
+	if ref then
+		ref[key] = pID
+	else
+		return false
 	end
 end
 

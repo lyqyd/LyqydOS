@@ -1,6 +1,8 @@
 local RN_BROADCAST = 65535
 local lyqydnet = false
 
+process.addHook(process.id, {"modem_message"})
+
 local function checkLyqydNet()
 	for pNum, pInfo in pairs(process.processTable) do
 		if pInfo.path = "lyqydnet" then
