@@ -40,7 +40,7 @@ do
 end
 
 local desktop = process.getIDFromName("desktop")
-if not desktop then error("No desktop initialized!")
+if not desktop then error("No desktop initialized!") end
 
 windowDimensions = {}
 winDims = io.open("/.lyqwin", "r")

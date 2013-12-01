@@ -34,14 +34,14 @@ function resume(pID, eventTable)
 				break
 			end
 		end
-		if not resumeProcess then return end
+		if not resumeProcess then return unpack(eventTable) end
 	end
 	--redirect to window's current position in its redirect stack
 	term.redirect(process.processTable[pID].redirect[#process.processTable[pID].redirect])
 
 	--copy redirect stack to global table
 	process.redirectStack = {}
-	for i = 1, #process.processTable[pID].redirect) do
+	for i = 1, #process.processTable[pID].redirect do
 		process.redirectStack[i] = process.processTable[pID].redirect[i]
 	end
 
@@ -98,7 +98,7 @@ function add(func, path, win, redirect)
 		pTable.redirect = {win.redirect}
 		process.focusWindow = #process.processTable
 	elseif redirect then
-		pTable.redirect = redirect
+		pTable.redirect = {redirect}
 	else
 		pTable.redirect = {process.nullRedirect}
 	end
@@ -107,8 +107,8 @@ end
 
 local function tablify(baseTable, keyTable)
 	local key = table.remove(keyTable, 1)
-	if not baseTable[key then
-		baseTable[key = {}
+	if not baseTable[key] then
+		baseTable[key] = {}
 	elseif type(baseTable[key]) ~= "table" then
 		return false
 	end
