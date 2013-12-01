@@ -58,18 +58,17 @@ local guiElement = {
 
 local emetatable = {__index = guiElement}
 
-local function newGuiElement(guiInstance, minX, minY, maxX, maxY)
+local function newGuiElement(guiInstance)
 	local element = {
 		bounds = {
-			minX = minX or 0,
-			minY = minY or 0,
-			maxX = maxX or 1,
-			maxY = maxY or 1,
+			minX = 0,
+			minY = 0,
+			maxX = 1,
+			maxY = 1,
 		},
 		properties = {
 			isVisible = true,
 			isEnabled = true,
-			isVolatile = false,
 		},
 		parentWindow = guiInstance.parentWindow,
 		parentInstance = guiInstance,
@@ -82,21 +81,20 @@ end
 local guiTable = {
 	newChildWindow = function(self, w, h, x, y, caption)
 		local win = window.new(w, h, x, y, caption, process.windowCompositor:newBuffer())
-		self.trackedWindows[win] = true
 		print(self.parentProcessID)
 		process.addChildWindow(self.parentProcessID, win)
 		return win
 	end,
 
 	--button gui element.  Used for clickable areas.
-	button = function(self, targetWindow, minX, minY, maxX, maxY, labelTable, func, textColor, backgroundColor)
-		local instance = newGuiElement(self, minX, minY, maxX, maxY)
-		if targetWindow ~= nil then instance.parentWindow = targetWindow end
+	newButton = function(self, minX, minY, maxX, maxY, labelTable, func, textColor, backgroundColor)
+		local instance = newGuiElement(self)
+		instance:setBounds(minX, minY, maxX, maxY)
 		instance.data = {
 			label = labelTable,
 			func = func,
-			textColor = textColor or colors.white,
-			backgroundColor = backgroundColor or colors.black,
+			textColor = textColor,
+			backgroundColor = backgroundColor,
 		}
 		instance.draw = function(self)
 			term.redirect(self.parentWindow.redirect)
@@ -126,216 +124,209 @@ local guiTable = {
 			end
 		end
 		instance:draw()
-		table.insert(self.elements, instance)
+		table.insert(self.trackedWindows[targetWindow].guiElements, instance)
 		return instance
 	end,
 
-	--Menu gui element.  Used to generate a menu from a table.
-	menu = function(self, targetWindow, minX, maxX, minY, maxY, menuTable, textColor, selectedTextColor, backgroundColor, selectedBackgroundColor)
+	--Menu gui element.  Used to generate a menu window from a table.
+	newMenu = function(self, targetWindow, x, y, menuTable)
 		if not verifyAcyclicTable(menuTable, {}) then return nil, "Cannot create cyclic menu" end
-		local instance = newGuiElement(self, minX, minY, maxX, maxY)
-		if targetWindow ~= nil then instance.parentWindow = targetWindow end
-		local instance.data = {
-			textColor = textColor or colors.white,
-			selectedTextColor = selectedTextColor or colors.black,
-			backgroundColor = backgroundColor or colors.black,
-			selectedBackgroundColor = selectedBackgroundColor or colors.white,
-			drawCursor = false,
-			cursor = 1,
-			offset = 1,
-			menuEntries = {}
-			cleanTable = {}
+		if not trackWindow(self, targetWindow) then return nil, "Cannot create gui in menu parent window" end
+		local elementData = {
+			targetWindow = nil,
+			menuEntries = {},
+			cleanTable = {},
 		}
+		menuWidth = 0
 		for i, v in ipairs(menuTable) do
 			if type(v) == "table" then
 				local entryData = {}
 				entryData.name = v.name
-				entryData.state = v.state
-				table.insert(instance.data.menuEntries, entryData)
-				table.insert(instance.data.cleanTable, v.name)
-			elseif type(v) == "string" then
-				table.insert(instance.data.menuEntries, {name = v})
-				table.insert(instance.data.cleanTable, v)
-			end
-		end
-
-		instance.draw = function(self)
-			local function getText(entryNum)
-				if self.data.menuEntries[entryNum].state ~= nil then
-					return (self.data.menuEntries[entryNum].state and "X " or "  ")..self.data.cleanTable[entryNum]
-				else
-					return self.data.cleanTable[entryNum]
-				end
-			end
-
-			local function writeLine(text, length, selected)
-				if selected then
-					term.setTextColor(self.data.selectedTextColor)
-					term.setBackgroundColor(self.data.selectedBackgroundColor)
-				else
-					term.setTextColor(self.data.textColor)
-					term.setBackgroundColor(self.data.backgroundColor)
-				end
-				term.write(string.sub(text, 1, length))
-			end
-			term.redirect(self.parentWindow.redirect)
-			--get x-length of drawable area for term.write calls.
-			local xLim = maxX - minX + 1
-			if maxX - minX < 2 or (maxY - minY < 2 and #self.data.cleanTable > 2) then
-				return nil, "Not enough space to draw menu!"
-			end
-			term.clear()
-			term.setCursorPos(self.bounds.minX, self.bounds.minY)
-			if self.offset > 1 then
-				writeLine("/\\", xLim, false)
-			else
-				writeLine(getText(1), xLim, self.data.drawCursor and self.data.cursor == 1)
-			end
-			for i=1, math.min(self.bounds.maxY - self.bounds.minY, #self.data.cleanTable + self.bounds.minY - 1) do
-				term.setCursorPos(self.bounds.minX, i + self.bounds.minY - 1)
-				writeLine(getText(self.offset + i), xLim, self.data.drawCursor and self.offset + i == self.cursor)
-			end
-			if #self.data.cleanTable >= self.bounds.maxY then
-				term.setCursorPos(self.bounds.minX, self.bounds.maxY)
-				if #self.data.cleanTable > self.offset + self.bounds.maxY - 1 then
-					writeLine("\\/", xLim, false)
-				else
-					writeLine(getText(#self.data.cleanTable), xLim, self.data.drawCursor and self.offset + i == self.cursor)
-				end
-			end
-			term.restore()
-		end
-		instance.eventHandler = function(self, ...)
-			if event[1] == "key" then
-				--up
-				if event[2] == 200 then
-					self.data.data.drawCursor = true
-					if self.data.cursor - self.data.offset + 1 > 2 or (self.data.cursor > 1 and self.data.offset ==  1) then
-						self.data.cursor = self.data.cursor - 1
-						self:draw()
-					elseif self.data.cursor - self.data.offset + 1 == 2 and self.data.offset > 1 then
-						self.data.offset = self.data.offset - 1
-						self.data.cursor = self.data.cursor - 1
-						self:draw()
-					end
-				--down
-				elseif event[2] == 208 then
-					self.data.drawCursor = true
-					local ylim = self.bounds.maxY - self.bounds.minY + 1
-					if self.data.cursor < #self.data.cleanTable and (self.data.cursor - self.data.offset + 1 < ylim - 1 or #self.data.cleanTable <= ylim or (self.data.cursor == #self.data.cleanTable - 1 and self.data.cursor - self.data.offset + 1 == ylim - 1)) then
-						self.data.cursor = self.data.cursor + 1
-						self:draw()
-					elseif self.data.cursor < #self.data.cleanTable and self.data.cursor - self.data.offset + 1 == ylim - 1 then
-						self.data.offset = self.data.offset + 1
-						self.data.cursor = self.data.cursor + 1
-						self:draw()
-					end
-				elseif event[2] == 28 then
-					if self.data.drawCursor then
-						if self.data.menuEntries[self.data.cursor].state ~= nil then
-							--if checked entry, toggle value
-							self.data.menuEntries[self.data.cursor].state = self.data.menuEntries[self.data.cursor].state == false
-							return "lgui_menu_click", self.data.cursor, self.data.menuEntries[self.data.cursor].state
-						end
-						return "lgui_menu_click", self.data.cursor
-					end
-				end
-			elseif event[1] == "mouse_click" and event[2] == 1 then
-				if event[4] <= #self.data.cleanTable then
-					local ylim = self.bounds.maxY - self.bounds.minY + 1
-					if self.data.offset > 1 and event[4] == 1 then
-						--scroll up.
-						self.data.offset = self.data.offset - 1
-						self.data.cursor = self.data.offset + 1
-						self:draw()
-					elseif self.data.offset + ylim - 1 < #self.data.cleanTable and event[4] == ylim then
-						--scroll down.
-						self.data.offset = self.data.offset + 1
-						self.data.cursor = self.data.offset + ylim - 2
-						self:draw()
-					else
-						self.data.cursor = event[4] + self.data.offset - 1
-						self.data.drawCursor = true
-						self:draw()
-						if self.data.menuEntries[self.data.cursor].state ~= nil then
-							--if checked entry, toggle value
-							self.data.menuEntries[self.data.cursor].state = self.data.menuEntries[self.data.cursor].state == false
-							return "lgui_menu_click", self.data.cursor, self.data.menuEntries[self.data.cursor].state
-						end
-						return "lgui_menu_click", self.data.cursor
-					end
-				end
-			end
-		end
-		instance:draw()
-		table.insert(self.elements, instance)
-		return instance
-	end,
-
-	--Generate a new window and fill it entirely with a menu, using the above menu function.
-	menuWindow = function(self, x, y, menuTable, ...)
-		if not verifyAcyclicTable(menuTable, {}) then return nil, "Cannot create cyclic menu" end
-
-		--get width of menu
-		menuWidth = 0
-		for i, v in ipairs(menuTable) do
-			if type(v) == "table" then
+				entryData.menu = v.options
+				table.insert(elementData.menuEntries, entryData)
+				table.insert(elementData.cleanTable, v.name)
 				menuWidth = math.max(menuWidth, string.len(v.name))
 			elseif type(v) == "string" then
+				table.insert(elementData.menuEntries, {name = v})
+				table.insert(elementData.cleanTable, v)
 				menuWidth = math.max(menuWidth, string.len(v))
 			end
 		end
-
 		local xLim, yLim = process.windowCompositor.x, process.windowCompositor.y
 		--add one to get the borders accounted for
 		if y + #elementData.menuEntries + 1 > yLim then
 			y = math.max(1, yLim - #elementData.menuEntries - 1)
 		end
-		local width, height = math.min(x + menuWidth + 1, xLim - x - 1), math.min(yLim - 1, #elementData.menuEntries + 2)
-		local xPos, yPos = targetWindow.x + x, targetWindow.y + y
-		print(xPos..","..yPos..","..width..","..height)
-
-		menuWindow = self:newChildWindow(width, height, xPos, yPos, nil)
+		print(targetWindow.x + x..","..targetWindow.y + y..","..math.min(x + menuWidth + 1, xLim - x - 1)..","..math.min(yLim - 1, #elementData.menuEntries + 2))
+		menuWindow = self:newChildWindow(math.min(x + menuWidth + 1, xLim - x - 1), math.min(yLim - 1, #elementData.menuEntries + 2), targetWindow.x + x, targetWindow.y + y, nil)
+		elementData.targetWindow = menuWindow
+		--menuWindow = window.new(targetWindow.x + x, targetWindow.y + y, math.min(x + menuWidth + 1, xLim - x - 1), math.min(yLim - 1, #elementData.menuEntries + 2), nil, process.windowCompositor:newBuffer())
 		menuWindow:setDecorations("menu")
-		local menuInstance = self:menu(menuWindow, 1, width - 1, 1, height - 1, menuTable, ...)
-		menuInstance.properties.isVolatile = true
-		menuInstance.cleanup = function(self)
-			process.removeChildWindow(self.guiInstance.parentProcessID, self.parentWindow)
+		--process.addChildWindow(self.parentProcessID, menuWindow)
+		if not trackWindow(self, menuWindow) then
+			menuWindow:destroy()
+			return nil, "Cannot create gui in menu parent window"
 		end
-		
-		return menuInstance
+		elementData.offset = 1
+		elementData.cursor = 1
+		elementData.drawCursor = false
+		elementData.draw = function(self)
+			term.redirect(self.targetWindow)
+			local xlim, ylim = term.getSize()
+			if xlim < 3 or (ylim < 3 and #self.cleanTable > 2) then
+				return nil, "Not enough space to draw menu!"
+			end
+			term.clear()
+			term.setCursorPos(1, 1)
+			if self.offset > 1 then
+				term.write("/\\")
+			else
+				term.write(string.sub(self.cleanTable[1], 1, xlim))
+			end
+			for i=1, math.min(ylim - 2, #self.cleanTable - 1) do
+				term.setCursorPos(1, i + 1)
+				if self.drawCursor and self.offset + i == self.cursor then
+					term.setBackgroundColor(colors.white)
+					term.setTextColor(colors.black)
+					term.write(string.sub(self.cleanTable[self.offset + i], 1, xlim))
+					term.setBackgroundColor(colors.black)
+					term.setTextColor(colors.white)
+				else
+					term.write(string.sub(self.cleanTable[self.offset + i], 1, xlim))
+				end
+			end
+			if #self.cleanTable >= ylim then
+				term.setCursorPos(1, ylim)
+				if #self.cleanTable > self.offset + ylim - 1 then
+					term.write("\\/")
+				else
+					if self.drawCursor and self.offset + i == self.cursor then
+						term.setBackgroundColor(colors.white)
+						term.setTextColor(colors.black)
+						term.write(string.sub(self.cleanTable[#self.cleanTable], 1, xlim))
+						term.setBackgroundColor(colors.black)
+						term.setTextColor(colors.white)
+					else
+						term.write(string.sub(self.cleanTable[#self.cleanTable], 1, xlim))
+					end
+				end
+			end
+			term.restore()
+		end
+		elementData.eventHandler = function(self, ...)
+			if event[1] == "key" then
+				--up
+				if event[2] == 200 then
+					self.drawCursor = true
+					if self.cursor - self.offset + 1 > 2 or (self.cursor > 1 and self.offset ==  1) then
+						self.cursor = self.cursor - 1
+						self.redrawMenu(self.cleanTable, self.cursor, self.offset, self.drawCursor)
+					elseif self.cursor - self.offset + 1 == 2 and self.offset > 1 then
+						self.offset = self.offset - 1
+						self.cursor = self.cursor - 1
+						self.redrawMenu(self.cleanTable, self.cursor, self.offset, self.drawCursor)
+					end
+				--down
+				elseif event[2] == 208 then
+					self.drawCursor = true
+					_, ylim = term.getSize()
+					if self.cursor < #self.cleanTable and (self.cursor - self.offset + 1 < ylim - 1 or #self.cleanTable <= ylim or (self.cursor == #self.cleanTable - 1 and self.cursor - self.offset + 1 == ylim - 1)) then
+						self.cursor = self.cursor + 1
+						self.redrawMenu(self.cleanTable, self.cursor, self.offset, self.drawCursor)
+					elseif self.cursor < #self.cleanTable and self.cursor - self.offset + 1 == ylim - 1 then
+						self.offset = self.offset + 1
+						self.cursor = self.cursor + 1
+						self.redrawMenu(self.cleanTable, self.cursor, self.offset, self.drawCursor)
+					end
+				elseif event[2] == 28 then
+					return self.cursor
+				end
+			elseif event[1] == "mouse_click" and event[2] == 1 then
+				if event[4] <= #self.cleanTable then
+					_, ylim = term.getSize()
+					if self.offset > 1 and event[4] == 1 then
+						--scroll up.
+						self.offset = self.offset - 1
+						self.cursor = self.offset + 1
+						self.redrawMenu(self.cleanTable, self.cursor, self.offset, self.drawCursor)
+					elseif self.offset + ylim - 1 < #self.cleanTable and event[4] == ylim then
+						--scroll down.
+						self.offset = self.offset + 1
+						self.cursor = self.offset + ylim - 2
+						self.redrawMenu(self.cleanTable, self.cursor, self.offset, self.drawCursor)
+					else
+						self.drawCursor = true
+						self.redrawMenu(self.cleanTable, self.cursor, self.offset, self.drawCursor)
+						return event[4] + self.offset - 1
+					end
+				end
+			elseif event[1] == "window_resize" then
+				self.redrawMenu(self.cleanTable, self.cursor, self.offset, self.drawCursor)
+			end
+		end
+		elementData:draw()
+		return elementData
 	end,
 
 	--Menu Bar element.  Combination of buttons and menus, generated from a table.
-	menuBar = function(self, targetWindow, x, y, menuTable, ...)
+	newMenuBar = function(self, targetWindow, x, y, menuTable)
 		if not verifyAcyclicTable(menuTable, {}) then return nil, "Cannot create cyclic menu" end
 		if not trackWindow(self, targetWindow) then return nil, "Cannot create gui in that window" end
-		local elements
-
-		local function newBarButton (x, y, name, menu, target)
-			local len = string.len(name)
-			local minX, maxX = x, x + len - 1
-			local label = {name, name = name,}
-			if menu then
-				local buttonFunc = function()
-					self:menuWindow(x, y + 1, menu)
+		local elementData = {}
+		elementData.menuButtons = {}
+		
+		local menuBarLength = 0
+		for i, v in ipairs(menuTable) do
+			if type(v) == "table" then
+				--menu contains submenus, use .name for the text
+				local buttonData = {}
+				buttonData.name = v.name
+				buttonData.menu = v.options
+				table.insert(elementData.menuButtons, buttonData)
+				menuBarLength = menuBarLength + string.len(v.name) + 1
+			elseif type(v) == "string" then
+				--menu option is just a button, use the text
+				table.insert(elementData.menuButtons, {name = v})
+				menuBarLength = menuBarLength + string.len(v) + 1
+			end
+		end
+		menuBarLength = menuBarLength - 1
+		local xLim, yLim = term.getSize()
+		if menuBarLength <= xLim - (x - 1) then
+			term.setCursorPos(x, y)
+			for i=1, #elementData.menuButtons do
+				term.write(elementData.menuButtons[i].name)
+				if i < #elementData.menuButtons then
+					term.write(" ")
 				end
 			end
-			local instance = self:button(target, minX, y, maxX, y, label, buttonFunc)
-			return instance, maxX
 		end
 
-		local xOffset = x
-		local inst
-		for i, v in pairs(menuTable) do
-			if type(v) == "table" then
-				inst, xOffset = newBarButton(xOffset, y, v.name, v.options, targetWindow)
-			elseif type(v) == "string" then
-				inst, xOffset = newBarButton(xOffset, y, v, nil, targetWindow)
+		elementData.minX = x
+		elementData.minY = y
+		elementData.maxX = x + menuBarLength - 1
+		elementData.maxY = y
+		elementData.eventHandler = function(self, ...)
+			event = {...}
+			if event[1] == "mouse_click" then
+				local offset = 1
+				for i,v in ipairs(self.menuButtons) do
+					if event[3] >= offset and event[3] <= offset + string.len(v.name) - 1 then
+						if v.options then
+							--this creates the menu window
+						else
+							return "lgui_menu_click", v.name
+						end
+						--this button
+						break
+					else
+						offset = offset + string.len(v.name) + 1
+					end
+				end
 			end
-			table.insert(elements, inst)
 		end
-		return elements
+		if not self.trackedWindows[targetWindow].guiElements then self.trackedWindows[targetWindow].guiElements = {} end
+		table.insert(self.trackedWindows[targetWindow].guiElements, elementData)
 	end,
 	handleEvent = function(self, ...)
 		event = {...}
@@ -378,7 +369,6 @@ function new()
 		parentProcessTable = process.processTable[process.activeProcess],
 		parentWindow = process.processTable[process.activeProcess].window,
 		trackedWindows = {},
-		elements = {},
 	}
 	setmetatable( g, gmetatable )
 	return g
