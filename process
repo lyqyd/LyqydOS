@@ -36,6 +36,7 @@ function resume(pID, eventTable)
 		end
 		if not resumeProcess then return unpack(eventTable) end
 	end
+
 	--redirect to window's current position in its redirect stack
 	term.redirect(process.processTable[pID].redirect[#process.processTable[pID].redirect])
 
@@ -62,7 +63,7 @@ function resume(pID, eventTable)
 
 		process.processTable[pID].redirect = {}
 		for i=1, #process.redirectStack do
-			process.processTable[pID].redirectStack[i] = process.redirectStack[i]
+			process.processTable[pID].redirect[i] = process.redirectStack[i]
 		end
 		term.restore()
 
