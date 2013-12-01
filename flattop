@@ -1,4 +1,5 @@
 local deskID = process.id()
+process.processTable[deskID].path = "desktop"
 local deskRedirect = process.windowCompositor:newBuffer()
 
 --new term, previous term, next term keys.

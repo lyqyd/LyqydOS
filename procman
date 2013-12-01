@@ -56,7 +56,7 @@ if winDims then
 end
 
 local function findHook(event)
-	local ref
+	local ref = process.eventHooks
 	for i = 1, #event do
 		if ref[event[i]] then
 			if type(ref[event[i]]) == "table" then
