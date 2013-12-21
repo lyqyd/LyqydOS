@@ -120,13 +120,21 @@ local function tablify(baseTable, keyTable)
 	end
 end
 
-function addHook(pID, hookMask)
+function changeHookActual(hookMask, val)
 	local ref, key = tablify(process.eventHooks, hookMask)
-	if ref then
-		ref[key] = pID
+	if ref and not ref[key] then
+		ref[key] = val
 	else
 		return false
 	end
+end
+
+function addHook(hookMask)
+	return changeHookActual(hookMask, process.id())
+end
+
+function removeHook(hookMask)
+	return changeHookActual(hookMask)
 end
 
 function setFocus(num)

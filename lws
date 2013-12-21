@@ -201,11 +201,11 @@ local watchMouseDragging = false
 local mouseStartX = nil
 local mouseStartY = nil
 local mouseDragAction = nil
-process.addHook(process.id(), {"key", 61})
-process.addHook(process.id(), {"key", 62})
-process.addHook(process.id(), {"mouse_click"})
-process.addHook(process.id(), {"mouse_drag"})
-process.addHook(process.id(), {"mouse_scroll"})
+process.addHook({"key", 61})
+process.addHook({"key", 62})
+process.addHook({"mouse_click"})
+process.addHook({"mouse_drag"})
+process.addHook({"mouse_scroll"})
 
 while true do
 	local event = {os.pullEventRaw()}

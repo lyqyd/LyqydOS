@@ -63,6 +63,8 @@ local function findHook(event)
 				ref = ref[event[i]]
 			elseif type(ref[event[i]]) == "number" then
 				return ref[event[i]]
+			else
+				return false
 			end
 		else
 			return false

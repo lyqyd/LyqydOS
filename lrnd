@@ -1,7 +1,7 @@
 local RN_BROADCAST = 65535
 local lyqydnet = false
 
-process.addHook(process.id, {"modem_message"})
+process.addHook({"modem_message"})
 
 local function checkLyqydNet()
 	for pNum, pInfo in pairs(process.processTable) do
@@ -17,7 +17,7 @@ while true do
 	if event[1] == "modem_message" then
 		if event[3] == os.getComputerID() or event[3] == RN_BROADCAST then
 			if lyqydnet then
-				process.queueEvent(lyqydnet, "rednet_message", event[4], event[5], event[6])
+				process.queueEvent(lyqydnet, "modem_message", unpack(event))
 			else
 				for pNum, pInfo in pairs(process.processTable) do
 					if pInfo.rednet[event[2]] then

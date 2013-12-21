@@ -1,7 +1,7 @@
 local deskID = process.id()
 local deskRedirect = process.windowCompositor:newBuffer()
 
-process.addHook(deskID, {"key", 59})
+process.addHook({"key", 59})
 
 local runHistory = {}
 if fs.exists("/.lyqrunhistory") then
