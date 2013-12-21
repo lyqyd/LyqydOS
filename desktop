@@ -28,15 +28,6 @@ local function getWindowDimensions(winPath)
 	end
 end
 
-local function getLws()
-	for k,v in pairs(process.processTable) do
-		if v.path == "lws" then
-			return k
-		end
-	end
-	return nil
-end
-
 local function runProgram()
 	local desk = process.id()
 	process.processTable[desk].special = true
@@ -159,7 +150,7 @@ while true do
 					if clickItem == tasksClickable and clickItem < #titlebarItems then
 						--display the window choice dialog
 						if process.processTable[process.focusWindow] then
-							process.queueEvent(getLws(), "select_window")
+							process.queueEvent(process.getIDFromName("lws"), "select_window")
 						end
 					else
 						if process.focusWindow ~= titlebarItems[clickItem].pID then
@@ -169,7 +160,7 @@ while true do
 						if process.processTable[process.focusWindow].window.minimized then process.processTable[process.focusWindow].window:unMinimize() end
 						if event[2] == 2 then
 							--they right-clicked, so let's also display the window action menu.
-							process.queueEvent(getLws(), "window_action", process.focusWindow, process.processTable[process.focusWindow].window)
+							process.queueEvent(process.getIDFromName("lws"), "window_action", process.focusWindow, process.processTable[process.focusWindow].window)
 						end
 					end
 				end
