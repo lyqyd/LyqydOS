@@ -81,7 +81,7 @@ local function runProgram()
 			shell.setDir("")
 			path = shell.resolveProgram(table.remove(args, 1))
 			if path then
-				local x, y, w, h, max = getWindowDimensions()
+				local x, y, w, h, max = getWindowDimensions(path)
 				if not x then w, h, x, y, max = 19, 9, 1, 1, "false" end
 				local win = window.new(w, h, x, y, fs.getName(path), process.windowCompositor:newBuffer())
 				if windowCompositor.target.isColor() then

@@ -17,7 +17,7 @@ local function saveDimensions(proc)
 				wInfo.h = proc.window.h
 			end
 			wInfo.max = tostring(proc.window.maximized)
-			winDims:write(winInfo.x..","..winInfo.y..","..winInfo.w..","..winInfo.h..","..winInfo.max..","..proc.path.."\n")
+			winDims:write(wInfo.x..","..wInfo.y..","..wInfo.w..","..wInfo.h..","..wInfo.max..","..proc.path.."\n")
 			winDims:close()
 		end
 	end
