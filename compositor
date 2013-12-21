@@ -74,10 +74,10 @@ local compositor = {
 		table.insert(self.bufferStack, (table.remove(self.bufferStack, pos)))
 		if not self.deferDraw then self:draw() end
 	end,
-	removeWindow = function(self, win)
+	removeBuffer = function(self, buffer)
 		local pos = nil
 		for i = 1, #self.bufferStack do
-			if self.bufferStack[i] == win.target.buffer then
+			if self.bufferStack[i] == buffer then
 				pos = i
 				break
 			end

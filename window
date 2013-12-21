@@ -220,7 +220,7 @@ local window = {
 	end,
 	destroy = function(self)
 		if process and process.windowCompositor then
-			process.windowCompositor:removeWindow(self)
+			process.windowCompositor:removeBuffer(self.target.buffer)
 		end
 		self = nil
 	end,
