@@ -39,8 +39,7 @@ do
 	end
 end
 
-local desktop = process.getIDFromName("desktop")
-if not desktop then error("No desktop initialized!") end
+if not process.getIDFromName("desktop") then error("No desktop initialized!") end
 
 local function findHook(event)
 	local ref = process.eventHooks
@@ -92,7 +91,7 @@ while true do
 		end
 	end
 	--build title bar items.
-	process.resume(desktop, {"redraw"})
+	process.resume(process.getIDFromName("desktop"), {"redraw"})
 
 	event = {coroutine.yield()}
 
