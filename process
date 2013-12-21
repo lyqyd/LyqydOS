@@ -140,7 +140,7 @@ end
 
 function changeHookActual(hookMask, val)
 	local ref, key = tablify(process.eventHooks, hookMask)
-	if ref and not ref[key] then
+	if ref and (not val or not ref[key]) then
 		ref[key] = val
 	else
 		return false
