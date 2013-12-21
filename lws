@@ -4,42 +4,20 @@ local function saveDimensions(proc)
 		local pathFound = false
 		winDims = io.open("/.lyqwin", "w")
 		if winDims then
-			for wNum, wInfo in ipairs(windowDimensions) do
-				if wInfo.path == proc.path then
-					pathFound = true
-					if proc.window.maximized then
-						wInfo.x = proc.window.normalSize.x
-						wInfo.y = proc.window.normalSize.y
-						wInfo.w = proc.window.normalSize.w
-						wInfo.h = proc.window.normalSize.h
-					else
-						wInfo.x = proc.window.x
-						wInfo.y = proc.window.y
-						wInfo.w = proc.window.w
-						wInfo.h = proc.window.h
-					end
-					wInfo.max = tostring(proc.window.maximized)
-				end
-				winDims:write(wInfo.x..","..wInfo.y..","..wInfo.w..","..wInfo.h..","..wInfo.max..","..wInfo.path.."\n")
+			local wInfo = {}
+			if proc.window.maximized then
+				wInfo.x = proc.window.normalSize.x
+				wInfo.y = proc.window.normalSize.y
+				wInfo.w = proc.window.normalSize.w
+				wInfo.h = proc.window.normalSize.h
+			else
+				wInfo.x = proc.window.x
+				wInfo.y = proc.window.y
+				wInfo.w = proc.window.w
+				wInfo.h = proc.window.h
 			end
-			if not pathFound then
-				local winInfo = {}
-				if proc.window.maximized then
-					winInfo.x = proc.window.normalSize.x
-					winInfo.y = proc.window.normalSize.y
-					winInfo.w = proc.window.normalSize.w
-					winInfo.h = proc.window.normalSize.h
-				else
-					winInfo.x = proc.window.x
-					winInfo.y = proc.window.y
-					winInfo.w = proc.window.w
-					winInfo.h = proc.window.h
-				end
-				winInfo.max = tostring(proc.window.maximized)
-				winInfo.path = proc.path
-				table.insert(windowDimensions, winInfo)
-				winDims:write(winInfo.x..","..winInfo.y..","..winInfo.w..","..winInfo.h..","..winInfo.max..","..proc.path.."\n")
-			end
+			wInfo.max = tostring(proc.window.maximized)
+			winDims:write(winInfo.x..","..winInfo.y..","..winInfo.w..","..winInfo.h..","..winInfo.max..","..proc.path.."\n")
 			winDims:close()
 		end
 	end

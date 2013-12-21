@@ -42,19 +42,6 @@ end
 local desktop = process.getIDFromName("desktop")
 if not desktop then error("No desktop initialized!") end
 
-windowDimensions = {}
-winDims = io.open("/.lyqwin", "r")
-if winDims then
-	for line in winDims:lines() do
-		local dimEntry = {}
-		dimEntry.x, dimEntry.y, dimEntry.w, dimEntry.h, dimEntry.max, dimEntry.path = string.match(line, "(%d+),(%d+),(%d+),(%d+),(%a+),(.*)")
-		if dimEntry.x and dimEntry.path then
-			table.insert(windowDimensions, dimEntry)
-		end
-	end
-	winDims:close()
-end
-
 local function findHook(event)
 	local ref = process.eventHooks
 	for i = 1, #event do

@@ -14,6 +14,20 @@ if fs.exists("/.lyqrunhistory") then
 	end
 end
 
+local function getWindowDimensions(winPath)
+	local winDims = io.open("/.lyqwin", "r")
+	if winDims then
+		for line in winDims:lines() do
+			local x, y, w, h, max, path = string.match(line, "(%d+),(%d+),(%d+),(%d+),(%a+),(.*)")
+			if path == winPath then
+				winDims:close()
+				return x, y, w, h, max
+			end
+		end
+		winDims:close()
+	end
+end
+
 local function getLws()
 	for k,v in pairs(process.processTable) do
 		if v.path == "lws" then
@@ -67,17 +81,8 @@ local function runProgram()
 			shell.setDir("")
 			path = shell.resolveProgram(table.remove(args, 1))
 			if path then
-				local w, h, x, y, max = 19, 9, 1, 1, "false"
-				for dNum, dInfo in ipairs(windowDimensions) do
-					if dInfo.path == path then
-						w = dInfo.w
-						h = dInfo.h
-						x = dInfo.x
-						y = dInfo.y
-						max = dInfo.max
-						break
-					end
-				end
+				local x, y, w, h, max = getWindowDimensions()
+				if not x then w, h, x, y, max = 19, 9, 1, 1, "false" end
 				local win = window.new(w, h, x, y, fs.getName(path), process.windowCompositor:newBuffer())
 				if windowCompositor.target.isColor() then
 					win:setType("standard")
