@@ -78,11 +78,8 @@ function resume(pID, eventTable)
 	end
 	--former checkProcess function.
 	if not process.check(pID) then
-		if pID == process.focusWindow then
-			process.focusWindow = process.nextWindow(1)
-			if process.processTable[process.focusWindow] then
-				process.toFront(process.focusWindow)
-			end
+		if not process.processTable[pID].window then
+			process.remove(pID)
 		end
 	end
 	return unpack(passback, 2)
@@ -104,6 +101,27 @@ function add(func, path, win, redirect)
 		pTable.redirect = {process.nullRedirect}
 	end
 	process.resume(#process.processTable, {})
+end
+
+function remove(pID)
+	process.processTable[pID] = false
+	if pID == process.focusWindow then
+		process.focusWindow = process.nextWindow()
+		if process.focusWindow then
+			process.toFront(process.focusWindow)
+		end
+	end
+end
+
+function kill(pID)
+	if process.processTable[pID] then
+		if process.processTable[pID].window then
+			process.processTable[pID].window:destroy()
+		end
+		process.remove(pID)
+		return true
+	end
+	return false
 end
 
 local function tablify(baseTable, keyTable)
@@ -320,15 +338,4 @@ function getIDFromName(path)
 			return pNum
 		end
 	end
-end
-
-function kill(pID)
-	if process.processTable[pID] then
-		if process.processTable[pID].window then
-			process.processTable[pID].window:destroy()
-		end
-		process.processTable[pID] = false
-		return true
-	end
-	return false
 end
