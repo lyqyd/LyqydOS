@@ -1,5 +1,9 @@
 local deskID = process.id()
 local deskRedirect = process.windowCompositor:newBuffer()
+if #process.windowCompositor.bufferStack > 1 then
+	--move desktop to bottom
+	table.insert(process.windowCompositor.bufferStack, 1, table.remove(process.windowCompositor.bufferStack))
+end
 
 process.addHook({"key", 59})
 
@@ -166,5 +170,8 @@ while true do
 				end
 			end
 		end
+	elseif event[1] == "service_stop" then
+		process.windowCompositor:removeBuffer(deskRedirect.buffer)
+		process.removeHook({"key", 59})
 	end
 end

@@ -1,13 +1,24 @@
 local args = {...}
-if #args >= 2 and args[1] == "start" then
-	local path = shell.resolveProgram(table.remove(args, 1))
+if #args == 2 and args[1] == "start" then
+	local path = shell.resolveProgram(args[2])
 	if path then
-		process.add(function() shell.run(path, unpack(args)) end, fs.getName(path))
+		process.add(function() shell.run(path) end, fs.getName(path))
 	end
 elseif #args == 2 and args[1] == "stop" then
 	local pID = process.getIDFromName(args[2])
 	if pID then
+		process.resume(pID, {"service_stop"})
 		process.kill(pID)
+	end
+elseif #args == 2 and args[1] == "restart" then
+	local pID = process.getIDFromName(args[2])
+	if pID then
+		process.resume(pID, {"service_stop"})
+		process.kill(pID)
+		local path = shell.resolveProgram(args[2])
+		if path then
+			process.add(function() shell.run(path) end, fs.getName(path))
+		end
 	end
 else
 	print("Usage:")

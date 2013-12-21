@@ -304,5 +304,12 @@ while true do
 			process.processTable[event[2]].window:destroy()
 			process.remove(event[2])
 		end
+	elseif event[1] == "service_stop" then
+		process.removeHook({"key", 61})
+		process.removeHook({"key", 62})
+		process.removeHook({"mouse_click"})
+		process.removeHook({"mouse_drag"})
+		process.removeHook({"mouse_scroll"})
+		return
 	end
 end
