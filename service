@@ -2,7 +2,7 @@ local args = {...}
 if #args >= 2 and args[1] == "start" then
 	local path = shell.resolveProgram(table.remove(args, 1))
 	if path then
-		process.add(function() shell.run(path, unpack(args)) end, path)
+		process.add(function() shell.run(path, unpack(args)) end, fs.getName(path))
 	end
 elseif #args == 2 and args[1] == "stop" then
 	local pID = process.getIDFromName(args[2])

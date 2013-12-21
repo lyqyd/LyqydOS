@@ -32,7 +32,7 @@ do
 		local handle = io.open(initPath, "r")
 		if handle then
 			for line in handle:lines() do
-				process.add(function() shell.run(line) end, (string.match(line, "^(%S*)")))
+				process.add(function() return shell.run(line) end, (string.match(line, "^(%S*)")))
 			end
 			handle:close()
 		end
