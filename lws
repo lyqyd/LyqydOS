@@ -1,24 +1,37 @@
 local function saveDimensions(proc)
 	--saves window dimensions when closing windows
 	if proc.path then
-		local pathFound = false
-		winDims = io.open("/.lyqwin", "w")
-		if winDims then
-			local wInfo = {}
-			if proc.window.maximized then
-				wInfo.x = proc.window.normalSize.x
-				wInfo.y = proc.window.normalSize.y
-				wInfo.w = proc.window.normalSize.w
-				wInfo.h = proc.window.normalSize.h
-			else
-				wInfo.x = proc.window.x
-				wInfo.y = proc.window.y
-				wInfo.w = proc.window.w
-				wInfo.h = proc.window.h
+		local wInfo = {}
+		if proc.window.maximized then
+			wInfo.x = proc.window.normalSize.x
+			wInfo.y = proc.window.normalSize.y
+			wInfo.w = proc.window.normalSize.w
+			wInfo.h = proc.window.normalSize.h
+		else
+			wInfo.x = proc.window.x
+			wInfo.y = proc.window.y
+			wInfo.w = proc.window.w
+			wInfo.h = proc.window.h
+		end
+		wInfo.max = tostring(proc.window.maximized)
+		local dimsFile = io.open("/.lyqwin", "r")
+		if dimsFile then
+			local lines = {}
+			for line in dimsFile:lines() do
+				if string.match(line, "%d+,%d+,%d+,%d+,%a+,(.*)") ~= proc.path then
+					table.insert(lines, line)
+				end
 			end
-			wInfo.max = tostring(proc.window.maximized)
-			winDims:write(wInfo.x..","..wInfo.y..","..wInfo.w..","..wInfo.h..","..wInfo.max..","..proc.path.."\n")
-			winDims:close()
+			dimsFile:close()
+			table.insert(lines, wInfo.x..","..wInfo.y..","..wInfo.w..","..wInfo.h..","..wInfo.max..","..proc.path)
+
+			winDims = io.open("/.lyqwin", "w")
+			if winDims then
+				for _, line in ipairs(lines) do
+					winDims:write(line.."\n")
+				end
+				winDims:close()
+			end
 		end
 	end
 end
