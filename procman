@@ -93,7 +93,7 @@ while true do
 	--build title bar items.
 	process.resume(process.getIDFromName("desktop"), {"redraw"})
 
-	event = {coroutine.yield()}
+	local event = {coroutine.yield()}
 
 	--process event hooks, like lws and desktop use for hotkeys.
 	if process.eventHooks[event[1]] then
