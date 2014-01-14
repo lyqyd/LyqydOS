@@ -235,7 +235,7 @@ local window = {
 			else
 				return nil, "Invalid decoration"
 			end
-		elseif type(decoration == "table") then
+		elseif type(decoration) == "table" then
 			for k,v in pairs(decorationsTable.standard) do
 				--check for completeness.
 				if type(decoration[k]) ~= "table" or #decoration[k] < 3 then
