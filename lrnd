@@ -5,7 +5,7 @@ process.addHook({"modem_message"})
 
 while true do
 	if not lyqydnet then lyqydnet = process.getIDFromName("lyqydnet") end
-	event = {os.pullEventRaw()}
+	local event = {os.pullEventRaw()}
 	if event[1] == "modem_message" then
 		if event[3] == os.getComputerID() or event[3] == RN_BROADCAST then
 			if lyqydnet then
