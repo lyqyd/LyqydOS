@@ -3,27 +3,33 @@ process.processTable[deskID].path = "desktop"
 local deskRedirect = process.windowCompositor:newBuffer()
 
 --new term, previous term, next term keys.
-process.addHook(deskID, {"key", 59})
-process.addHook(deskID, {"key", 61})
-process.addHook(deskID, {"key", 62})
+process.addHook({"key", 59})
+process.addHook({"key", 61})
+process.addHook({"key", 62})
 
 local terms = {}
 local focusTerm = nil
+
+local function addTerm()
+	local redirect = framebuffer.new(process.windowCompositor.x, process.windowCompositor.y - 1, process.windowCompositor.target.isColor())
+	redirect.buffer.minX = 1
+	redirect.buffer.maxX = process.windowCompositor.x
+	redirect.buffer.minY = 1
+	redirect.buffer.maxY = process.windowCompositor.y - 1
+	table.insert(process.windowCompositor.bufferStack, 1, redirect.buffer)
+	process.add(function() shell.run("/rom/programs/shell") end, "shell", nil, redirect)
+	table.insert(terms, #process.processTable)
+	process.focusWindow = #process.processTable
+	focusTerm = #process.processTable
+end
+
+addTerm()
 
 while true do
 	event = {os.pullEvent()}
 	if event[1] == "key" and event[2] == 59 then
 		--add process
-		local redirect = framebuffer.new(process.windowCompositor.x, process.windowCompositor.y - 1, process.windowCompositor.target.isColor())
-		redirect.buffer.minX = 1
-		redirect.buffer.maxX = process.windowCompositor.x
-		redirect.buffer.minY = 1
-		redirect.buffer.maxY = process.windowCompositor.y - 1
-		table.insert(process.windowCompositor.bufferStack, 1, redirect.buffer)
-		process.add(function() shell.run("/rom/programs/shell") end, "shell", nil, redirect)
-		table.insert(terms, #process.processTable)
-		process.focusWindow = #process.processTable
-		focusTerm = #process.processTable
+		addTerm()
 	elseif event[1] == "key" and event[2] == 61 then
 		for i = 1, #terms do
 			if terms[i] == focusTerm then
