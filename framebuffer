@@ -6,6 +6,7 @@ function new(_sizeX, _sizeY, _color)
 			redirect.buffer.cursorX = pos + #text
 			return
 		end
+		local writeText
 		if pos + #text <= 1 then
 			--skip entirely.
 			redirect.buffer.cursorX = pos + #text
