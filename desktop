@@ -111,7 +111,7 @@ local titlebarItems
 local tasksClickable
 
 while true do
-	local event = {os.pullEvent()}
+	local event = {os.pullEventRaw()}
 	if event[1] == "redraw" then
 		titlebarItems = {}
 		for i=1, #process.processTable do
