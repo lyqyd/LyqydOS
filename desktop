@@ -8,8 +8,8 @@ end
 process.addHook({"key", 59})
 
 local runHistory = {}
-if fs.exists("/.lyqrunhistory") then
-	local histFile=io.open("/.lyqrunhistory","r")
+if fs.exists("/LyqydOS/.lyqrunhistory") then
+	local histFile=io.open("/LyqydOS/.lyqrunhistory","r")
 	if histFile then
 		for line in histFile:lines() do
 			table.insert(runHistory, line)
@@ -19,7 +19,7 @@ if fs.exists("/.lyqrunhistory") then
 end
 
 local function getWindowDimensions(winPath)
-	local winDims = io.open("/.lyqwin", "r")
+	local winDims = io.open("/LyqydOS/.lyqwin", "r")
 	if winDims then
 		for line in winDims:lines() do
 			local x, y, w, h, max, path = string.match(line, "(%d+),(%d+),(%d+),(%d+),(%a+),(.*)")
@@ -59,7 +59,7 @@ local function runProgram()
 				table.remove(runHistory, 1)
 			end
 			--update history on disk
-			local histFile=io.open("/.lyqrunhistory","w")
+			local histFile=io.open("/LyqydOS/.lyqrunhistory","w")
 			if histFile then
 				for i=1, #runHistory do
 					histFile:write(runHistory[i].."\n")

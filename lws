@@ -14,24 +14,26 @@ local function saveDimensions(proc)
 			wInfo.h = proc.window.h
 		end
 		wInfo.max = tostring(proc.window.maximized)
-		local dimsFile = io.open("/.lyqwin", "r")
-		if dimsFile then
-			local lines = {}
-			for line in dimsFile:lines() do
-				if string.match(line, "%d+,%d+,%d+,%d+,%a+,(.*)") ~= proc.path then
-					table.insert(lines, line)
+		local lines = {}
+		if fs.exists("/LyqydOS/.lyqwin") then
+			local dimsFile = io.open("/LyqydOS/.lyqwin", "r")
+			if dimsFile then
+				for line in dimsFile:lines() do
+					if string.match(line, "%d+,%d+,%d+,%d+,%a+,(.*)") ~= proc.path then
+						table.insert(lines, line)
+					end
 				end
+				dimsFile:close()
 			end
-			dimsFile:close()
-			table.insert(lines, wInfo.x..","..wInfo.y..","..wInfo.w..","..wInfo.h..","..wInfo.max..","..proc.path)
+		end
+		table.insert(lines, wInfo.x..","..wInfo.y..","..wInfo.w..","..wInfo.h..","..wInfo.max..","..proc.path)
 
-			winDims = io.open("/.lyqwin", "w")
-			if winDims then
-				for _, line in ipairs(lines) do
-					winDims:write(line.."\n")
-				end
-				winDims:close()
+		winDims = io.open("/LyqydOS/.lyqwin", "w")
+		if winDims then
+			for _, line in ipairs(lines) do
+				winDims:write(line.."\n")
 			end
+			winDims:close()
 		end
 	end
 end
