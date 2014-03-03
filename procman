@@ -63,7 +63,8 @@ do
 	end
 end
 
-if not process.getIDFromName("desktop") then error("No desktop initialized!") end
+local desktop = process.getIDFromName("desktop")
+if not desktop then error("No desktop initialized!") end
 
 local function findHook(event)
 	local ref = process.eventHooks
@@ -83,7 +84,7 @@ local function findHook(event)
 end
 
 local function distributeEvent(event)
-	if processTable[process.focusWindow] then
+	if process.processTable[process.focusWindow] then
 		process.resume(process.focusWindow, event)
 	elseif event[1] == "key" or event[1] == "char" then
 		if desktop then
@@ -93,7 +94,7 @@ local function distributeEvent(event)
 	end
 	--handle background processes.
 	if event[1] ~= "key" and event[1] ~= "char" and event[1] ~= "mouse_click" and event[1] ~= "mouse_drag" and event[1] ~= "mouse_scroll" and event[1] ~= "window_resize" and event[1] ~= "terminate" then
-		for tNum, tInfo in ipairs(processTable) do
+		for tNum, tInfo in ipairs(process.processTable) do
 			if tNum ~= process.focusWindow and tInfo then
 				process.resume(tNum, event)
 			end
@@ -106,16 +107,16 @@ windowCompositor:draw()
 
 while true do
 	--process individually-queued events.
-	for i=1, #processTable do
+	for i=1, #process.processTable do
 		process.check(i)
-		if processTable[i] and processTable[i].queue and #processTable[i].queue >= 1 then
+		if process.processTable[i] and process.processTable[i].queue and #process.processTable[i].queue >= 1 then
 			repeat
 				process.resume(i, table.remove(processTable[i].queue, 1))
-			until #processTable[i].queue == 0
+			until #process.processTable[i].queue == 0
 		end
 	end
 	--build title bar items.
-	process.resume(process.getIDFromName("desktop"), {"redraw"})
+	process.resume(desktop, {"redraw"})
 
 	local event = {coroutine.yield()}
 
