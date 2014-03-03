@@ -1,0 +1,24 @@
+local args = {...}
+
+if #args > 0 then
+	if args[1] == "theme" then
+		if window.themes[args[2]] then
+			local oldTheme = LyqydOS.userTheme
+			LyqydOS.userTheme = args[2]
+			for pID, proc in pairs(process.processTable) do
+				if proc and proc.window then
+					if proc.window.theme == oldTheme then
+						proc.window:setTheme(LyqydOS.userTheme)
+					end
+					if proc.children then
+						for _, win in proc.children do
+							if win ~= "rootWindow" and win.theme == oldTheme then
+								win:setTheme(LyqydOS.userTheme)
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+end

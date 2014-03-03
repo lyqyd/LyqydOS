@@ -1,63 +1,127 @@
-decorationsTable = {
+themes = {
 	standard = {
-		ul = {"+", "0", "f"},
-		ur = {"+", "0", "f"},
-		ll = {"+", "0", "f"},
-		lr = {"+", "0", "f"},
-		top = {"-", "0", "f"},
-		bottom = {"-", "0", "f"},
-		left = {"|", "0", "f"},
-		right = {"|", "0", "f"},
-		min = {"_", "0", "f"},
-		max = {"M", "0", "f"},
-		restore = {"R", "0", "f"},
-		close = {"X", "e", "f"},
-		caption = {"", "0", "f"},
-	},
-	menu = {
-		ul = {"/", "0", "f"},
-		ur = {"\\", "0", "f"},
-		ll = {"\\", "0", "f"},
-		lr = {"/", "0", "f"},
-		top = {"-", "0", "f"},
-		bottom = {"-", "0", "f"},
-		left = {"|", "0", "f"},
-		right = {"|", "0", "f"},
-		min = {"_", "0", "f"},
-		max = {"M", "0", "f"},
-		restore = {"R", "0", "f"},
-		close = {"X", "e", "f"},
-		caption = {"", "0", "f"},
+		clean = {
+			ul = {"+", "0", "f"},
+			ur = {"+", "0", "f"},
+			ll = {"+", "0", "f"},
+			lr = {"+", "0", "f"},
+			top = {"-", "0", "f"},
+			bottom = {"-", "0", "f"},
+			left = {"|", "0", "f"},
+			right = {"|", "0", "f"},
+			min = {"-", "0", "f"},
+			max = {"-", "0", "f"},
+			restore = {"-", "0", "f"},
+			close = {"-", "e", "f"},
+			caption = {"", "0", "f"},
+		},
+		window = {
+			ul = {"+", "0", "f"},
+			ur = {"+", "0", "f"},
+			ll = {"+", "0", "f"},
+			lr = {"*", "0", "f"},
+			top = {"-", "0", "f"},
+			bottom = {"-", "0", "f"},
+			left = {"|", "0", "f"},
+			right = {"|", "0", "f"},
+			min = {"_", "0", "f"},
+			max = {"M", "0", "f"},
+			restore = {"R", "0", "f"},
+			close = {"X", "e", "f"},
+			caption = {"", "0", "f"},
+		},
+		menu = {
+			ul = {"/", "0", "f"},
+			ur = {"\\", "0", "f"},
+			ll = {"\\", "0", "f"},
+			lr = {"/", "0", "f"},
+			top = {"-", "0", "f"},
+			bottom = {"-", "0", "f"},
+			left = {"|", "0", "f"},
+			right = {"|", "0", "f"},
+			min = {"-", "0", "f"},
+			max = {"-", "0", "f"},
+			restore = {"-", "0", "f"},
+			close = {"-", "e", "f"},
+			caption = {"", "0", "f"},
+		},
+		modal = {
+			ul = {"+", "0", "f"},
+			ur = {"+", "0", "f"},
+			ll = {"+", "0", "f"},
+			lr = {"+", "0", "f"},
+			top = {"-", "0", "f"},
+			bottom = {"-", "0", "f"},
+			left = {"|", "0", "f"},
+			right = {"|", "0", "f"},
+			min = {"-", "0", "f"},
+			max = {"-", "0", "f"},
+			restore = {"-", "0", "f"},
+			close = {"X", "e", "f"},
+			caption = {"", "0", "f"},
+		},
 	},
 	pretty = {
-		ul = {" ", "0", "8"},
-		ur = {" ", "0", "8"},
-		ll = {" ", "0", "8"},
-		lr = {" ", "0", "7"},
-		top = {" ", "0", "8"},
-		bottom = {" ", "0", "8"},
-		left = {" ", "0", "8"},
-		right = {" ", "0", "8"},
-		min = {"-", "0", "b"},
-		max = {"M", "0", "b"},
-		restore = {"R", "0", "b"},
-		close = {"X", "0", "e"},
-		caption = {"", "f", "8"},
-	},
-	pretty_menu = {
-		ul = {" ", "0", "8"},
-		ur = {" ", "0", "8"},
-		ll = {" ", "0", "8"},
-		lr = {" ", "0", "8"},
-		top = {" ", "0", "8"},
-		bottom = {" ", "0", "8"},
-		left = {" ", "0", "8"},
-		right = {" ", "0", "8"},
-		min = {"-", "0", "b"},
-		max = {"M", "0", "b"},
-		restore = {"R", "0", "b"},
-		close = {"X", "0", "e"},
-		caption = {"", "f", "8"},
+		clean = {
+			ul = {" ", "0", "8"},
+			ur = {" ", "0", "8"},
+			ll = {" ", "0", "8"},
+			lr = {" ", "0", "8"},
+			top = {" ", "0", "8"},
+			bottom = {" ", "0", "8"},
+			left = {" ", "0", "8"},
+			right = {" ", "0", "8"},
+			min = {" ", "0", "8"},
+			max = {" ", "0", "8"},
+			restore = {" ", "0", "8"},
+			close = {" ", "0", "8"},
+			caption = {"", "f", "8"},
+		},
+		window = {
+			ul = {" ", "0", "8"},
+			ur = {" ", "0", "8"},
+			ll = {" ", "0", "8"},
+			lr = {" ", "0", "7"},
+			top = {" ", "0", "8"},
+			bottom = {" ", "0", "8"},
+			left = {" ", "0", "8"},
+			right = {" ", "0", "8"},
+			min = {"-", "0", "9"},
+			max = {"M", "0", "9"},
+			restore = {"R", "0", "9"},
+			close = {"X", "0", "e"},
+			caption = {"", "f", "8"},
+		},
+		menu = {
+			ul = {" ", "0", "8"},
+			ur = {" ", "0", "8"},
+			ll = {" ", "0", "8"},
+			lr = {" ", "0", "8"},
+			top = {" ", "0", "8"},
+			bottom = {" ", "0", "8"},
+			left = {" ", "0", "8"},
+			right = {" ", "0", "8"},
+			min = {" ", "0", "8"},
+			max = {" ", "0", "8"},
+			restore = {" ", "0", "8"},
+			close = {" ", "0", "8"},
+			caption = {"", "f", "8"},
+		},
+		modal = {
+			ul = {" ", "0", "8"},
+			ur = {" ", "0", "8"},
+			ll = {" ", "0", "8"},
+			lr = {" ", "0", "8"},
+			top = {" ", "0", "8"},
+			bottom = {" ", "0", "8"},
+			left = {" ", "0", "8"},
+			right = {" ", "0", "8"},
+			min = {" ", "0", "8"},
+			max = {" ", "0", "8"},
+			restore = {" ", "0", "8"},
+			close = {"X", "0", "e"},
+			caption = {"", "f", "8"},
+		},
 	},
 }
 
@@ -84,7 +148,7 @@ local window = {
 					outputBuffer.text[i] = string.sub(outputBuffer.text[i], 1, self.x + self.w - 5)..self.decorations.top[1]..self.decorations.close[1]..string.sub(outputBuffer.text[i], self.x + self.w - 2)
 					outputBuffer.textColor[i] = string.sub(outputBuffer.textColor[i], 1, self.x + self.w - 5)..self.decorations.top[2]..self.decorations.close[2]..string.sub(outputBuffer.textColor[i], self.x + self.w - 2)
 					outputBuffer.backColor[i] = string.sub(outputBuffer.backColor[i], 1, self.x + self.w - 5)..self.decorations.top[3]..self.decorations.close[3]..string.sub(outputBuffer.backColor[i], self.x + self.w - 2)
-				elseif self.windowType == "standard" then
+				elseif self.windowType == "window" then
 					if self.maximized then
 						outputBuffer.text[i] = string.sub(outputBuffer.text[i], 1, self.x + self.w - 7)..self.decorations.top[1]..self.decorations.min[1]..self.decorations.restore[1]..self.decorations.close[1]..string.sub(outputBuffer.text[i], self.x + self.w - 2)
 						outputBuffer.textColor[i] = string.sub(outputBuffer.textColor[i], 1, self.x + self.w - 7)..self.decorations.top[2]..self.decorations.min[2]..self.decorations.restore[2]..self.decorations.close[2]..string.sub(outputBuffer.textColor[i], self.x + self.w - 2)
@@ -224,19 +288,26 @@ local window = {
 		end
 		self = nil
 	end,
-	setDecorations = function(self, decoration)
-		if not decoration then
-			return nil, "Invalid decoration"
-		elseif type(decoration) == "string" then
-			if decorationsTable[decoration] then
-				for k,v in pairs(decorationsTable[decoration]) do
+	setTheme = function(self, theme)
+		if not theme then
+			return nil, "Invalid theme"
+		elseif type(theme) == "string" then
+			if themes[theme] and themes[theme][self.windowType] then
+				self.theme = theme
+				for k,v in pairs(themes[theme][self.windowType]) do
 					self.decorations[k] = v
 				end
 			else
-				return nil, "Invalid decoration"
+				return nil, "Invalid theme"
 			end
+		end
+		self:draw()
+	end,
+	setDecorations = function(self, decoration)
+		if not decoration then
+			return nil, "Invalid decoration"
 		elseif type(decoration) == "table" then
-			for k,v in pairs(decorationsTable.standard) do
+			for k,v in pairs(window.themes.standard.window) do
 				--check for completeness.
 				if type(decoration[k]) ~= "table" or #decoration[k] < 3 then
 					return nil, "Invalid decoration"
@@ -283,6 +354,7 @@ local window = {
 	end,
 	setType = function(self, winType)
 		self.windowType = winType
+		self:setTheme(self.theme)
 		self:draw()
 	end,
 	setCaption = function(self, text)
@@ -306,6 +378,7 @@ function new(w, h, x, y, caption, target)
 		--windowType: clean, standard, modal
 		--clean is normal window, standard includes _MX controls, modal includes X control only.
 		windowType = "clean",
+		theme = "standard",
 		decorations = {
 			ul = {"+", "0", "f"},
 			ur = {"+", "0", "f"},
@@ -315,10 +388,10 @@ function new(w, h, x, y, caption, target)
 			bottom = {"-", "0", "f"},
 			left = {"|", "0", "f"},
 			right = {"|", "0", "f"},
-			min = {"_", "0", "f"},
-			max = {"M", "0", "f"},
-			restore = {"R", "0", "f"},
-			close = {"X", "e", "f"},
+			min = {"-", "0", "f"},
+			max = {"-", "0", "f"},
+			restore = {"-", "0", "f"},
+			close = {"-", "e", "f"},
 			caption = {"", "0", "f"},
 		},
 		maximized = false,

@@ -25,9 +25,9 @@ else
 			winDims:close()
 		end
 		local win = window.new(w, h, x, y, fs.getName(path), process.windowCompositor:newBuffer())
-		if windowCompositor.target.isColor() then
-			win:setType("standard")
-			win:setDecorations("pretty")
+		if process.windowCompositor.target.isColor() then
+			win:setType("window")
+			win:setTheme(LyqydOS.userTheme)
 		end
 		if max == "true" then win:maximize() end
 		process.add(function() shell.run(path, unpack(args)) end, path, win)

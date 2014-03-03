@@ -51,7 +51,10 @@ local function windowAction(pID, win)
 			x, y = process.processTable[pID].window.x, process.processTable[pID].window.y + 1
 		end
 		process.processTable[lws].window = window.new(15, 9, x, y, "Action Menu", process.windowCompositor:newBuffer())
-		process.processTable[lws].window:setDecorations(term.isColor() and "pretty_menu" or "menu")
+		process.processTable[lws].window:setType("menu")
+		if term.isColor() then
+			process.processTable[lws].window:setTheme("pretty")
+		end
 		process.focusWindow = lws
 		term.redirect(process.processTable[process.focusWindow].window.redirect)
 		local success, selection = pcall(menu.select, {"Restore", "Move", "Resize", "Minimize", "Maximize", "Close", "Cancel"})
@@ -231,7 +234,7 @@ while true do
 						elseif event[4] == 0 and event[2] == 2 then
 							--right click on window title bar, open window menu.
 							process.queueEvent(lws, "window_action", pNum, pInfo.window)
-						elseif (pInfo.window.windowType == "modal" and event[4] == 0 and event[2] == 1 and pInfo.window.w - event[3] == 3) or (pInfo.window.windowType == "standard" and event[4] == 0 and event[2] == 1 and pInfo.window.w - event[3] > 2 and pInfo.window.w - event[3] < 6) then
+						elseif (pInfo.window.windowType == "modal" and event[4] == 0 and event[2] == 1 and pInfo.window.w - event[3] == 3) or (pInfo.window.windowType == "window" and event[4] == 0 and event[2] == 1 and pInfo.window.w - event[3] > 2 and pInfo.window.w - event[3] < 6) then
 							local action = pInfo.window.w - event[3] - 2
 							if action == 1 then
 								--close window

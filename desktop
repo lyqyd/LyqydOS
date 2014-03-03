@@ -36,7 +36,8 @@ local function runProgram()
 	local desk = process.id()
 	process.processTable[desk].special = true
 	process.processTable[desk].window = window.new(30, 3, 2, 2, "Run Program", windowCompositor:newBuffer())
-	process.processTable[desk].window:setDecorations(term.isColor() and "pretty_menu" or "standard")
+	process.processTable[desk].window:setType("menu")
+	process.processTable[desk].window:setTheme(LyqydOS.userTheme)
 	process.focusWindow = desk
 
 	term.redirect(processTable[process.focusWindow].window.redirect)
@@ -80,9 +81,9 @@ local function runProgram()
 				if not x then w, h, x, y, max = 19, 9, 1, 1, "false" end
 				local win = window.new(w, h, x, y, fs.getName(path), process.windowCompositor:newBuffer())
 				if windowCompositor.target.isColor() then
-					win:setType("standard")
-					win:setDecorations("pretty")
+					win:setType("window")
 				end
+				win:setTheme(LyqydOS.userTheme)
 				if max == "true" then win:maximize() end
 				process.add(function() shell.run(path, unpack(args)) end, path, win)
 				if coroutine.status(process.processTable[process.focusWindow].thread) == "dead" then
