@@ -40,13 +40,17 @@ local function runProgram()
 	process.processTable[desk].window:setTheme(LyqydOS.userTheme)
 	process.focusWindow = desk
 
-	term.redirect(processTable[process.focusWindow].window.redirect)
+	local _old = term.redirect(processTable[process.focusWindow].window.redirect)
 	term.setTextColor(colors.white)
 	term.setBackgroundColor(colors.black)
 	write("> ")
 	local success, line = pcall(read, nil, runHistory)
 	--clean up window
-	term.restore()
+	if _old then
+		term.redirect(_old)
+	else
+		term.restore()
+	end
 
 	process.processTable[desk].window:destroy()
 	process.processTable[desk].window = nil

@@ -181,7 +181,7 @@ local window = {
 			end
 		end
 
-		term.redirect(self.target)
+		local _old = term.redirect(self.target)
 		local maxX, maxY = term.getSize()
 		if not self.minimized then
 			local isColor = term.isColor()
@@ -203,12 +203,15 @@ local window = {
 		end
 		if not self.target.render then
 			framebuffer.draw(outputBuffer)
-			term.restore()
 		else
 			self.target.render(outputBuffer)
 			term.setCursorPos(outputBuffer.cursorX, outputBuffer.cursorY)
 			term.setCursorBlink(outputBuffer.cursorBlink)
 			term.setTextColor(2 ^ tonumber(outputBuffer.curTextColor, 16))
+		end
+		if _old then
+			term.redirect(_old)
+		else
 			term.restore()
 		end
 	end,

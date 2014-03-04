@@ -10,16 +10,25 @@ local oldTredirect = term.redirect
 local oldTrestore = term.restore
 
 local function newTredirect(target)
-	oldTrestore()
-	table.insert(process.redirectStack, target)
-	oldTredirect(target)
+	if term.current then
+		table.insert(process.redirectStack, target)
+		return oldTredirect(target)
+	else
+		oldTrestore()
+		table.insert(process.redirectStack, target)
+		oldTredirect(target)
+	end
 end
 
 local function newTrestore()
 	if #process.redirectStack > 1 then
-		oldTrestore()
-		table.remove(process.redirectStack)
-		oldTredirect(process.redirectStack[#process.redirectStack])
+		if term.current then
+			oldTredirect(table.remove(process.redirectStack))
+		else
+			oldTrestore()
+			table.remove(process.redirectStack)
+			oldTredirect(process.redirectStack[#process.redirectStack])
+		end
 	end
 end
 
@@ -38,7 +47,7 @@ function resume(pID, eventTable)
 	end
 
 	--redirect to window's current position in its redirect stack
-	term.redirect(process.processTable[pID].redirect[#process.processTable[pID].redirect])
+	local _old = term.redirect(process.processTable[pID].redirect[#process.processTable[pID].redirect])
 
 	--copy redirect stack to global table
 	process.redirectStack = {}
@@ -65,7 +74,11 @@ function resume(pID, eventTable)
 		for i=1, #process.redirectStack do
 			process.processTable[pID].redirect[i] = process.redirectStack[i]
 		end
-		term.restore()
+		if _old then
+			term.redirect(_old)
+		else
+			term.restore()
+		end
 
 		--handle filters being sent back in passback.
 		if passback[1] and passback[2] then

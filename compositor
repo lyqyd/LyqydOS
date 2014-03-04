@@ -64,10 +64,14 @@ local compositor = {
 				finalBuffer.cursorBlink = false
 			end
 			--farm out actual drawing procedures to framebuffer API.
-			term.redirect(self.target)
+			local _old = term.redirect(self.target)
 			term.setCursorBlink(false)
 			self.currentBuffer = framebuffer.draw(finalBuffer, self.currentBuffer)
-			term.restore()
+			if _old then
+				term.redirect(_old)
+			else
+				term.restore()
+			end
 		end
 	end,
 	toFront = function(self, pos)

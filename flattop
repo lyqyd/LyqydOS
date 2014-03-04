@@ -58,9 +58,14 @@ while true do
 	elseif event == "redraw" then
 		framebuffer.draw(process.processTable[focusTerm].redirect.buffer)
 		do
-			term.redirect(process.windowCompositor.target)
+			local _old = term.redirect(process.windowCompositor.target)
 			term.setCursorPos(1, process.windowCompositor.y)
 			term.write(string.rep("=", process.windowCompositor.x))
+			if _old then
+				term.redirect(_old)
+			else
+				term.restore()
+			end
 		end
 	end
 end

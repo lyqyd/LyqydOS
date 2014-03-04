@@ -56,9 +56,13 @@ local function windowAction(pID, win)
 			process.processTable[lws].window:setTheme("pretty")
 		end
 		process.focusWindow = lws
-		term.redirect(process.processTable[process.focusWindow].window.redirect)
+		local _old = term.redirect(process.processTable[process.focusWindow].window.redirect)
 		local success, selection = pcall(menu.select, {"Restore", "Move", "Resize", "Minimize", "Maximize", "Close", "Cancel"})
-		term.restore()
+		if _old then
+			term.redirect(_old)
+		else
+			term.restore()
+		end
 		process.processTable[lws].window:destroy()
 		process.processTable[lws].window = nil
 		process.processTable[lws].special = nil
@@ -163,7 +167,7 @@ local function windowSelect()
 	process.processTable[lws].window = window.new(19, 11, 1, 1, "Select Window", windowCompositor:newBuffer())
 	process.processTable[lws].window:setDecorations(term.isColor() and "pretty_menu" or "standard")
 	process.focusWindow = lws
-	term.redirect(processTable[process.focusWindow].window.redirect)
+	local _old = term.redirect(processTable[process.focusWindow].window.redirect)
 	local pList, menuList = {}, {}
 	for tNum, tInfo in ipairs(process.processTable) do
 		if tInfo and tInfo.window then
@@ -176,7 +180,11 @@ local function windowSelect()
 	table.remove(pList)
 	table.insert(menuList, "Cancel")
 	local success, selection = pcall(menu.select, menuList)
-	term.restore()
+	if _old then
+		term.redirect(_old)
+	else
+		term.restore()
+	end
 	process.processTable[lws].window:destroy()
 	process.processTable[lws].window = nil
 	process.processTable[lws].special = nil
