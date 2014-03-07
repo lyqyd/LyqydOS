@@ -4,19 +4,19 @@ local lyqydnet = false
 process.addHook({"modem_message"})
 
 while true do
-	if not lyqydnet then lyqydnet = process.getIDFromName("lyqydnet") end
+	if not lyqydnet then lyqydnet = process.getFromName("lyqydnet") end
 	local event = {os.pullEventRaw()}
 	if event[1] == "modem_message" then
 		if lyqydnet then
-			process.queueEvent(lyqydnet, "modem_message", unpack(event))
+			lyqydnet:queueEvent("modem_message", unpack(event))
 		else
 			local rm = event[3] == os.getComputerID() or event[3] == RN_BROADCAST
-			for pNum, pInfo in pairs(process.processTable) do
-				if pInfo.modem and pInfo.modem[event[3]] then
-					process.queueEvent(pNum, unpack(event))
+			for piD, proc in pairs(process.processTable) do
+				if proc.modem and proc.modem[event[3]] then
+					proc:queue(unpack(event))
 				end
-				if rm and pInfo.rednet and pInfo.rednet[event[2]] then
-					process.queueEvent(pNum, "rednet_message", event[4], event[5], event[6])
+				if rm and proc.rednet and proc.rednet[event[2]] then
+					proc:queue("rednet_message", event[4], event[5], event[6])
 				end
 			end
 		end

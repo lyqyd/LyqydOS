@@ -4,17 +4,14 @@ if #args == 2 and args[1] == "start" then
 	if path then
 		process.add(function() shell.run(path) end, fs.getName(path))
 	end
-elseif #args == 2 and args[1] == "stop" then
-	local pID = process.getIDFromName(args[2])
-	if pID then
-		process.resume(pID, {"service_stop"})
-		process.kill(pID)
+elseif #args == 2 and args[1] == "stop" or args[1] == "restart" then
+	local proc = process.getFromName(args[2])
+	if proc then
+		proc:resume({"service_stop"})
+		proc:kill()
 	end
-elseif #args == 2 and args[1] == "restart" then
-	local pID = process.getIDFromName(args[2])
-	if pID then
-		process.resume(pID, {"service_stop"})
-		process.kill(pID)
+	--also include restart here, to take advantage of stop code.
+	if args[1] == "restart" then
 		local path = shell.resolveProgram(args[2])
 		if path then
 			process.add(function() shell.run(path) end, fs.getName(path))

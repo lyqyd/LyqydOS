@@ -63,7 +63,7 @@ do
 	end
 end
 
-local desktop = process.list[process.getIDFromName("desktop")]
+local desktop = process.getFromName("desktop")
 if not desktop then error("No desktop initialized!") end
 
 local function findHook(event)

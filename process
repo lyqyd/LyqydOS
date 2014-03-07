@@ -332,12 +332,12 @@ end
 function check(pID)
 	local proc = process.processTable[pID]
 	if (proc and coroutine.status(proc.thread) == "dead") or (proc and proc.special and proc ~= process.processTable[process.focusWindow]) then
-		if proc.window then
-			if pID == process.getIDFromName("desktop") then
+		if #proc.windows >= 1 then
+			if proc == process.getFromName("desktop") then
 				--send terminate signal; pcall wrappers will allow current windows to close without killing process.
-				process.queueEvent(process.getIDFromName("desktop"), "terminate")
+				proc:queue("terminate")
 			else
-				process.queueEvent(process.getIDFromName("lws"), "close_window", pID)
+				process.getFromName("lws"):queue("close_window", pID)
 			end
 		end
 		return false
@@ -441,7 +441,7 @@ local Process = {
 					--send terminate signal; pcall wrappers will allow current windows to close without killing process.
 					self:queue("terminate")
 				else
-					process.list[process.getIDFromName("lws")]:queue( "close_window", pID)
+					process.getFromName("lws"):queue("close_window", pID)
 				end
 			end
 			return false

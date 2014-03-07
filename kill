@@ -1,9 +1,9 @@
 local pID = tonumber((...))
-if process.processTable[pID] then
-	return process.kill(pID)
+if process.list[pID] then
+	return process.list[pID]:kill()
 else
-	pID = process.getIDFromName(pID)
-	if pID then
-		return process.kill(pID)
+	proc = process.getFromName(pID)
+	if proc then
+		return proc:kill()
 	end
 end
