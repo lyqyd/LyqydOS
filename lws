@@ -2,18 +2,18 @@ local function saveDimensions(proc)
 	--saves window dimensions when closing windows
 	if proc.path then
 		local wInfo = {}
-		if proc.window.maximized then
-			wInfo.x = proc.window.normalSize.x
-			wInfo.y = proc.window.normalSize.y
-			wInfo.w = proc.window.normalSize.w
-			wInfo.h = proc.window.normalSize.h
+		if proc.windows[#proc.windows].maximized then
+			wInfo.x = proc.windows[#proc.windows].normalSize.x
+			wInfo.y = proc.windows[#proc.windows].normalSize.y
+			wInfo.w = proc.windows[#proc.windows].normalSize.w
+			wInfo.h = proc.windows[#proc.windows].normalSize.h
 		else
-			wInfo.x = proc.window.x
-			wInfo.y = proc.window.y
-			wInfo.w = proc.window.w
-			wInfo.h = proc.window.h
+			wInfo.x = proc.windows[#proc.windows].x
+			wInfo.y = proc.windows[#proc.windows].y
+			wInfo.w = proc.windows[#proc.windows].w
+			wInfo.h = proc.windows[#proc.windows].h
 		end
-		wInfo.max = tostring(proc.window.maximized)
+		wInfo.max = tostring(proc.windows[#proc.windows].maximized)
 		local lines = {}
 		if fs.exists("/LyqydOS/.lyqwin") then
 			local dimsFile = io.open("/LyqydOS/.lyqwin", "r")
@@ -40,40 +40,40 @@ end
 
 local function windowAction(pID, win)
 	--index 2 should be the pID and 3 should be the window, forward compat for child windows.
-	if process.processTable[process.focusWindow] and not process.processTable[process.focusWindow].special then
+	if process.list[process.focusWindow] and not process.list[process.focusWindow].special then
 		local parent = process.focusWindow
 		local lws = process.id()
-		process.processTable[lws].special = true
+		process.list[lws].special = true
 		local x, y
-		if process.processTable[parent].window.minimized then
+		if process.list[parent].window.minimized then
 			x, y = 1, 2
 		else
-			x, y = process.processTable[pID].window.x, process.processTable[pID].window.y + 1
+			x, y = process.list[pID].window.x, process.list[pID].window.y + 1
 		end
-		process.processTable[lws].window = window.new(15, 9, x, y, "Action Menu", process.windowCompositor:newBuffer())
-		process.processTable[lws].window:setType("menu")
+		process.list[lws].window = window.new(15, 9, x, y, "Action Menu", process.windowCompositor:newBuffer())
+		process.list[lws].window:setType("menu")
 		if term.isColor() then
-			process.processTable[lws].window:setTheme("pretty")
+			process.list[lws].window:setTheme("pretty")
 		end
 		process.focusWindow = lws
-		local _old = term.redirect(process.processTable[process.focusWindow].window.redirect)
+		local _old = term.redirect(process.list[process.focusWindow].window.redirect)
 		local success, selection = pcall(menu.select, {"Restore", "Move", "Resize", "Minimize", "Maximize", "Close", "Cancel"})
 		if _old then
 			term.redirect(_old)
 		else
 			term.restore()
 		end
-		process.processTable[lws].window:destroy()
-		process.processTable[lws].window = nil
-		process.processTable[lws].special = nil
+		process.list[lws].window:destroy()
+		process.list[lws].window = nil
+		process.list[lws].special = nil
 		if success then
 			if selection == 1 then
 				--restore
-				if process.processTable[parent].window.maximized then
-					process.processTable[parent].window:restore()
+				if process.list[parent].window.maximized then
+					process.list[parent].window:restore()
 					process.queueEvent(pID, "window_resize")
-				elseif process.processTable[parent].window.minimized then
-					process.processTable[parent].window:unMinimize()
+				elseif process.list[parent].window.minimized then
+					process.list[parent].window:unMinimize()
 					process.toFront(parent)
 				end
 			elseif selection == 2 then
@@ -83,47 +83,47 @@ local function windowAction(pID, win)
 					if e == "key" then
 						if p1 == 200 then
 							--up
-							process.processTable[parent].window:move(process.processTable[parent].window.x, process.processTable[parent].window.y - 1)
+							process.list[parent].window:move(process.list[parent].window.x, process.list[parent].window.y - 1)
 						elseif p1 == 203 then
 							--left
-							process.processTable[parent].window:move(process.processTable[parent].window.x - 1, process.processTable[parent].window.y)
+							process.list[parent].window:move(process.list[parent].window.x - 1, process.list[parent].window.y)
 						elseif p1 == 205 then
 							--right
-							process.processTable[parent].window:move(process.processTable[parent].window.x + 1, process.processTable[parent].window.y)
+							process.list[parent].window:move(process.list[parent].window.x + 1, process.list[parent].window.y)
 						elseif p1 == 208 then
 							--down
-							process.processTable[parent].window:move(process.processTable[parent].window.x, process.processTable[parent].window.y + 1)
+							process.list[parent].window:move(process.list[parent].window.x, process.list[parent].window.y + 1)
 						elseif p1 == 28 then
 							--enter
 							break
 						end
 					elseif e == "mouse_click" and p1 == 1 then
 						--mouse click
-						process.processTable[parent].window:move(p2, p3)
+						process.list[parent].window:move(p2, p3)
 						break
 					end
 				end
 			elseif selection == 3 then
 				--resize
-				process.processTable[parent].window.maximized = false
+				process.list[parent].window.maximized = false
 				while true do
 					e, p1 = os.pullEvent()
 					if e == "key" then
 						if p1 == 200 then
 							--up
-							process.processTable[parent].window:resize(process.processTable[parent].window.w, process.processTable[parent].window.h - 1)
+							process.list[parent].window:resize(process.list[parent].window.w, process.list[parent].window.h - 1)
 							process.queueEvent(pID, "window_resize")
 						elseif p1 == 203 then
 							--left
-							process.processTable[parent].window:resize(process.processTable[parent].window.w - 1, process.processTable[parent].window.h)
+							process.list[parent].window:resize(process.list[parent].window.w - 1, process.list[parent].window.h)
 							process.queueEvent(pID, "window_resize")
 						elseif p1 == 205 then
 							--right
-							process.processTable[parent].window:resize(process.processTable[parent].window.w + 1, process.processTable[parent].window.h)
+							process.list[parent].window:resize(process.list[parent].window.w + 1, process.list[parent].window.h)
 							process.queueEvent(pID, "window_resize")
 						elseif p1 == 208 then
 							--down
-							process.processTable[parent].window:resize(process.processTable[parent].window.w, process.processTable[parent].window.h + 1)
+							process.list[parent].window:resize(process.list[parent].window.w, process.list[parent].window.h + 1)
 							process.queueEvent(pID, "window_resize")
 						elseif p1 == 28 then
 							--enter
@@ -133,25 +133,25 @@ local function windowAction(pID, win)
 				end
 			elseif selection == 4 then
 				--minimize
-				if not process.processTable[parent].window.minimized then
-					process.processTable[parent].window:minimize()
+				if not process.list[parent].window.minimized then
+					process.list[parent].window:minimize()
 					--also move the window to the bottom of the buffer stack.
 					process.toBack(parent)
 				end
 			elseif selection == 5 then
 				--maximize
-				if not process.processTable[parent].window.maximized then
-					process.processTable[parent].window:maximize()
-					if process.processTable[parent].window.minimized then process.processTable[parent].window:unMinimize() end
+				if not process.list[parent].window.maximized then
+					process.list[parent].window:maximize()
+					if process.list[parent].window.minimized then process.list[parent].window:unMinimize() end
 					process.queueEvent(pID, "window_resize")
 				end
 			elseif selection == 6 then
 				--close
-				saveDimensions(process.processTable[parent])
-				process.processTable[parent].window:destroy()
-				process.processTable[parent] = false
+				saveDimensions(process.list[parent])
+				process.list[parent].window:destroy()
+				process.list[parent] = false
 				process.focusWindow = nextWindow(1)
-				if process.processTable[process.focusWindow] then
+				if process.list[process.focusWindow] then
 					process.toFront(process.focusWindow)
 				end
 			end
@@ -163,13 +163,13 @@ end
 local function windowSelect()
 	local oldFocus = process.focusWindow
 	local lws = process.id()
-	process.processTable[lws].special = true
-	process.processTable[lws].window = window.new(19, 11, 1, 1, "Select Window", windowCompositor:newBuffer())
-	process.processTable[lws].window:setDecorations(term.isColor() and "pretty_menu" or "standard")
+	process.list[lws].special = true
+	process.list[lws].window = window.new(19, 11, 1, 1, "Select Window", windowCompositor:newBuffer())
+	process.list[lws].window:setDecorations(term.isColor() and "pretty_menu" or "standard")
 	process.focusWindow = lws
 	local _old = term.redirect(processTable[process.focusWindow].window.redirect)
 	local pList, menuList = {}, {}
-	for tNum, tInfo in ipairs(process.processTable) do
+	for tNum, tInfo in ipairs(process.list) do
 		if tInfo and tInfo.window then
 			table.insert(pList, tNum)
 			table.insert(menuList, tInfo.window.caption)
@@ -185,9 +185,9 @@ local function windowSelect()
 	else
 		term.restore()
 	end
-	process.processTable[lws].window:destroy()
-	process.processTable[lws].window = nil
-	process.processTable[lws].special = nil
+	process.list[lws].window:destroy()
+	process.list[lws].window = nil
+	process.list[lws].special = nil
 	if success then
 		if pList[selection] then
 			process.focusWindow = pList[selection]
@@ -201,6 +201,7 @@ end
 
 
 local lws = process.id()
+local lwsProc = process.list[lws]
 local watchMouseDragging = false
 local mouseStartX = nil
 local mouseStartY = nil
@@ -214,121 +215,126 @@ process.addHook({"mouse_scroll"})
 while true do
 	local event = {os.pullEventRaw()}
 	if event[1] == "key" and event[2] == 61 then
-		if process.focusWindow and process.processTable[process.focusWindow] then
+		if process.focusWindow and process.list[process.focusWindow] then
 			process.queueEvent(process.id(), "select_window")
 		end
 	elseif event[1] == "key" and event[2] == 62 then
-		if process.focusWindow and process.processTable[process.focusWindow] then
+		if process.focusWindow and process.list[process.focusWindow] then
 			process.queueEvent(process.id(), "window_action", process.focusWindow, processTable[process.focusWindow].window)
 		end
 	elseif event[1] == "mouse_click" then
 		watchMouseDragging = false
 		local windowFound = false
 		for i = #process.windowCompositor.bufferStack, 1, -1 do
-			for pNum, pInfo in pairs(process.processTable) do
-				if pInfo and pInfo.window and pInfo.window.target.buffer and pInfo.window.target.buffer == process.windowCompositor.bufferStack[i] then
-					--correct window in order, break even if we don't get the click here.
-					if event[3] >= pInfo.window.x and event[3] <= pInfo.window.x + pInfo.window.w - 1 and event[4] >= pInfo.window.y and event[4] <= pInfo.window.y + pInfo.window.h - 1 and not pInfo.window.minimized then
-						windowFound = true
-						if process.focusWindow ~= pNum then
-							process.focusWindow = pNum
-							process.toFront(process.focusWindow)
-						end
-						event[3] = event[3] - pInfo.window.x
-						event[4] = event[4] - pInfo.window.y
-						if event[3] > 0 and event[3] < pInfo.window.w - 1 and event[4] > 0 and event[4] < pInfo.window.h - 1 then
-							--mouse click resume
-							process.resume(process.focusWindow, event)
-						elseif event[4] == 0 and event[2] == 2 then
-							--right click on window title bar, open window menu.
-							process.queueEvent(lws, "window_action", pNum, pInfo.window)
-						elseif (pInfo.window.windowType == "modal" and event[4] == 0 and event[2] == 1 and pInfo.window.w - event[3] == 3) or (pInfo.window.windowType == "window" and event[4] == 0 and event[2] == 1 and pInfo.window.w - event[3] > 2 and pInfo.window.w - event[3] < 6) then
-							local action = pInfo.window.w - event[3] - 2
-							if action == 1 then
-								--close window
-								process.queueEvent(lws, "close_window", process.focusWindow)
-							elseif action == 2 then
-								if pInfo.window.maximized then
-									pInfo.window:restore()
-									process.queueEvent(pNum, "window_resize")
-								else
-									pInfo.window:maximize()
-									process.queueEvent(pNum, "window_resize")
-								end
-							elseif action == 3 then
-								pInfo.window:minimize()
-								process.toBack(pNum)
+			for pID, proc in pairs(process.list) do
+				for j = 1, #proc.windows do
+					if proc.windows[j].target.buffer == process.windowCompositor.bufferStack[i] and not proc.windows[j].minimized then
+						--correct window in order, break even if we don't get the click here.
+						local win = proc.windows[j]
+						if event[3] >= win.x and event[3] <= win.x + win.w - 1 and event[4] >= win.y and event[4] <= win.y + win.h - 1 and not win.minimized then
+							windowFound = true
+							if process.focusWindow ~= pNum then
+								process.focusWindow = pNum
+								proc:toFront(win)
 							end
-						elseif event[4] == 0 and event[2] == 1 and not pInfo.special then
-							--clicked on titlebar, set variables to see if we drag.
-							watchMouseDragging = true
-							mouseDragAction = "move"
-							mouseStartX = event[3] + pInfo.window.x
-							mouseStartY = event[4] + pInfo.window.y
-						elseif event[3] == pInfo.window.w - 1 and event[4] == pInfo.window.h - 1 and event[2] == 1 and not pInfo.special then
-							--clicked on lower right corner, resize.
-							watchMouseDragging = true
-							mouseDragAction = "resize"
-							mouseStartX = event[3] + pInfo.window.x
-							mouseStartY = event[4] + pInfo.window.y
+							event[3] = event[3] - win.x
+							event[4] = event[4] - win.y
+							if event[3] > 0 and event[3] < win.w - 1 and event[4] > 0 and event[4] < win.h - 1 then
+								--mouse click resume
+								proc:resume(event)
+							elseif event[4] == 0 and event[2] == 2 then
+								--right click on window title bar, open window menu.
+								lwsProc:queue("window_action", pNum, pInfo.window)
+							elseif (win.windowType == "modal" and event[4] == 0 and event[2] == 1 and win.w - event[3] == 3) or (win.windowType == "window" and event[4] == 0 and event[2] == 1 and win.w - event[3] > 2 and win.w - event[3] < 6) then
+								local action = win.w - event[3] - 2
+								if action == 1 then
+									--close window
+									lwsProc:queue("close_window", process.focusWindow)
+								elseif action == 2 then
+									if win.maximized then
+										pInfo.window:restore()
+										proc:queue("window_resize")
+									else
+										pInfo.window:maximize()
+										proc:queue("window_resize")
+									end
+								elseif action == 3 then
+									pInfo.window:minimize()
+									proc:toBack()
+								end
+							elseif event[4] == 0 and event[2] == 1 and win.windowType ~= "menu" and not pInfo.special then
+								--clicked on titlebar, set variables to see if we drag.
+								watchMouseDragging = true
+								mouseDragAction = "move"
+								mouseStartX = event[3] + win.x
+								mouseStartY = event[4] + win.y
+							elseif event[3] == win.w - 1 and event[4] == win.h - 1 and event[2] == 1 and not pInfo.special then
+								--clicked on lower right corner, resize.
+								watchMouseDragging = true
+								mouseDragAction = "resize"
+								mouseStartX = event[3] + win.x
+								mouseStartY = event[4] + win.y
+							end
 						end
+						break
 					end
-					break
 				end
 			end
 			if windowFound then break end
 		end
 		if not windowFound then
-			local desktop = process.getIDFromName("desktop")
+			local desktop = process.getFromName("desktop")
 			if desktop then
 				--let desktop service handle this.
-				process.resume(desktop, event)
+				desktop:resume(event)
 			end
 		end
 	elseif event[1] == "mouse_drag" then
 		--mouse is dragging, see if we need to do something with windows.
 		if watchMouseDragging then
+			local proc = process.list[process.focusWindow]
 			if mouseDragAction == "move" then
-				process.processTable[process.focusWindow].window:move(process.processTable[process.focusWindow].window.x + (event[3] - mouseStartX), process.processTable[process.focusWindow].window.y + (event[4] - mouseStartY))
+				proc.windows[#proc.windows]:move(proc.windows[#proc.windows].x + (event[3] - mouseStartX), proc.windows[#proc.windows].y + (event[4] - mouseStartY))
 				mouseStartX = event[3]
 				mouseStartY = event[4]
 			elseif mouseDragAction == "resize" then
-				process.processTable[process.focusWindow].window:resize(process.processTable[process.focusWindow].window.w + (event[3] - mouseStartX), process.processTable[process.focusWindow].window.h + (event[4] - mouseStartY))
+				proc.windows[#proc.windows]:resize(proc.windows[#proc.windows].w + (event[3] - mouseStartX), proc.windows[#proc.windows].h + (event[4] - mouseStartY))
 				mouseStartX = event[3]
 				mouseStartY = event[4]
-				processTable[process.focusWindow].window.maximized = false
-				process.queueEvent(process.focusWindow, "window_resize")
+				proc.windows[#proc.windows].maximized = false
+				proc:queue("window_resize")
 			end
-		elseif process.processTable[process.focusWindow] and process.processTable[process.focusWindow].window then
-			event[3] = event[3] - process.processTable[process.focusWindow].window.x
-			event[4] = event[4] - process.processTable[process.focusWindow].window.y
-			if event[3] > 0 and event[3] < process.processTable[process.focusWindow].window.w - 1 and event[4] > 0 and event[4] < process.processTable[process.focusWindow].window.h - 1 then
-				process.resume(process.focusWindow, event)
+		elseif process.list[process.focusWindow] and process.list[process.focusWindow].window then
+			local proc = process.list[process.focusWindow]
+			event[3] = event[3] - proc.windows[#proc.windows].x
+			event[4] = event[4] - proc.windows[#proc.windows].y
+			if event[3] > 0 and event[3] < proc.windows[#proc.windows].w - 1 and event[4] > 0 and event[4] < proc.windows[#proc.windows].h - 1 then
+				proc:resume(event)
 			end
 		elseif desktop then
 			--fall through to desktop
 			process.resume(desktop, event)
 		end
 	elseif event[1] == "mouse_scroll" then
-		if process.processTable[process.focusWindow] and process.processTable[process.focusWindow].window then
-			event[3] = event[3] - process.processTable[process.focusWindow].window.x
-			event[4] = event[4] - process.processTable[process.focusWindow].window.y
-			if event[3] > 0 and event[3] < process.processTable[process.focusWindow].window.w - 1 and event[4] > 0 and event[4] < process.processTable[process.focusWindow].window.h - 1 then
-				process.resume(process.focusWindow, event)
+		if process.list[process.focusWindow] and process.list[process.focusWindow].window then
+			local proc = process.list[process.focusWindow]
+			event[3] = event[3] - proc.windows[#proc.windows].x
+			event[4] = event[4] - proc.windows[#proc.windows].y
+			if event[3] > 0 and event[3] < proc.windows[#proc.windows].w - 1 and event[4] > 0 and event[4] < proc.windows[#proc.windows].h - 1 then
+				proc:resume(event)
 			end
 		elseif desktop then
 			--fall through to desktop
 			process.resume(desktop, event)
 		end
 	elseif event[1] == "window_action" then
-		process.add(function() windowAction(event[2], event[3]) end, "lwsa")
+		process.new(function() windowAction(event[2], event[3]) end, "lwsa")
 	elseif event[1] == "select_window" then
-		process.add(windowSelect, "lwss")
+		process.new(windowSelect, "lwss")
 	elseif event[1] == "close_window" then
-		if process.processTable[event[2]] and process.processTable[event[2]].window then
-			saveDimensions(process.processTable[event[2]])
-			process.processTable[event[2]].window:destroy()
-			process.remove(event[2])
+		if process.list[event[2]] and process.list[event[2]].window then
+			saveDimensions(process.list[event[2]])
+			process.list[event[2]]:kill()
 		end
 	elseif event[1] == "service_stop" then
 		process.removeHook({"key", 61})

@@ -1,10 +1,12 @@
 processTable = {}
+list = {}
 focusWindow = nil
 activeProcess = nil
 windowCompositor = {}
 redirectStack = {}
 nullRedirect = framebuffer.new()
 eventHooks = {}
+local id = 1
 
 local oldTredirect = term.redirect
 local oldTrestore = term.restore
@@ -29,6 +31,12 @@ local function newTrestore()
 			table.remove(process.redirectStack)
 			oldTredirect(process.redirectStack[#process.redirectStack])
 		end
+	end
+end
+
+function resume(pID, event)
+	if process.list[pID] then
+		return process.list[pID]:resume(event)
 	end
 end
 
@@ -205,7 +213,7 @@ function removeChildWindow(pID, childWindow)
 end
 
 function getWindow()
-	if process.processTable[process.activeProcess].window then
+	if process.activeProcess and process.processTable[process.activeProcess] and process.processTable[process.activeProcess].window then
 		return process.processTable[process.activeProcess].window
 	else
 		return nil, "No window!"
@@ -345,10 +353,220 @@ function id()
 	end
 end
 
-function getIDFromName(path)
-	for pNum, pInfo in pairs(process.processTable) do
-		if pInfo and pInfo.path == path then
-			return pNum
+function getFromPath(path)
+	for pID, proc in ipairs(process.list) do
+		if proc and proc.path == path then
+			return proc
 		end
 	end
+end
+
+function getFromName(name)
+	for pID, proc in ipairs(process.list) do
+		if proc and proc.name == name then
+			return proc
+		end
+	end
+end
+
+local Process = {
+	resume = function(self, event)
+		--evaluate whether this event should even go to this process.
+		if self.listening then
+			local resumeProcess = false
+			for i=1, #self.listening do
+				if eventTable[1] == self.listening[i] then
+					resumeProcess = true
+					self.listening = nil
+					break
+				end
+			end
+			if not resumeProcess then return unpack(eventTable) end
+		end
+
+		--redirect to window's current position in its redirect stack
+		local _old = term.redirect(self.redirect[#self.redirect])
+
+		--copy redirect stack to global table
+		process.redirectStack = {}
+		for i = 1, #self.redirect do
+			process.redirectStack[i] = self.redirect[i]
+		end
+
+		rawset(term, "redirect", newTredirect)
+		rawset(term, "restore", newTrestore)
+
+		local active = process.activeProcess
+		process.activeProcess = self.id
+		passback = {coroutine.resume(self.thread, unpack(eventTable))}
+		process.windowCompositor:draw()
+		process.activeProcess = active
+
+		--restore correct redirection level and save redirect stack for resume.
+		rawset(term, "redirect", oldTredirect)
+		rawset(term, "restore", oldTrestore)
+
+		self.redirect = {}
+		for i=1, #process.redirectStack do
+			self.redirect[i] = process.redirectStack[i]
+		end
+		if _old then
+			term.redirect(_old)
+		else
+			term.restore()
+		end
+
+		--handle filters being sent back in passback.
+		if passback[1] and passback[2] then
+			if type(passback[2]) == "string" then
+				self.listening = {passback[2]}
+			elseif type(passback[2]) == "table" then
+				self.listening = passback[2]
+			end
+		end
+
+		--former checkProcess function.
+		if not process.check(pID) then
+			if not self.window then
+				process.remove(pID)
+			end
+		end
+		return unpack(passback, 2)
+	end,
+	check = function(self)
+		local proc = process.processTable[pID]
+		if coroutine.status(self.thread) == "dead" or (self.special and self.id ~= process.focusWindow) then
+			if self.window then
+				if self.path == "desktop" then
+					--send terminate signal; pcall wrappers will allow current windows to close without killing process.
+					self:queue("terminate")
+				else
+					process.list[process.getIDFromName("lws")]:queue( "close_window", pID)
+				end
+			end
+			return false
+		end
+		return true
+	end,
+	queue = function(self, ...)
+		table.insert(self.queue, {...})
+		return true
+	end,
+	kill = function(self)
+		if self.window then
+			self.window:destroy()
+		end
+		self:remove()
+		return true
+	end,
+	remove = function(self)
+		process.list[self.id] = false
+		if self.id == process.focusWindow then
+			process.focusWindow = process.nextWindow()
+			if process.focusWindow then
+				process.toFront(process.focusWindow)
+			end
+		end
+	end,
+	addWindow = function(self, win)
+		local newWindow = true
+		for i = 1, #self.windows do
+			if self.windows[i] == win then
+				newWindow = false
+				break
+			end
+		end
+		if newWindow then
+			table.insert(self.windows, win)
+		end
+	end,
+	removeWindow = function(self, win)
+		local winFound = false
+		for i = 1, #self.windows do
+			if self.windows[i] == win then
+				table.remove(self.windows, i)
+				winFound = true
+				break
+			end
+		end
+		if winFound then
+			win:destroy()
+		end
+	end,
+	toFront = function(self, win)
+		--win is optional, if not specified will maintain order of windows.
+		if win then
+			for i = 1, #self.windows do
+				if self.windows[i] == win then
+					table.insert(self.windows, table.remove(self.windows, i))
+					break
+				end
+			end
+		end
+		for i = 1, #self.windows do
+			for j = 1, #process.windowCompositor.bufferStack do
+				if process.windowCompositor.bufferStack[j] == self.windows[i].target.buffer then
+					process.windowCompositor:toFront(j)
+					break
+				end
+			end
+		end
+	end,
+	toBack = function(self, win)
+		--win is optional, will move that window to behind the rest of them, as well as moving the whole set to the bottom of the stack.
+		if win then
+			for i = 1, #self.windows do
+				if self.windows[i] == win then
+					table.insert(self.windows, 1, table.remove(self.windows, i))
+					break
+				end
+			end
+		end
+		local lookup, buffStackLookup = {}, {}
+		for i = 1, #self.windows do
+			lookup[self.windows[i]] = i
+		end
+		for i = 1, #process.windowCompositor.bufferStack do
+			if lookup[process.windowCompositor.bufferStack[i]] then
+				buffStackLookup[process.windowCompositor.bufferStack[i]] = i
+			end
+		end
+		for win, index in pairs(lookup) do
+			table.insert(process.windowCompositor.bufferStack, index + 1, table.remove(process.windowCompositor.bufferStack, bufferStackLookup[win]))
+		end
+		process.focusWindow = nextWindow(1)
+		if process.list[process.focusWindow] then
+			process.list[process.focusWindow]:toFront()
+		end
+	end,
+}
+
+local pmeta = {__index = Process}
+
+function new(func, path, win, redirect)
+	local proc = {
+		thread = coroutine.create(func),
+		path = path,
+		name = fs.getName(path),
+		queue = {},
+		id = id,
+		windows = {},
+	}
+
+	table.insert(process.list, proc)
+
+	if win then
+		table.insert(proc.windows, win)
+		proc.redirect = {win.redirect}
+		process.focusWindow = #process.list
+	elseif redirect then
+		proc.redirect = {redirect}
+	else
+		proc.redirect = {process.nullRedirect}
+	end
+	
+	setmetatable(proc, pmeta)
+
+	proc:resume({})
+	return proc
 end

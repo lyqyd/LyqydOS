@@ -34,13 +34,14 @@ end
 
 local function runProgram()
 	local desk = process.id()
-	process.processTable[desk].special = true
-	process.processTable[desk].window = window.new(30, 3, 2, 2, "Run Program", windowCompositor:newBuffer())
-	process.processTable[desk].window:setType("menu")
-	process.processTable[desk].window:setTheme(LyqydOS.userTheme)
+	local dProc = process.list[desk]
+	dProc.special = true
+	dProc.window = window.new(30, 3, 2, 2, "Run Program", windowCompositor:newBuffer())
+	dProc.window:setType("menu")
+	dProc.window:setTheme(LyqydOS.userTheme)
 	process.focusWindow = desk
 
-	local _old = term.redirect(processTable[process.focusWindow].window.redirect)
+	local _old = term.redirect(dProc.window.redirect)
 	term.setTextColor(colors.white)
 	term.setBackgroundColor(colors.black)
 	write("> ")
@@ -52,9 +53,9 @@ local function runProgram()
 		term.restore()
 	end
 
-	process.processTable[desk].window:destroy()
-	process.processTable[desk].window = nil
-	process.processTable[desk].special = nil
+	dProc.window:destroy()
+	dProc.window = nil
+	dProc.special = nil
 	if success then
 		--don't save empty or repeated lines
 		if line ~= "" and (#runHistory == 0 or line ~= runHistory[#runHistory]) then
@@ -89,8 +90,8 @@ local function runProgram()
 				end
 				win:setTheme(LyqydOS.userTheme)
 				if max == "true" then win:maximize() end
-				process.add(function() shell.run(path, unpack(args)) end, path, win)
-				if coroutine.status(process.processTable[process.focusWindow].thread) == "dead" then
+				process.new(function() shell.run(path, unpack(args)) end, path, win)
+				if coroutine.status(process.list[process.focusWindow].thread) == "dead" then
 					process.queueEvent(lws, "close_window", process.focusWindow)
 				end
 			end
@@ -118,9 +119,9 @@ while true do
 	local event = {os.pullEventRaw()}
 	if event[1] == "redraw" then
 		titlebarItems = {}
-		for i=1, #process.processTable do
-			if process.processTable[i] and process.processTable[i].window and not process.processTable[i].special then
-				local tBarEntry = {pID = i, text = process.processTable[i].window.caption}
+		for i=1, #process.list do
+			if process.list[i] and #process.list[i].windows >= 1 and not process.list[i].special then
+				local tBarEntry = {pID = i, text = process.list[i].windows[#process.list[i].windows].caption}
 				table.insert(titlebarItems, tBarEntry)
 			end
 		end
@@ -158,18 +159,20 @@ while true do
 					--they clicked on the name itself, not the boundary line.
 					if clickItem == tasksClickable and clickItem < #titlebarItems then
 						--display the window choice dialog
-						if process.processTable[process.focusWindow] then
-							process.queueEvent(process.getIDFromName("lws"), "select_window")
+						if process.list[process.focusWindow] then
+							process.getFromName("lws"):queue("select_window")
 						end
 					else
+						local proc = process.list[process.focusWindow]
+						local win = proc.windows[#proc.windows]
 						if process.focusWindow ~= titlebarItems[clickItem].pID then
 							process.focusWindow = titlebarItems[clickItem].pID
 						end
 						process.toFront(process.focusWindow)
-						if process.processTable[process.focusWindow].window.minimized then process.processTable[process.focusWindow].window:unMinimize() end
+						if win.minimized then win:unMinimize() end
 						if event[2] == 2 then
 							--they right-clicked, so let's also display the window action menu.
-							process.queueEvent(process.getIDFromName("lws"), "window_action", process.focusWindow, process.processTable[process.focusWindow].window)
+							process.getFromName("lws"):queue("window_action", process.focusWindow, win)
 						end
 					end
 				end
