@@ -98,7 +98,7 @@ function resume(pID, eventTable)
 		end
 	end
 	--former checkProcess function.
-	if not process.check(pID) then
+	if not process.list[pID]:check() then
 		if not process.processTable[pID].window then
 			process.remove(pID)
 		end
@@ -260,22 +260,6 @@ function nextWindow(default)
 	end
 end
 
-function check(pID)
-	local proc = process.processTable[pID]
-	if (proc and coroutine.status(proc.thread) == "dead") or (proc and proc.special and proc ~= process.processTable[process.focusWindow]) then
-		if #proc.windows >= 1 then
-			if proc == process.getFromName("desktop") then
-				--send terminate signal; pcall wrappers will allow current windows to close without killing process.
-				proc:queue("terminate")
-			else
-				process.getFromName("lws"):queue("close_window", pID)
-			end
-		end
-		return false
-	end
-	return true
-end
-
 function id()
 	if process.activeProcess and process.processTable[process.activeProcess] then
 		return process.activeProcess
@@ -357,9 +341,9 @@ local Process = {
 		end
 
 		--former checkProcess function.
-		if not process.check(pID) then
+		if not self:check() then
 			if not self.window then
-				process.remove(pID)
+				self:remove()
 			end
 		end
 		return unpack(passback, 2)
