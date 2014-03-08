@@ -221,11 +221,11 @@ while true do
 	local event = {os.pullEventRaw()}
 	if event[1] == "key" and event[2] == 61 then
 		if process.focusWindow and process.list[process.focusWindow] then
-			process.queueEvent(process.id(), "select_window")
+			lwsProc:queue("select_window")
 		end
 	elseif event[1] == "key" and event[2] == 62 then
 		if process.focusWindow and process.list[process.focusWindow] then
-			process.queueEvent(process.id(), "window_action", process.focusWindow, processTable[process.focusWindow].window)
+			lwsProc:queue("window_action", process.focusWindow, processTable[process.focusWindow].window)
 		end
 	elseif event[1] == "mouse_click" then
 		watchMouseDragging = false

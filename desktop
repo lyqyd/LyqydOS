@@ -92,7 +92,7 @@ local function runProgram()
 				if max == "true" then win:maximize() end
 				process.new(function() shell.run(path, unpack(args)) end, path, win)
 				if coroutine.status(process.list[process.focusWindow].thread) == "dead" then
-					process.queueEvent(lws, "close_window", process.focusWindow)
+					process.getFromName("lws"):queue("close_window", process.focusWindow)
 				end
 			end
 		end

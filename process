@@ -232,15 +232,6 @@ function setWindowProperty(window, parameters)
 	end
 end
 
-function queueEvent(pID, ...)
-	if process.processTable[pID] and process.processTable[pID].queue then
-		table.insert(process.processTable[pID].queue, {...})
-		return true
-	else
-		return false
-	end
-end
-
 function nextWindow(default)
 	if process.processTable[process.focusWindow] and process.processTable[process.focusWindow].parent then
 		if process.processTable[process.processTable[process.focusWindow].parent] and process.processTable[process.processTable[process.focusWindow].parent].window then
