@@ -16,7 +16,7 @@ local function addTerm()
 	redirect.buffer.minY = 1
 	redirect.buffer.maxY = process.windowCompositor.y - 1
 	table.insert(process.windowCompositor.bufferStack, 1, redirect.buffer)
-	process.add(function() shell.run("/rom/programs/shell") end, "shell", nil, redirect)
+	process.new(function() shell.run("/rom/programs/shell") end, "shell", nil, redirect)
 	table.insert(terms, process.processTable[#process.processTable])
 	process.focusWindow = #process.processTable
 	focusTerm = #process.processTable

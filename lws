@@ -219,6 +219,7 @@ process.addHook({"mouse_scroll"})
 
 while true do
 	local event = {os.pullEventRaw()}
+	local desktop = process.getFromName("desktop")
 	if event[1] == "key" and event[2] == 61 then
 		if process.focusWindow and process.list[process.focusWindow] then
 			lwsProc:queue("select_window")
@@ -288,7 +289,6 @@ while true do
 			if windowFound then break end
 		end
 		if not windowFound then
-			local desktop = process.getFromName("desktop")
 			if desktop then
 				--let desktop service handle this.
 				desktop:resume(event)
@@ -318,7 +318,7 @@ while true do
 			end
 		elseif desktop then
 			--fall through to desktop
-			process.resume(desktop, event)
+			desktop:resume(event)
 		end
 	elseif event[1] == "mouse_scroll" then
 		if process.list[process.focusWindow] and process.list[process.focusWindow].window then
@@ -330,7 +330,7 @@ while true do
 			end
 		elseif desktop then
 			--fall through to desktop
-			process.resume(desktop, event)
+			desktop:resume(event)
 		end
 	elseif event[1] == "window_action" then
 		process.new(function() windowAction(event[2], event[3]) end, "lwsa")
