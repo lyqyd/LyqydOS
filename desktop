@@ -5,6 +5,9 @@ if #process.windowCompositor.bufferStack > 1 then
 	table.insert(process.windowCompositor.bufferStack, 1, table.remove(process.windowCompositor.bufferStack))
 end
 
+local image
+local backgroundColor = 8
+
 process.addHook({"key", 59})
 
 local runHistory = {}
@@ -99,17 +102,49 @@ local function runProgram()
 	end
 end
 
+local function setBackground(color, image)
+	if deskRedirect.isColor() then
+		if color then
+			deskRedirect.setBackgroundColor(color)
+			deskRedirect.clear()
+		end
+		if image then
+			local x, y = deskRedirect.getSize()
+			local background = {}
+			if fs.exists(image) then
+				local handle = io.open(image, "r")
+				if handle then
+					for line in handle:lines() do
+						table.insert(background, string.sub(line, 1, x))
+					end
+					handle:close()
+				end
+				local backColor = color or backgroundColor
+				backColor = string.format("%x", math.floor(math.log(backColor) / math.log(2)))
+				for i = 2, y do
+					if background[i - 1] then
+						deskRedirect.buffer.backColor[i] = background[i-1]..string.rep(backColor, x - #background[i-1])
+					else
+						deskRedirect.buffer.backColor[i] = string.rep(backColor, x)
+					end
+				end
+			end
+		end
+	else
+		deskRedirect.setBackgroundColor(colors.black)
+		deskRedirect.clear()
+	end
+	process.list[deskID]:queue("redraw")
+end
+
 --set up initial view.
 local titlebarFillChar = deskRedirect.isColor() and " " or "="
-deskRedirect.clear()
+setBackgroundColor(backgroundColor, image)
 local x, y = deskRedirect.getSize()
 deskRedirect.buffer.text[1] = titlebarFillChar.."LyqydOS"..string.rep(titlebarFillChar, x - 8)
 if deskRedirect.isColor() then
 	deskRedirect.buffer.textColor[1] = "fbbbbbbb"..string.rep("f", x - 8)
 	deskRedirect.buffer.backColor[1] = string.rep("8", x)
-	for i=2, y do
-		deskRedirect.buffer.backColor[i] = string.rep("3", x)
-	end
 end
 
 local titlebarItems
@@ -142,6 +177,8 @@ while true do
 			tasksClickable = tasksClickable + 1
 		end
 		deskRedirect.buffer.text[1] = titlebarFillChar.."LyqydOS"..titlebarFillChar..taskText..string.rep(titlebarFillChar, x - (#taskText + 9))
+	elseif event[1] == "set_background" then
+		setBackgroundColor(event[2], event[3])
 	elseif event[1] == "run_program" then
 		runProgram()
 	elseif event[1] == "key" and event[2] == 59 then
