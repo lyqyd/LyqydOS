@@ -34,12 +34,6 @@ local function newTrestore()
 	end
 end
 
-function resume(pID, event)
-	if process.list[pID] then
-		return process.list[pID]:resume(event)
-	end
-end
-
 local function tablify(baseTable, keyTable)
 	if #keyTable > 1 then
 		local key = table.remove(keyTable, 1)
