@@ -180,38 +180,6 @@ function setFocus(num)
 	focusWindow = num
 end
 
-function addChildWindow(pID, childWindow)
-	if process.processTable[pID].children then
-		local isChild = false
-		for k, v in ipairs(process.processTable[pID].children) do
-			if v == childWindow then
-				isChild = true
-				break
-			end
-		end
-		if not isChild then
-			table.insert(process.processTable[pID].children, 1, childWindow)
-		end
-	else
-		process.processTable[pID].children = {childWindow, "rootWindow"}
-	end
-end
-
-function removeChildWindow(pID, childWindow)
-	if processTable[pID] and processTable[pID].children then
-		local index
-		for k, v in ipairs(processTable[pID].children) do
-			if v == childWindow then
-				index = k
-				break
-			end
-		end
-		if index then
-			table.remove(processTable[pID].children, index)
-		end
-	end
-end
-
 function getWindow()
 	if process.activeProcess and process.processTable[process.activeProcess] and process.processTable[process.activeProcess].window then
 		return process.processTable[process.activeProcess].window
