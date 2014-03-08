@@ -35,6 +35,50 @@ local function getWindowDimensions(winPath)
 	end
 end
 
+local function addLineToHistory(line)
+	if line ~= "" and (#runHistory == 0 or line ~= runHistory[#runHistory]) then
+		--should never be able to get above 255, but just in case, the while doesn't hurt
+		table.insert(runHistory,line)		
+		while #runHistory>255 do
+			table.remove(runHistory, 1)
+		end
+		--update history on disk
+		local histFile=io.open("/LyqydOS/.lyqrunhistory","w")
+		if histFile then
+			for i=1, #runHistory do
+				histFile:write(runHistory[i].."\n")
+			end
+			histFile:close()
+		end
+	end
+end
+
+local function startProgram(line)
+	if line ~= "" then
+		local args = {}
+		for match in string.gmatch( line, "[^ \t]+" ) do
+			table.insert( args, match )
+		end
+		--fix for previously-changed working directory
+		shell.setDir("")
+		path = shell.resolveProgram(table.remove(args, 1))
+		if path then
+			local x, y, w, h, max = getWindowDimensions(path)
+			if not x then w, h, x, y, max = 19, 9, 1, 1, "false" end
+			local win = window.new(w, h, x, y, fs.getName(path), process.windowCompositor:newBuffer())
+			if windowCompositor.target.isColor() then
+				win:setType("window")
+			end
+			win:setTheme(LyqydOS.userTheme)
+			if max == "true" then win:maximize() end
+			process.new(function() shell.run(path, unpack(args)) end, path, win)
+			if coroutine.status(process.list[process.focusWindow].thread) == "dead" then
+				process.getFromName("lws"):queue("close_window", process.focusWindow)
+			end
+		end
+	end
+end
+
 local function runProgram()
 	local desk = process.id()
 	local dProc = process.list[desk]
@@ -61,44 +105,8 @@ local function runProgram()
 	dProc.special = nil
 	if success then
 		--don't save empty or repeated lines
-		if line ~= "" and (#runHistory == 0 or line ~= runHistory[#runHistory]) then
-			--should never be able to get above 255, but just in case, the while doesn't hurt
-			table.insert(runHistory,line)		
-			while #runHistory>255 do
-				table.remove(runHistory, 1)
-			end
-			--update history on disk
-			local histFile=io.open("/LyqydOS/.lyqrunhistory","w")
-			if histFile then
-				for i=1, #runHistory do
-					histFile:write(runHistory[i].."\n")
-				end
-				histFile:close()
-			end
-		end
-		if line ~= "" then
-			local args = {}
-			for match in string.gmatch( line, "[^ \t]+" ) do
-				table.insert( args, match )
-			end
-			--fix for previously-changed working directory
-			shell.setDir("")
-			path = shell.resolveProgram(table.remove(args, 1))
-			if path then
-				local x, y, w, h, max = getWindowDimensions(path)
-				if not x then w, h, x, y, max = 19, 9, 1, 1, "false" end
-				local win = window.new(w, h, x, y, fs.getName(path), process.windowCompositor:newBuffer())
-				if windowCompositor.target.isColor() then
-					win:setType("window")
-				end
-				win:setTheme(LyqydOS.userTheme)
-				if max == "true" then win:maximize() end
-				process.new(function() shell.run(path, unpack(args)) end, path, win)
-				if coroutine.status(process.list[process.focusWindow].thread) == "dead" then
-					process.getFromName("lws"):queue("close_window", process.focusWindow)
-				end
-			end
-		end
+		addLineToHistory(line)
+		startProgram(line)
 	end
 end
 
@@ -135,6 +143,63 @@ local function setBackground(color, image)
 		deskRedirect.clear()
 	end
 	process.list[deskID]:queue("redraw")
+end
+
+local function buildRecent()
+	local recents = {}
+	for i = 1, #runHistory do
+		if recents[runHistory[i]] then
+			recents[runHistory[i]] = recents[runHistory[i]] + 1
+		else
+			recents[runHistory[i]] = 1
+		end
+	end
+	local sortedRecents = {}
+	for command, count in pairs(recents) do
+		table.insert(sortedRecents, {command = command, count = count})
+	end
+
+	--sorting function, reversed order for largest first.
+	local function sortRecent(a, b)
+		return a.count > b.count
+	end
+
+	table.sort(sortedRecents, sortRecent)
+
+	while #sortedRecents > 8 do
+		table.remove(sortedRecents, 9)
+	end
+
+	return sortedRecents
+end
+
+local function recentPrograms()
+	local recents = buildRecent()
+	local width = 1
+	local desk = process.id()
+	local dProc = process.list[desk]
+	dProc.special = true
+	dProc.window = window.new(30, 10, 2, 2, "Recent Programs", windowCompositor:newBuffer())
+	dProc.window:setType("menu")
+	dProc.window:setTheme(LyqydOS.userTheme)
+	process.focusWindow = desk
+
+	local _old = term.redirect(dProc.window.redirect)
+	local success, selection = pcall(menu.select, menuList)
+	--clean up window
+	if _old then
+		term.redirect(_old)
+	else
+		term.restore()
+	end
+
+	dProc.window:destroy()
+	dProc.window = nil
+	dProc.special = nil
+	if success then
+		addLineToHistory(recents[selection].command)
+		startProgram(recents[selection].command)
+	end
 end
 
 --set up initial view.
@@ -186,9 +251,13 @@ while true do
 	elseif event[1] == "mouse_click" then
 		if event[4] == 1 then
 			--click on titlebar with no window covering it.
-			if event[3] > 1 and event[3] < 9 and event[2] == 1 then
-				--clicked on the LyqydOS button
-				runProgram()
+			if event[3] > 1 and event[3] < 9 then
+				if event[2] == 1 then
+					--clicked on the LyqydOS button
+				elseif event[2] == 2 then
+					--right-clicked on the LyqydOS button
+					runProgram()
+				end
 			elseif event[3] > 9 then
 				--clicked on task bar.
 				clickItem = math.floor((event[3] - 1) / 9)
