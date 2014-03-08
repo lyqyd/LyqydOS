@@ -42,13 +42,14 @@ local function windowAction(pID, win)
 	--index 2 should be the pID and 3 should be the window, forward compat for child windows.
 	if process.list[process.focusWindow] and not process.list[process.focusWindow].special then
 		local parent = process.focusWindow
+		local proc = process.list[parent]
 		local lws = process.id()
 		process.list[lws].special = true
 		local x, y
-		if process.list[parent].window.minimized then
+		if win.minimized then
 			x, y = 1, 2
 		else
-			x, y = process.list[pID].window.x, process.list[pID].window.y + 1
+			x, y = win.x, win.y + 1
 		end
 		process.list[lws].window = window.new(15, 9, x, y, "Action Menu", process.windowCompositor:newBuffer())
 		process.list[lws].window:setType("menu")
@@ -69,12 +70,12 @@ local function windowAction(pID, win)
 		if success then
 			if selection == 1 then
 				--restore
-				if process.list[parent].window.maximized then
-					process.list[parent].window:restore()
-					process.queueEvent(pID, "window_resize")
-				elseif process.list[parent].window.minimized then
-					process.list[parent].window:unMinimize()
-					process.toFront(parent)
+				if win.maximized then
+					win:restore()
+					proc:queue("window_resize")
+				elseif win.minimized then
+					win:unMinimize()
+					proc:toFront(win)
 				end
 			elseif selection == 2 then
 				--move
@@ -83,48 +84,48 @@ local function windowAction(pID, win)
 					if e == "key" then
 						if p1 == 200 then
 							--up
-							process.list[parent].window:move(process.list[parent].window.x, process.list[parent].window.y - 1)
+							win:move(win.x, win.y - 1)
 						elseif p1 == 203 then
 							--left
-							process.list[parent].window:move(process.list[parent].window.x - 1, process.list[parent].window.y)
+							win:move(win.x - 1, win.y)
 						elseif p1 == 205 then
 							--right
-							process.list[parent].window:move(process.list[parent].window.x + 1, process.list[parent].window.y)
+							win:move(win.x + 1, win.y)
 						elseif p1 == 208 then
 							--down
-							process.list[parent].window:move(process.list[parent].window.x, process.list[parent].window.y + 1)
+							win:move(win.x, win.y + 1)
 						elseif p1 == 28 then
 							--enter
 							break
 						end
 					elseif e == "mouse_click" and p1 == 1 then
 						--mouse click
-						process.list[parent].window:move(p2, p3)
+						win:move(p2, p3)
 						break
 					end
 				end
 			elseif selection == 3 then
 				--resize
-				process.list[parent].window.maximized = false
+				win.maximized = false
 				while true do
 					e, p1 = os.pullEvent()
 					if e == "key" then
 						if p1 == 200 then
 							--up
-							process.list[parent].window:resize(process.list[parent].window.w, process.list[parent].window.h - 1)
-							process.queueEvent(pID, "window_resize")
+							win:resize(win.w, win.h - 1)
+							proc:queue("window_resize")
 						elseif p1 == 203 then
 							--left
-							process.list[parent].window:resize(process.list[parent].window.w - 1, process.list[parent].window.h)
-							process.queueEvent(pID, "window_resize")
+							win:resize(win.w - 1, win.h)
+							proc:queue("window_resize")
 						elseif p1 == 205 then
 							--right
-							process.list[parent].window:resize(process.list[parent].window.w + 1, process.list[parent].window.h)
-							process.queueEvent(pID, "window_resize")
+							win:resize(win.w + 1, win.h)
+							proc:queue("window_resize")
 						elseif p1 == 208 then
 							--down
-							process.list[parent].window:resize(process.list[parent].window.w, process.list[parent].window.h + 1)
-							process.queueEvent(pID, "window_resize")
+							win:resize(win.w, win.h + 1)
+							proc:queue("window_resize")
 						elseif p1 == 28 then
 							--enter
 							break
@@ -133,26 +134,26 @@ local function windowAction(pID, win)
 				end
 			elseif selection == 4 then
 				--minimize
-				if not process.list[parent].window.minimized then
-					process.list[parent].window:minimize()
+				if not win.minimized then
+					win:minimize()
 					--also move the window to the bottom of the buffer stack.
-					process.toBack(parent)
+					proc:toBack()
 				end
 			elseif selection == 5 then
 				--maximize
-				if not process.list[parent].window.maximized then
-					process.list[parent].window:maximize()
-					if process.list[parent].window.minimized then process.list[parent].window:unMinimize() end
-					process.queueEvent(pID, "window_resize")
+				if not win.maximized then
+					win:maximize()
+					if win.minimized then win:unMinimize() end
+					proc:queue("window_resize")
 				end
 			elseif selection == 6 then
 				--close
-				saveDimensions(process.list[parent])
-				process.list[parent].window:destroy()
+				saveDimensions(proc)
+				win:destroy()
 				process.list[parent] = false
 				process.focusWindow = nextWindow(1)
 				if process.list[process.focusWindow] then
-					process.toFront(process.focusWindow)
+					process.list[process.focusWindow]:toFront()
 				end
 			end
 			process.focusWindow = parent
@@ -163,11 +164,14 @@ end
 local function windowSelect()
 	local oldFocus = process.focusWindow
 	local lws = process.id()
+	local lwsProc = process.list[lws]
 	process.list[lws].special = true
-	process.list[lws].window = window.new(19, 11, 1, 1, "Select Window", windowCompositor:newBuffer())
-	process.list[lws].window:setDecorations(term.isColor() and "pretty_menu" or "standard")
+	lwsProc:addWindow(window.new(19, 11, 1, 1, "Select Window", windowCompositor:newBuffer()))
+	local lwsWin = lwsProc.windows[#lwsProc.windows]
+	lwsWin:setTheme(LyqydOS.userTheme)
+	lwsWin:setType("menu")
 	process.focusWindow = lws
-	local _old = term.redirect(processTable[process.focusWindow].window.redirect)
+	local _old = term.redirect(lwsWin.redirect)
 	local pList, menuList = {}, {}
 	for tNum, tInfo in ipairs(process.list) do
 		if tInfo and tInfo.window then
@@ -185,14 +189,15 @@ local function windowSelect()
 	else
 		term.restore()
 	end
-	process.list[lws].window:destroy()
-	process.list[lws].window = nil
+	lwsProc:removeWindow(lwsWin)
 	process.list[lws].special = nil
 	if success then
 		if pList[selection] then
 			process.focusWindow = pList[selection]
-			if processTable[process.focusWindow].window.minimized then processTable[process.focusWindow].window:unMinimize() end
-			process.toFront(process.focusWindow)
+			local proc = process.list[process.focusWindow]
+			local win = proc.windows[#proc.windows]
+			if win.minimized then win:unMinimize() end
+			proc:toFront()
 		else
 			process.focusWindow = oldFocus
 		end
@@ -244,7 +249,7 @@ while true do
 								proc:resume(event)
 							elseif event[4] == 0 and event[2] == 2 then
 								--right click on window title bar, open window menu.
-								lwsProc:queue("window_action", pNum, pInfo.window)
+								lwsProc:queue("window_action", pNum, win)
 							elseif (win.windowType == "modal" and event[4] == 0 and event[2] == 1 and win.w - event[3] == 3) or (win.windowType == "window" and event[4] == 0 and event[2] == 1 and win.w - event[3] > 2 and win.w - event[3] < 6) then
 								local action = win.w - event[3] - 2
 								if action == 1 then

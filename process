@@ -129,7 +129,7 @@ function remove(pID)
 	if pID == process.focusWindow then
 		process.focusWindow = process.nextWindow()
 		if process.focusWindow then
-			process.toFront(process.focusWindow)
+			process.list[process.focusWindow]:toFront()
 		end
 	end
 end
@@ -260,38 +260,6 @@ function nextWindow(default)
 	end
 end
 
-function toFront(pID)
-	--brings a process and all children windows (in order) to the top of the stack.
-	if process.processTable[pID] and process.processTable[pID].window then
-		local proc = process.processTable[pID]
-		if proc.children then
-			--process has children windows, so we need to iterate all of these.
-			local currWindow
-			for i=1, #proc.children do
-				if proc.children[i] == "rootWindow" then
-					currWindow = proc.window
-				else
-					currWindow = proc.children[i]
-				end
-				local pos = nil
-				for j=1, #process.windowCompositor.bufferStack do
-					if process.windowCompositor.bufferStack[j] == currWindow.target.buffer then
-						process.windowCompositor:toFront(j)
-						break
-					end
-				end
-			end
-		else
-			for j=1, #process.windowCompositor.bufferStack do
-				if process.windowCompositor.bufferStack[j] == proc.window.target.buffer then
-					process.windowCompositor:toFront(j)
-					break
-				end
-			end
-		end
-	end					
-end
-
 function toBack(pID)
 	if process.processTable[pID] and process.processTable[pID].window then
 		local proc = process.processTable[pID]
@@ -324,7 +292,7 @@ function toBack(pID)
 		--set active window to new top of stack.
 		process.focusWindow = nextWindow(1)
 		if process.processTable[process.focusWindow] then
-			process.toFront(process.focusWindow)
+			process.list[process.focusWindow]:toFront()
 		end
 	end
 end
@@ -464,7 +432,7 @@ local Process = {
 		if self.id == process.focusWindow then
 			process.focusWindow = process.nextWindow()
 			if process.focusWindow then
-				process.toFront(process.focusWindow)
+				process.list[process.focusWindow]:toFront()
 			end
 		end
 	end,

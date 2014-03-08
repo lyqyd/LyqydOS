@@ -168,7 +168,7 @@ while true do
 						if process.focusWindow ~= titlebarItems[clickItem].pID then
 							process.focusWindow = titlebarItems[clickItem].pID
 						end
-						process.toFront(process.focusWindow)
+						proc:toFront()
 						if win.minimized then win:unMinimize() end
 						if event[2] == 2 then
 							--they right-clicked, so let's also display the window action menu.
