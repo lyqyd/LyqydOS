@@ -10,13 +10,17 @@ local oldTredirect = term.redirect
 local oldTrestore = term.restore
 
 local function newTredirect(target)
+	oldTrestore()
 	table.insert(process.redirectStack, target)
 	oldTredirect(target)
 end
 
 local function newTrestore()
-	table.remove(process.redirectStack)
-	oldTrestore()
+	if #process.redirectStack > 1 then
+		oldTrestore()
+		table.remove(process.redirectStack)
+		oldTredirect(process.redirectStack[#process.redirectStack])
+	end
 end
 
 function resume(pID, eventTable)
@@ -30,23 +34,17 @@ function resume(pID, eventTable)
 				break
 			end
 		end
-		if not resumeProcess then return end
+		if not resumeProcess then return unpack(eventTable) end
 	end
-	--set up base redirect, be it window or null
-	local baseRedirect
-	if process.processTable[pID].window then
-		baseRedirect = process.processTable[pID].window.redirect
-	else
-		baseRedirect = process.nullRedirect
-	end
-	term.redirect(baseRedirect)
+	--redirect to window's current position in its redirect stack
+	term.redirect(process.processTable[pID].redirect[#process.processTable[pID].redirect])
 
-	--restore redirect stack if necessary.
-	if process.processTable[pID].redirectStack then
-		for _,t in ipairs(process.processTable[pID].redirectStack) do
-			term.redirect(t)
-		end
+	--copy redirect stack to global table
+	process.redirectStack = {}
+	for i = 1, #process.processTable[pID].redirect do
+		process.redirectStack[i] = process.processTable[pID].redirect[i]
 	end
+
 	rawset(term, "redirect", newTredirect)
 	rawset(term, "restore", newTrestore)
 
@@ -62,9 +60,8 @@ function resume(pID, eventTable)
 		rawset(term, "redirect", oldTredirect)
 		rawset(term, "restore", oldTrestore)
 
-		process.processTable[pID].redirectStack = {}
+		process.processTable[pID].redirect = {}
 		for i=1, #process.redirectStack do
-			term.restore()
 			process.processTable[pID].redirectStack[i] = process.redirectStack[i]
 		end
 		term.restore()
@@ -90,7 +87,7 @@ function resume(pID, eventTable)
 	return unpack(passback, 2)
 end
 
-function add(func, path, win)
+function add(func, path, win, redirect)
 	local pTable = {}
 	pTable.thread = coroutine.create(func)
 	pTable.path = path
@@ -98,22 +95,27 @@ function add(func, path, win)
 	table.insert(process.processTable, pTable)
 	if win then
 		pTable.window = win
+		pTable.redirect = {win.redirect}
 		process.focusWindow = #process.processTable
+	elseif redirect then
+		pTable.redirect = {redirect}
+	else
+		pTable.redirect = {process.nullRedirect}
 	end
 	process.resume(#process.processTable, {})
 end
 
 local function tablify(baseTable, keyTable)
-	local key = table.remove(keyTable, 1)
-	if not baseTable[key then
-		baseTable[key = {}
-	elseif type(baseTable[key]) ~= "table" then
-		return false
-	end
 	if #keyTable > 1 then
+		local key = table.remove(keyTable, 1)
+		if not baseTable[key] then
+			baseTable[key] = {}
+		elseif type(baseTable[key]) ~= "table" then
+			return false
+		end
 		return tablify(baseTable[key], keyTable)
 	elseif #keyTable == 1 then
-		return baseTable, key
+		return baseTable, keyTable[1]
 	end
 end
 
