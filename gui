@@ -337,6 +337,32 @@ local guiTable = {
 		end
 		return elements
 	end,
+	canvas = function(self, targetWindow, minX, minY, maxX, maxY)
+		local instance = newGuiElement(self, minX, minY, maxX, maxY)
+		if targetWindow ~= nil then instance.parentWindow = targetWindow end
+		instance.data = {
+			buffer = framebuffer.new(maxX - minX, maxY - minY, targetWindow.target.isColor())
+		}
+		instance.draw = function(self)
+			
+		end
+		instance.eventHandler = function(self, ...)
+			local event = {...}
+			if self.properties.isEnabled then
+				if event[1] == "mouse_click" then
+					if self.data.func then
+						self.data.func()
+					else
+						return "lgui_button_click", self.label.name, self
+					end
+				end
+			else
+				return unpack(event)
+			end
+		end
+		instance:draw()
+		table.insert(self.elements, instance)
+		return instance
 	handleEvent = function(self, ...)
 		event = {...}
 		if event[1] == "mouse_click" then
