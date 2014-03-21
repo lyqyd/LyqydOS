@@ -1,0 +1,14 @@
+local focus = "folders"
+local fileTree = {}
+local fileLookup = {}
+local displayFolder = {}
+
+local function addDirectory
+
+for _, file in pairs(fs.list("/")) do
+	if fs.isDir(file) then
+		table.insert(fileTree, {name = file, path = "/", contents = {}, type = "directory"})
+	else
+		table.insert(fileTree, {name = file, path = "/", type = "file"})
+	end
+end

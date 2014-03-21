@@ -2,7 +2,7 @@ local args = {...}
 if #args == 2 and args[1] == "start" then
 	local path = shell.resolveProgram(args[2])
 	if path then
-		process.add(function() shell.run(path) end, fs.getName(path))
+		process.new(function() shell.run(path) end, fs.getName(path))
 	end
 elseif #args == 2 and args[1] == "stop" or args[1] == "restart" then
 	local proc = process.getFromName(args[2])
@@ -14,7 +14,7 @@ elseif #args == 2 and args[1] == "stop" or args[1] == "restart" then
 	if args[1] == "restart" then
 		local path = shell.resolveProgram(args[2])
 		if path then
-			process.add(function() shell.run(path) end, fs.getName(path))
+			process.new(function() shell.run(path) end, fs.getName(path))
 		end
 	end
 else

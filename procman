@@ -126,7 +126,7 @@ while true do
 	if process.eventHooks[event[1]] then
 		local pID = findHook(event)
 		if pID then
-			event = {process.resume(pID, event)}
+			event = {process.list[pID]:resume(event)}
 		end
 	end
 

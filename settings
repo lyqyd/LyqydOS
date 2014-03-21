@@ -6,19 +6,27 @@ if #args > 0 then
 			local oldTheme = LyqydOS.userTheme
 			LyqydOS.userTheme = args[2]
 			for pID, proc in pairs(process.processTable) do
-				if proc and proc.window then
-					if proc.window.theme == oldTheme then
-						proc.window:setTheme(LyqydOS.userTheme)
-					end
-					if proc.children then
-						for _, win in proc.children do
-							if win ~= "rootWindow" and win.theme == oldTheme then
-								win:setTheme(LyqydOS.userTheme)
-							end
+				if proc and proc.windows then
+					for i, win in ipairs(proc.windows) do
+						if win.theme == oldTheme then
+							win:setTheme(LyqydOS.userTheme)
 						end
 					end
 				end
 			end
+		end
+	elseif args[1] == "background" then
+		local dProc = process.getFromName("desktop")
+		if dProc then
+			local color = colors[args[2]] or colours[args[2]]
+			local image = args[3] and shell.resolve(args[3])
+			if color then
+				dProc:queue("set_background", color, image)
+			else
+				error("Invalid color specified")
+			end
+		else
+			error("No desktop found")
 		end
 	end
 end

@@ -34,117 +34,6 @@ local function newTrestore()
 	end
 end
 
-function resume(pID, event)
-	if process.list[pID] then
-		return process.list[pID]:resume(event)
-	end
-end
-
-function resume(pID, eventTable)
-	--evaluate whether this event should even go to this process.
-	if process.processTable[pID].listening then
-		local resumeProcess = false
-		for i=1, #process.processTable[pID].listening do
-			if eventTable[1] == process.processTable[pID].listening[i] then
-				resumeProcess = true
-				process.processTable[pID].listening = nil
-				break
-			end
-		end
-		if not resumeProcess then return unpack(eventTable) end
-	end
-
-	--redirect to window's current position in its redirect stack
-	local _old = term.redirect(process.processTable[pID].redirect[#process.processTable[pID].redirect])
-
-	--copy redirect stack to global table
-	process.redirectStack = {}
-	for i = 1, #process.processTable[pID].redirect do
-		process.redirectStack[i] = process.processTable[pID].redirect[i]
-	end
-
-	rawset(term, "redirect", newTredirect)
-	rawset(term, "restore", newTrestore)
-
-	local active = process.activeProcess
-	process.activeProcess = pID
-	passback = {coroutine.resume(process.processTable[pID].thread, unpack(eventTable))}
-	process.windowCompositor:draw()
-	process.activeProcess = active
-	--if the process had a window, recover its redirect stack and restore the redirect functions.
-	if process.processTable[pID] then
-
-		--restore correct redirection level and save redirect stack for resume.
-		rawset(term, "redirect", oldTredirect)
-		rawset(term, "restore", oldTrestore)
-
-		process.processTable[pID].redirect = {}
-		for i=1, #process.redirectStack do
-			process.processTable[pID].redirect[i] = process.redirectStack[i]
-		end
-		if _old then
-			term.redirect(_old)
-		else
-			term.restore()
-		end
-
-		--handle filters being sent back in passback.
-		if passback[1] and passback[2] then
-			if type(passback[2]) == "string" then
-				process.processTable[pID].listening = {passback[2]}
-			elseif type(passback[2]) == "table" then
-				process.processTable[pID].listening = passback[2]
-			end
-		end
-	end
-	--former checkProcess function.
-	if not process.check(pID) then
-		if not process.processTable[pID].window then
-			process.remove(pID)
-		end
-	end
-	return unpack(passback, 2)
-end
-
-function add(func, path, win, redirect)
-	local pTable = {}
-	pTable.thread = coroutine.create(func)
-	pTable.path = path
-	pTable.queue = {}
-	table.insert(process.processTable, pTable)
-	if win then
-		pTable.window = win
-		pTable.redirect = {win.redirect}
-		process.focusWindow = #process.processTable
-	elseif redirect then
-		pTable.redirect = {redirect}
-	else
-		pTable.redirect = {process.nullRedirect}
-	end
-	process.resume(#process.processTable, {})
-end
-
-function remove(pID)
-	process.processTable[pID] = false
-	if pID == process.focusWindow then
-		process.focusWindow = process.nextWindow()
-		if process.focusWindow then
-			process.toFront(process.focusWindow)
-		end
-	end
-end
-
-function kill(pID)
-	if process.processTable[pID] then
-		if process.processTable[pID].window then
-			process.processTable[pID].window:destroy()
-		end
-		process.remove(pID)
-		return true
-	end
-	return false
-end
-
 local function tablify(baseTable, keyTable)
 	if #keyTable > 1 then
 		local key = table.remove(keyTable, 1)
@@ -180,38 +69,6 @@ function setFocus(num)
 	focusWindow = num
 end
 
-function addChildWindow(pID, childWindow)
-	if process.processTable[pID].children then
-		local isChild = false
-		for k, v in ipairs(process.processTable[pID].children) do
-			if v == childWindow then
-				isChild = true
-				break
-			end
-		end
-		if not isChild then
-			table.insert(process.processTable[pID].children, 1, childWindow)
-		end
-	else
-		process.processTable[pID].children = {childWindow, "rootWindow"}
-	end
-end
-
-function removeChildWindow(pID, childWindow)
-	if processTable[pID] and processTable[pID].children then
-		local index
-		for k, v in ipairs(processTable[pID].children) do
-			if v == childWindow then
-				index = k
-				break
-			end
-		end
-		if index then
-			table.remove(processTable[pID].children, index)
-		end
-	end
-end
-
 function getWindow()
 	if process.activeProcess and process.processTable[process.activeProcess] and process.processTable[process.activeProcess].window then
 		return process.processTable[process.activeProcess].window
@@ -232,15 +89,6 @@ function setWindowProperty(window, parameters)
 	end
 end
 
-function queueEvent(pID, ...)
-	if process.processTable[pID] and process.processTable[pID].queue then
-		table.insert(process.processTable[pID].queue, {...})
-		return true
-	else
-		return false
-	end
-end
-
 function nextWindow(default)
 	if process.processTable[process.focusWindow] and process.processTable[process.focusWindow].parent then
 		if process.processTable[process.processTable[process.focusWindow].parent] and process.processTable[process.processTable[process.focusWindow].parent].window then
@@ -258,91 +106,6 @@ function nextWindow(default)
 		end
 		return nextActive
 	end
-end
-
-function toFront(pID)
-	--brings a process and all children windows (in order) to the top of the stack.
-	if process.processTable[pID] and process.processTable[pID].window then
-		local proc = process.processTable[pID]
-		if proc.children then
-			--process has children windows, so we need to iterate all of these.
-			local currWindow
-			for i=1, #proc.children do
-				if proc.children[i] == "rootWindow" then
-					currWindow = proc.window
-				else
-					currWindow = proc.children[i]
-				end
-				local pos = nil
-				for j=1, #process.windowCompositor.bufferStack do
-					if process.windowCompositor.bufferStack[j] == currWindow.target.buffer then
-						process.windowCompositor:toFront(j)
-						break
-					end
-				end
-			end
-		else
-			for j=1, #process.windowCompositor.bufferStack do
-				if process.windowCompositor.bufferStack[j] == proc.window.target.buffer then
-					process.windowCompositor:toFront(j)
-					break
-				end
-			end
-		end
-	end					
-end
-
-function toBack(pID)
-	if process.processTable[pID] and process.processTable[pID].window then
-		local proc = process.processTable[pID]
-		if proc.children then
-			local lookup, buffStackLookup = {}, {}
-			for i = 1, #proc.children do
-				if proc.children[i] == "rootWindow" then
-					lookup[proc.window] = i
-				else
-					lookup[proc.children[i]] = i
-				end
-			end
-			for i = 1, #process.windowCompositor.bufferStack do
-				if lookup[process.windowCompositor.bufferStack[i]] then
-					buffStackLookup[process.windowCompositor.bufferStack[i]] = i
-				end
-			end
-			for win, index in pairs(lookup) do
-				table.insert(process.windowCompositor.bufferStack,  index + 1, table.remove(process.windowCompositor.bufferStack, buffStackLookup[win]))
-			end
-		else
-			for j = #process.windowCompositor.bufferStack, 1, -1 do
-				if process.windowCompositor.bufferStack[j] == proc.window.target.buffer then
-					--use 2 here because the title bar is layer 1.
-					table.insert(process.windowCompositor.bufferStack, 2, table.remove(process.windowCompositor.bufferStack, j))
-					break
-				end
-			end
-		end
-		--set active window to new top of stack.
-		process.focusWindow = nextWindow(1)
-		if process.processTable[process.focusWindow] then
-			process.toFront(process.focusWindow)
-		end
-	end
-end
-
-function check(pID)
-	local proc = process.processTable[pID]
-	if (proc and coroutine.status(proc.thread) == "dead") or (proc and proc.special and proc ~= process.processTable[process.focusWindow]) then
-		if #proc.windows >= 1 then
-			if proc == process.getFromName("desktop") then
-				--send terminate signal; pcall wrappers will allow current windows to close without killing process.
-				proc:queue("terminate")
-			else
-				process.getFromName("lws"):queue("close_window", pID)
-			end
-		end
-		return false
-	end
-	return true
 end
 
 function id()
@@ -426,9 +189,9 @@ local Process = {
 		end
 
 		--former checkProcess function.
-		if not process.check(pID) then
+		if not self:check() then
 			if not self.window then
-				process.remove(pID)
+				self:remove()
 			end
 		end
 		return unpack(passback, 2)
@@ -464,7 +227,7 @@ local Process = {
 		if self.id == process.focusWindow then
 			process.focusWindow = process.nextWindow()
 			if process.focusWindow then
-				process.toFront(process.focusWindow)
+				process.list[process.focusWindow]:toFront()
 			end
 		end
 	end,
