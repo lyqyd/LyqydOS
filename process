@@ -6,7 +6,6 @@ windowCompositor = {}
 redirectStack = {}
 nullRedirect = framebuffer.new()
 eventHooks = {}
-local id = 1
 
 local oldTredirect = term.redirect
 local oldTrestore = term.restore
@@ -109,7 +108,7 @@ function nextWindow(default)
 end
 
 function id()
-	if process.activeProcess and process.processTable[process.activeProcess] then
+	if process.activeProcess and process.list[process.activeProcess] then
 		return process.activeProcess
 	else
 		return nil, "No active process!"
@@ -138,7 +137,7 @@ local Process = {
 		if self.listening then
 			local resumeProcess = false
 			for i=1, #self.listening do
-				if eventTable[1] == self.listening[i] then
+				if event[1] == self.listening[i] then
 					resumeProcess = true
 					self.listening = nil
 					break
@@ -161,7 +160,7 @@ local Process = {
 
 		local active = process.activeProcess
 		process.activeProcess = self.id
-		passback = {coroutine.resume(self.thread, unpack(eventTable))}
+		passback = {coroutine.resume(self.thread, unpack(event))}
 		process.windowCompositor:draw()
 		process.activeProcess = active
 
@@ -197,7 +196,6 @@ local Process = {
 		return unpack(passback, 2)
 	end,
 	check = function(self)
-		local proc = process.processTable[pID]
 		if coroutine.status(self.thread) == "dead" or (self.special and self.id ~= process.focusWindow) then
 			if self.window then
 				if self.path == "desktop" then
@@ -312,11 +310,11 @@ function new(func, path, win, redirect)
 		path = path,
 		name = fs.getName(path),
 		queue = {},
-		id = id,
 		windows = {},
 	}
 
 	table.insert(process.list, proc)
+	proc.id = #process.list
 
 	if win then
 		table.insert(proc.windows, win)

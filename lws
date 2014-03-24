@@ -204,7 +204,6 @@ local function windowSelect()
 	end
 end
 
-
 local lws = process.id()
 local lwsProc = process.list[lws]
 local watchMouseDragging = false

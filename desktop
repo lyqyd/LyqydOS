@@ -116,6 +116,8 @@ local function setBackground(color, image)
 			deskRedirect.setBackgroundColor(color)
 			deskRedirect.clear()
 		end
+		term.native.write("bgset")
+		sleep(1)
 		if image then
 			local x, y = deskRedirect.getSize()
 			local background = {}
@@ -204,7 +206,9 @@ end
 
 --set up initial view.
 local titlebarFillChar = deskRedirect.isColor() and " " or "="
-setBackgroundColor(backgroundColor, image)
+setBackground(backgroundColor, image)
+term.native.write("bg")
+sleep(1)
 local x, y = deskRedirect.getSize()
 deskRedirect.buffer.text[1] = titlebarFillChar.."LyqydOS"..string.rep(titlebarFillChar, x - 8)
 if deskRedirect.isColor() then
@@ -215,9 +219,14 @@ end
 local titlebarItems
 local tasksClickable
 
+term.native.clear()
+term.native.write("desktop")
+
 while true do
 	local event = {os.pullEventRaw()}
 	if event[1] == "redraw" then
+		term.native.write("redraw")
+		sleep(1)
 		titlebarItems = {}
 		for i=1, #process.list do
 			if process.list[i] and #process.list[i].windows >= 1 and not process.list[i].special then
