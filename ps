@@ -1,6 +1,6 @@
 if process and process.activeProcess then
 	print("PID  NAME")
-	for pID, pInfo in ipairs(process.processTable) do
+	for pID, pInfo in ipairs(process.list) do
 		if pInfo then
 			print(string.rep(" ", 3 - #tostring(pID))..pID.."  "..fs.getName(pInfo.path))
 		end

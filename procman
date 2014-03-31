@@ -110,28 +110,22 @@ while true do
 	for pID, proc in pairs(process.list) do
 		if proc then
 			proc:check()
-			if #proc.queue >= 1 then
+			if #proc.eventQueue >= 1 then
 				repeat
-					proc:resume(table.remove(proc.queue, 1))
-				until #proc.queue == 0
+					proc:resume(table.remove(proc.eventQueue, 1))
+				until #proc.eventQueue == 0
 			end
 		end
 	end
 	--build title bar items.
-	term.redirect(term.native)
-	for k, v in pairs(desktop) do
-		print(k..": "..tostring(v))
-	end
-	term.restore()
-	sleep(1)
-	desktop.resume(desktop, {"redraw"})
+	desktop:resume({"redraw"})
 
 	local event = {coroutine.yield()}
 
 	--process event hooks, like lws and desktop use for hotkeys.
 	if process.eventHooks[event[1]] then
 		local pID = findHook(event)
-		if pID then
+		if pID and process.list[pID] then
 			event = {process.list[pID]:resume(event)}
 		end
 	end

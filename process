@@ -47,7 +47,7 @@ local function tablify(baseTable, keyTable)
 	end
 end
 
-function changeHookActual(hookMask, val)
+local function changeHookActual(hookMask, val)
 	local ref, key = tablify(process.eventHooks, hookMask)
 	if ref and (not val or not ref[key]) then
 		ref[key] = val
@@ -89,22 +89,17 @@ function setWindowProperty(window, parameters)
 end
 
 function nextWindow(default)
-	if process.processTable[process.focusWindow] and process.processTable[process.focusWindow].parent then
-		if process.processTable[process.processTable[process.focusWindow].parent] and process.processTable[process.processTable[process.focusWindow].parent].window then
-			return process.processTable[process.focusWindow].parent
-		end
-	else
-		local nextBuf = process.windowCompositor.bufferStack[#process.windowCompositor.bufferStack]
-		local nextActive = default
-		for tNum, tInfo in ipairs(process.processTable) do
-			if tInfo and tInfo.window then
-				if tInfo.window.target.buffer == nextBuf then
-					nextActive = tNum
+	local nextBuf = process.windowCompositor.bufferStack[#process.windowCompositor.bufferStack]
+	for pID, proc in ipairs(process.list) do
+		if proc then
+			for i = 1, #proc.windows do
+				if proc.windows[i].target.buffer == nextBuf then
+					return pID
 				end
 			end
 		end
-		return nextActive
 	end
+	return default
 end
 
 function id()
@@ -143,7 +138,7 @@ local Process = {
 					break
 				end
 			end
-			if not resumeProcess then return unpack(eventTable) end
+			if not resumeProcess then return unpack(event) end
 		end
 
 		--redirect to window's current position in its redirect stack
@@ -189,33 +184,44 @@ local Process = {
 
 		--former checkProcess function.
 		if not self:check() then
-			if not self.window then
+			if #self.windows == 0 then
 				self:remove()
 			end
 		end
 		return unpack(passback, 2)
 	end,
 	check = function(self)
-		if coroutine.status(self.thread) == "dead" or (self.special and self.id ~= process.focusWindow) then
-			if self.window then
-				if self.path == "desktop" then
-					--send terminate signal; pcall wrappers will allow current windows to close without killing process.
-					self:queue("terminate")
-				else
-					process.getFromName("lws"):queue("close_window", pID)
+		if coroutine.status(self.thread) == "dead" then
+			return false
+		else
+			for i = 1, #self.windows do
+				if self.windows[i].ephemeral and (i < #self.windows or self.id ~= process.focusWindow) then
+					--kill the individual window
+					if self.path == "desktop" then
+						--send terminate signal; pcall wrappers will allow current windows to close without killing process.
+						self:queue("terminate")
+					else
+						local proc = process.getFromName("lws")
+						if proc then
+							process.getFromName("lws"):queue("close_window", self.id, i)
+						else
+							error("no lws", 2)
+						end
+					end
 				end
 			end
-			return false
 		end
 		return true
 	end,
 	queue = function(self, ...)
-		table.insert(self.queue, {...})
+		table.insert(self.eventQueue, {...})
 		return true
 	end,
 	kill = function(self)
-		if self.window then
-			self.window:destroy()
+		if self.windows then
+			for _, win in ipairs(self.windows) do
+				win:destroy()
+			end
 		end
 		self:remove()
 		return true
@@ -275,30 +281,39 @@ local Process = {
 	end,
 	toBack = function(self, win)
 		--win is optional, will move that window to behind the rest of them, as well as moving the whole set to the bottom of the stack.
-		if win then
-			for i = 1, #self.windows do
-				if self.windows[i] == win then
-					table.insert(self.windows, 1, table.remove(self.windows, i))
-					break
+		term.redirect(peripheral.wrap("left"))
+		if #self.windows >= 1 then
+			if win then
+				for i = 1, #self.windows do
+					if self.windows[i] == win then
+						table.insert(self.windows, 1, table.remove(self.windows, i))
+						break
+					end
 				end
 			end
-		end
-		local lookup, buffStackLookup = {}, {}
-		for i = 1, #self.windows do
-			lookup[self.windows[i]] = i
-		end
-		for i = 1, #process.windowCompositor.bufferStack do
-			if lookup[process.windowCompositor.bufferStack[i]] then
-				buffStackLookup[process.windowCompositor.bufferStack[i]] = i
+
+			local intermediate = {}
+
+			for i = 1, #self.windows do
+				for j = 1, #process.windowCompositor.bufferStack do
+					if self.windows[i].target.buffer == process.windowCompositor.bufferStack[j] then
+						table.insert(intermediate, process.windowCompositor.bufferStack[j])
+						break
+					end
+				end
 			end
+
+			repeat
+				table.insert(process.windowCompositor.bufferStack, 2, table.remove(intermediate))
+			until #intermediate == 0
 		end
-		for win, index in pairs(lookup) do
-			table.insert(process.windowCompositor.bufferStack, index + 1, table.remove(process.windowCompositor.bufferStack, bufferStackLookup[win]))
-		end
-		process.focusWindow = nextWindow(1)
+
+		process.focusWindow = process.nextWindow(1)
 		if process.list[process.focusWindow] then
 			process.list[process.focusWindow]:toFront()
 		end
+		print("success")
+		term.restore()
 	end,
 }
 
@@ -309,7 +324,7 @@ function new(func, path, win, redirect)
 		thread = coroutine.create(func),
 		path = path,
 		name = fs.getName(path),
-		queue = {},
+		eventQueue = {},
 		windows = {},
 	}
 

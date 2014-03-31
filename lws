@@ -44,29 +44,28 @@ local function windowAction(pID, win)
 		local parent = process.focusWindow
 		local proc = process.list[parent]
 		local lws = process.id()
-		process.list[lws].special = true
+		local lwsProc = process.list[lws]
 		local x, y
 		if win.minimized then
 			x, y = 1, 2
 		else
 			x, y = win.x, win.y + 1
 		end
-		process.list[lws].window = window.new(15, 9, x, y, "Action Menu", process.windowCompositor:newBuffer())
-		process.list[lws].window:setType("menu")
-		if term.isColor() then
-			process.list[lws].window:setTheme("pretty")
-		end
+		local lwsWin = window.new(15, 9, x, y, "Action Menu", process.windowCompositor:newBuffer())
+		lwsProc:addWindow(lwsWin)
+		lwsWin.ephemeral = true
+		lwsWin:setType("menu")
+		lwsWin:setTheme(LyqydOS.userTheme)
 		process.focusWindow = lws
-		local _old = term.redirect(process.list[process.focusWindow].window.redirect)
+		local _old = term.redirect(lwsWin.redirect)
 		local success, selection = pcall(menu.select, {"Restore", "Move", "Resize", "Minimize", "Maximize", "Close", "Cancel"})
 		if _old then
 			term.redirect(_old)
 		else
 			term.restore()
 		end
-		process.list[lws].window:destroy()
-		process.list[lws].window = nil
-		process.list[lws].special = nil
+		lwsProc:removeWindow(lwsWin)
+
 		if success then
 			if selection == 1 then
 				--restore
@@ -165,9 +164,9 @@ local function windowSelect()
 	local oldFocus = process.focusWindow
 	local lws = process.id()
 	local lwsProc = process.list[lws]
-	process.list[lws].special = true
-	lwsProc:addWindow(window.new(19, 11, 1, 1, "Select Window", windowCompositor:newBuffer()))
-	local lwsWin = lwsProc.windows[#lwsProc.windows]
+	local lwsWin = window.new(19, 11, 1, 1, "Select Window", windowCompositor:newBuffer())
+	lwsProc:addWindow(lwsWin)
+	lwsWin.ephemeral = true
 	lwsWin:setTheme(LyqydOS.userTheme)
 	lwsWin:setType("menu")
 	process.focusWindow = lws
@@ -190,7 +189,6 @@ local function windowSelect()
 		term.restore()
 	end
 	lwsProc:removeWindow(lwsWin)
-	process.list[lws].special = nil
 	if success then
 		if pList[selection] then
 			process.focusWindow = pList[selection]
@@ -215,10 +213,11 @@ process.addHook({"key", 62})
 process.addHook({"mouse_click"})
 process.addHook({"mouse_drag"})
 process.addHook({"mouse_scroll"})
+local desktop = process.getFromName("desktop")
 
 while true do
 	local event = {os.pullEventRaw()}
-	local desktop = process.getFromName("desktop")
+	if not desktop then desktop = process.getFromName("desktop") end
 	if event[1] == "key" and event[2] == 61 then
 		if process.focusWindow and process.list[process.focusWindow] then
 			lwsProc:queue("select_window")
@@ -232,56 +231,58 @@ while true do
 		local windowFound = false
 		for i = #process.windowCompositor.bufferStack, 1, -1 do
 			for pID, proc in pairs(process.list) do
-				for j = 1, #proc.windows do
-					if proc.windows[j].target.buffer == process.windowCompositor.bufferStack[i] and not proc.windows[j].minimized then
-						--correct window in order, break even if we don't get the click here.
-						local win = proc.windows[j]
-						if event[3] >= win.x and event[3] <= win.x + win.w - 1 and event[4] >= win.y and event[4] <= win.y + win.h - 1 and not win.minimized then
-							windowFound = true
-							if process.focusWindow ~= pNum then
-								process.focusWindow = pNum
-								proc:toFront(win)
-							end
-							event[3] = event[3] - win.x
-							event[4] = event[4] - win.y
-							if event[3] > 0 and event[3] < win.w - 1 and event[4] > 0 and event[4] < win.h - 1 then
-								--mouse click resume
-								proc:resume(event)
-							elseif event[4] == 0 and event[2] == 2 then
-								--right click on window title bar, open window menu.
-								lwsProc:queue("window_action", pNum, win)
-							elseif (win.windowType == "modal" and event[4] == 0 and event[2] == 1 and win.w - event[3] == 3) or (win.windowType == "window" and event[4] == 0 and event[2] == 1 and win.w - event[3] > 2 and win.w - event[3] < 6) then
-								local action = win.w - event[3] - 2
-								if action == 1 then
-									--close window
-									lwsProc:queue("close_window", process.focusWindow)
-								elseif action == 2 then
-									if win.maximized then
-										pInfo.window:restore()
-										proc:queue("window_resize")
-									else
-										pInfo.window:maximize()
-										proc:queue("window_resize")
-									end
-								elseif action == 3 then
-									pInfo.window:minimize()
-									proc:toBack()
+				if proc then
+					for j = 1, #proc.windows do
+						if proc.windows[j].target.buffer == process.windowCompositor.bufferStack[i] and not proc.windows[j].minimized then
+							--correct window in order, break even if we don't get the click here.
+							local win = proc.windows[j]
+							if event[3] >= win.x and event[3] <= win.x + win.w - 1 and event[4] >= win.y and event[4] <= win.y + win.h - 1 then
+								windowFound = true
+								if process.focusWindow ~= pID then
+									process.focusWindow = pID
+									proc:toFront(win)
 								end
-							elseif event[4] == 0 and event[2] == 1 and win.windowType ~= "menu" and not pInfo.special then
-								--clicked on titlebar, set variables to see if we drag.
-								watchMouseDragging = true
-								mouseDragAction = "move"
-								mouseStartX = event[3] + win.x
-								mouseStartY = event[4] + win.y
-							elseif event[3] == win.w - 1 and event[4] == win.h - 1 and event[2] == 1 and not pInfo.special then
-								--clicked on lower right corner, resize.
-								watchMouseDragging = true
-								mouseDragAction = "resize"
-								mouseStartX = event[3] + win.x
-								mouseStartY = event[4] + win.y
+								event[3] = event[3] - win.x
+								event[4] = event[4] - win.y
+								if event[3] > 0 and event[3] < win.w - 1 and event[4] > 0 and event[4] < win.h - 1 then
+									--mouse click resume
+									proc:resume(event)
+								elseif event[4] == 0 and event[2] == 2 then
+									--right click on window title bar, open window menu.
+									lwsProc:queue("window_action", pID, win)
+								elseif (win.windowType == "modal" and event[4] == 0 and event[2] == 1 and win.w - event[3] == 3) or (win.windowType == "window" and event[4] == 0 and event[2] == 1 and win.w - event[3] > 2 and win.w - event[3] < 6) then
+									local action = win.w - event[3] - 2
+									if action == 1 then
+										--close window
+										lwsProc:queue("close_window", process.focusWindow)
+									elseif action == 2 then
+										if win.maximized then
+											win:restore()
+											proc:queue("window_resize")
+										else
+											win:maximize()
+											proc:queue("window_resize")
+										end
+									elseif action == 3 then
+										win:minimize()
+										proc:toBack()
+									end
+								elseif event[4] == 0 and event[2] == 1 and win.windowType ~= "menu" and not proc.special then
+									--clicked on titlebar, set variables to see if we drag.
+									watchMouseDragging = true
+									mouseDragAction = "move"
+									mouseStartX = event[3] + win.x
+									mouseStartY = event[4] + win.y
+								elseif event[3] == win.w - 1 and event[4] == win.h - 1 and event[2] == 1 and not proc.special then
+									--clicked on lower right corner, resize.
+									watchMouseDragging = true
+									mouseDragAction = "resize"
+									mouseStartX = event[3] + win.x
+									mouseStartY = event[4] + win.y
+								end
 							end
+							break
 						end
-						break
 					end
 				end
 			end
@@ -336,9 +337,20 @@ while true do
 	elseif event[1] == "select_window" then
 		process.new(windowSelect, "lwss")
 	elseif event[1] == "close_window" then
-		if process.list[event[2]] and process.list[event[2]].window then
-			saveDimensions(process.list[event[2]])
-			process.list[event[2]]:kill()
+		--index 2 is pID, index 3 is window index.
+		if process.list[event[2]] and process.list[event[2]].windows then
+			local proc = process.list[event[2]]
+			if event[3] then
+				if #proc.windows == 1 then
+					saveDimensions(proc)
+					proc:kill()
+				else
+					proc.windows[event[3]]:destroy()
+				end
+			else
+				saveDimensions(proc)
+				proc:kill()
+			end
 		end
 	elseif event[1] == "service_stop" then
 		process.removeHook({"key", 61})

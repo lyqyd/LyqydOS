@@ -6,7 +6,7 @@ if #process.windowCompositor.bufferStack > 1 then
 end
 
 local image
-local backgroundColor = 8
+local backgroundColor = colors.lightBlue
 
 process.addHook({"key", 59})
 
@@ -82,13 +82,14 @@ end
 local function runProgram()
 	local desk = process.id()
 	local dProc = process.list[desk]
-	dProc.special = true
-	dProc.window = window.new(30, 3, 2, 2, "Run Program", windowCompositor:newBuffer())
-	dProc.window:setType("menu")
-	dProc.window:setTheme(LyqydOS.userTheme)
+	local win = window.new(30, 3, 2, 2, "Run Program", windowCompositor:newBuffer())
+	dProc:addWindow(win)
+	win.ephemeral = true
+	win:setType("menu")
+	win:setTheme(LyqydOS.userTheme)
 	process.focusWindow = desk
 
-	local _old = term.redirect(dProc.window.redirect)
+	local _old = term.redirect(win.redirect)
 	term.setTextColor(colors.white)
 	term.setBackgroundColor(colors.black)
 	write("> ")
@@ -100,9 +101,7 @@ local function runProgram()
 		term.restore()
 	end
 
-	dProc.window:destroy()
-	dProc.window = nil
-	dProc.special = nil
+	dProc:removeWindow(win)
 	if success then
 		--don't save empty or repeated lines
 		addLineToHistory(line)
@@ -113,11 +112,11 @@ end
 local function setBackground(color, image)
 	if deskRedirect.isColor() then
 		if color then
-			deskRedirect.setBackgroundColor(color)
-			deskRedirect.clear()
+			local x, y = deskRedirect.getSize()
+			for i = 2, y do
+				deskRedirect.buffer.backColor[i] = string.rep(string.format("%x", math.floor(math.log(color) / math.log(2))), x)
+			end
 		end
-		term.native.write("bgset")
-		sleep(1)
 		if image then
 			local x, y = deskRedirect.getSize()
 			local background = {}
@@ -207,8 +206,6 @@ end
 --set up initial view.
 local titlebarFillChar = deskRedirect.isColor() and " " or "="
 setBackground(backgroundColor, image)
-term.native.write("bg")
-sleep(1)
 local x, y = deskRedirect.getSize()
 deskRedirect.buffer.text[1] = titlebarFillChar.."LyqydOS"..string.rep(titlebarFillChar, x - 8)
 if deskRedirect.isColor() then
@@ -219,19 +216,20 @@ end
 local titlebarItems
 local tasksClickable
 
-term.native.clear()
-term.native.write("desktop")
-
 while true do
 	local event = {os.pullEventRaw()}
 	if event[1] == "redraw" then
-		term.native.write("redraw")
-		sleep(1)
 		titlebarItems = {}
 		for i=1, #process.list do
-			if process.list[i] and #process.list[i].windows >= 1 and not process.list[i].special then
-				local tBarEntry = {pID = i, text = process.list[i].windows[#process.list[i].windows].caption}
-				table.insert(titlebarItems, tBarEntry)
+			if process.list[i] and #process.list[i].windows >= 1 then
+				local proc = process.list[i]
+				for i = #proc.windows, 1 do
+					if not proc.windows[i].ephemeral then
+						local tBarEntry = {pID = i, text = proc.windows[#proc.windows].caption}
+						table.insert(titlebarItems, tBarEntry)
+						break
+					end
+				end
 			end
 		end
 		local taskText = ""
@@ -252,7 +250,7 @@ while true do
 		end
 		deskRedirect.buffer.text[1] = titlebarFillChar.."LyqydOS"..titlebarFillChar..taskText..string.rep(titlebarFillChar, x - (#taskText + 9))
 	elseif event[1] == "set_background" then
-		setBackgroundColor(event[2], event[3])
+		setBackground(event[2], event[3])
 	elseif event[1] == "run_program" then
 		runProgram()
 	elseif event[1] == "key" and event[2] == 59 then
@@ -273,16 +271,14 @@ while true do
 				if (event[3] - 10 ) % 9 ~= 0 and clickItem <= tasksClickable then
 					--they clicked on the name itself, not the boundary line.
 					if clickItem == tasksClickable and clickItem < #titlebarItems then
-						--display the window choice dialog
-						if process.list[process.focusWindow] then
-							process.getFromName("lws"):queue("select_window")
-						end
+						--clicked on more, display the window choice dialog
+						process.getFromName("lws"):queue("select_window")
 					else
-						local proc = process.list[process.focusWindow]
-						local win = proc.windows[#proc.windows]
 						if process.focusWindow ~= titlebarItems[clickItem].pID then
 							process.focusWindow = titlebarItems[clickItem].pID
 						end
+						local proc = process.list[process.focusWindow]
+						local win = proc.windows[#proc.windows]
 						proc:toFront()
 						if win.minimized then win:unMinimize() end
 						if event[2] == 2 then
