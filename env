@@ -6,7 +6,7 @@ function peripheral.call(side, func, ...)
 			local proc = process.id() and process.list[process.id()]
 			if not proc then return false end
 			if not proc.modem then return false end
-			if proc.modem[number] then return true end
+			if proc.modem[(...)] then return true end
 			return false
 		elseif func == "open" then
 			local proc = process.list[process.id()]
