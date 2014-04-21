@@ -167,11 +167,12 @@ local function buildRecent()
 
 	table.sort(sortedRecents, sortRecent)
 
-	while #sortedRecents > 8 do
-		table.remove(sortedRecents, 9)
+	local recentLines = {}
+	for i = 1, math.min(8, #sortedRecents) do
+		recentLines[i] = sortedRecents[i].command
 	end
 
-	return sortedRecents
+	return recentLines
 end
 
 local function recentPrograms()
@@ -179,14 +180,15 @@ local function recentPrograms()
 	local width = 1
 	local desk = process.id()
 	local dProc = process.list[desk]
-	dProc.special = true
-	dProc.window = window.new(30, 10, 2, 2, "Recent Programs", windowCompositor:newBuffer())
-	dProc.window:setType("menu")
-	dProc.window:setTheme(LyqydOS.userTheme)
+	local win = window.new(30, 10, 2, 2, "Recent Programs", windowCompositor:newBuffer())
+	dProc:addWindow(win)
+	win.ephemeral = true
+	win:setType("menu")
+	win:setTheme(LyqydOS.userTheme)
 	process.focusWindow = desk
 
-	local _old = term.redirect(dProc.window.redirect)
-	local success, selection = pcall(menu.select, menuList)
+	local _old = term.redirect(win.redirect)
+	local success, selection = pcall(menu.select, recents)
 	--clean up window
 	if _old then
 		term.redirect(_old)
@@ -194,12 +196,10 @@ local function recentPrograms()
 		term.restore()
 	end
 
-	dProc.window:destroy()
-	dProc.window = nil
-	dProc.special = nil
+	dProc:removeWindow(win)
 	if success then
-		addLineToHistory(recents[selection].command)
-		startProgram(recents[selection].command)
+		addLineToHistory(recents[selection])
+		startProgram(recents[selection])
 	end
 end
 
@@ -223,8 +223,8 @@ while true do
 		for i=1, #process.list do
 			if process.list[i] and #process.list[i].windows >= 1 then
 				local proc = process.list[i]
-				for i = #proc.windows, 1 do
-					if not proc.windows[i].ephemeral then
+				for j = #proc.windows, 1 do
+					if not proc.windows[j].ephemeral then
 						local tBarEntry = {pID = i, text = proc.windows[#proc.windows].caption}
 						table.insert(titlebarItems, tBarEntry)
 						break
@@ -261,6 +261,7 @@ while true do
 			if event[3] > 1 and event[3] < 9 then
 				if event[2] == 1 then
 					--clicked on the LyqydOS button
+					recentPrograms()
 				elseif event[2] == 2 then
 					--right-clicked on the LyqydOS button
 					runProgram()

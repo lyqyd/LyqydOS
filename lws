@@ -224,7 +224,7 @@ while true do
 		end
 	elseif event[1] == "key" and event[2] == 62 then
 		if process.focusWindow and process.list[process.focusWindow] then
-			lwsProc:queue("window_action", process.focusWindow, processTable[process.focusWindow].window)
+			lwsProc:queue("window_action", process.focusWindow, process.list[process.focusWindow].window)
 		end
 	elseif event[1] == "mouse_click" then
 		watchMouseDragging = false
@@ -254,7 +254,7 @@ while true do
 									local action = win.w - event[3] - 2
 									if action == 1 then
 										--close window
-										lwsProc:queue("close_window", process.focusWindow)
+										lwsProc:queue("close_window", pID)
 									elseif action == 2 then
 										if win.maximized then
 											win:restore()

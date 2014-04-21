@@ -184,8 +184,11 @@ local Process = {
 
 		--former checkProcess function.
 		if not self:check() then
-			if #self.windows == 0 then
-				self:remove()
+			local proc = process.getFromName("lws")
+			if proc then
+				proc:queue("close_window", self.id)
+			else
+				self:kill()
 			end
 		end
 		return unpack(passback, 2)
@@ -203,7 +206,7 @@ local Process = {
 					else
 						local proc = process.getFromName("lws")
 						if proc then
-							process.getFromName("lws"):queue("close_window", self.id, i)
+							proc:queue("close_window", self.id, i)
 						else
 							error("no lws", 2)
 						end
@@ -281,7 +284,6 @@ local Process = {
 	end,
 	toBack = function(self, win)
 		--win is optional, will move that window to behind the rest of them, as well as moving the whole set to the bottom of the stack.
-		term.redirect(peripheral.wrap("left"))
 		if #self.windows >= 1 then
 			if win then
 				for i = 1, #self.windows do
@@ -297,7 +299,7 @@ local Process = {
 			for i = 1, #self.windows do
 				for j = 1, #process.windowCompositor.bufferStack do
 					if self.windows[i].target.buffer == process.windowCompositor.bufferStack[j] then
-						table.insert(intermediate, process.windowCompositor.bufferStack[j])
+						table.insert(intermediate, table.remove(process.windowCompositor.bufferStack, j))
 						break
 					end
 				end
@@ -312,8 +314,6 @@ local Process = {
 		if process.list[process.focusWindow] then
 			process.list[process.focusWindow]:toFront()
 		end
-		print("success")
-		term.restore()
 	end,
 }
 
