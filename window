@@ -14,6 +14,10 @@ themes = {
 			restore = {"-", "0", "f"},
 			close = {"-", "e", "f"},
 			caption = {"", "0", "f"},
+			minPos = 0,
+			maxPos = 0,
+			closePos = 0,
+			captionSize = {3, -3},
 		},
 		window = {
 			ul = {"+", "0", "f"},
@@ -29,6 +33,10 @@ themes = {
 			restore = {"R", "0", "f"},
 			close = {"X", "e", "f"},
 			caption = {"", "0", "f"},
+			minPos = -5,
+			maxPos = -4,
+			closePos = -3,
+			captionSize = {3, -7},
 		},
 		menu = {
 			ul = {"/", "0", "f"},
@@ -44,6 +52,10 @@ themes = {
 			restore = {"-", "0", "f"},
 			close = {"-", "e", "f"},
 			caption = {"", "0", "f"},
+			minPos = 0,
+			maxPos = 0,
+			closePos = 0,
+			captionSize = {3, -3},
 		},
 		modal = {
 			ul = {"+", "0", "f"},
@@ -59,6 +71,10 @@ themes = {
 			restore = {"-", "0", "f"},
 			close = {"X", "e", "f"},
 			caption = {"", "0", "f"},
+			minPos = 0,
+			maxPos = 0,
+			closePos = -3,
+			captionSize = {3, -5},
 		},
 	},
 	pretty = {
@@ -76,6 +92,10 @@ themes = {
 			restore = {" ", "0", "8"},
 			close = {" ", "0", "8"},
 			caption = {"", "f", "8"},
+			minPos = 0,
+			maxPos = 0,
+			closePos = 0,
+			captionSize = {3, -3},
 		},
 		window = {
 			ul = {" ", "0", "8"},
@@ -91,6 +111,10 @@ themes = {
 			restore = {"R", "0", "9"},
 			close = {"X", "0", "e"},
 			caption = {"", "f", "8"},
+			minPos = -5,
+			maxPos = -4,
+			closePos = -3,
+			captionSize = {3, -7},
 		},
 		menu = {
 			ul = {" ", "0", "8"},
@@ -106,6 +130,10 @@ themes = {
 			restore = {" ", "0", "8"},
 			close = {" ", "0", "8"},
 			caption = {"", "f", "8"},
+			minPos = 0,
+			maxPos = 0,
+			closePos = 0,
+			captionSize = {3, -3},
 		},
 		modal = {
 			ul = {" ", "0", "8"},
@@ -121,6 +149,10 @@ themes = {
 			restore = {" ", "0", "8"},
 			close = {"X", "0", "e"},
 			caption = {"", "f", "8"},
+			minPos = 0,
+			maxPos = 0,
+			closePos = -3,
+			captionSize = {3, -5},
 		},
 	},
 }
@@ -130,33 +162,62 @@ local window = {
 		--render window to table
 		local maxX, maxY = self.target.getSize()
 		local outputBuffer = {text = {}, textColor = {}, backColor = {}}
+		local function findBoundaries(position)
+			local first, second
+			if position < 0 then
+				first = maxX - (maxX - (self.x + self.w)) - (math.abs(position) - 1) - 2
+				second = maxX - (maxX - (self.x + self.w)) - (math.abs(position) - 1)
+			elseif position > 0 then
+				first = self.x + position - 2
+				second = self.x + position
+			end
+			return first, second
+		end
+		local function drawDecoration(decoration, position, line)
+			local len, start = findBoundaries(position)
+			if len and start then
+				outputBuffer.text[line] = string.sub(outputBuffer.text[line], 1, len)..decoration[1]..string.sub(outputBuffer.text[line], start)
+				outputBuffer.textColor[line] = string.sub(outputBuffer.textColor[line], 1, len)..decoration[2]..string.sub(outputBuffer.textColor[line], start)
+				outputBuffer.backColor[line] = string.sub(outputBuffer.backColor[line], 1, len)..decoration[3]..string.sub(outputBuffer.backColor[line], start)
+				return true
+			else
+				return false
+			end
+		end
 		local prelineBuffer = self.x - 1
 		local postlineBuffer = maxX - (self.x + self.w - 1)
 		for i=1, maxY do
 			if i == self.y and not self.fullscreen then
+				outputBuffer.text[i] = string.rep(" ", prelineBuffer)..self.decorations.ul[1]..string.rep(self.decorations.top[1], self.w - 2)..self.decorations.ur[1]..string.rep(" ", postlineBuffer)
+				outputBuffer.textColor[i] = string.rep("0", prelineBuffer)..self.decorations.ul[2]..string.rep(self.decorations.top[2], self.w - 2)..self.decorations.ur[2]..string.rep("0", postlineBuffer)
+				outputBuffer.backColor[i] = string.rep("f", prelineBuffer)..self.decorations.ul[3]..string.rep(self.decorations.top[3], self.w - 2)..self.decorations.ur[3]..string.rep("f", postlineBuffer)
 				if self.caption then
-					local caption = string.sub(self.caption, 1, self.w - 4)
-					outputBuffer.text[i] = string.rep(" ", prelineBuffer)..self.decorations.ul[1]..self.decorations.top[1]..caption..string.rep(self.decorations.top[1], self.w - (string.len(caption) + 3))..self.decorations.ur[1]..string.rep(" ", postlineBuffer)
-					outputBuffer.textColor[i] = string.rep("0", prelineBuffer)..self.decorations.ul[2]..self.decorations.top[2]..string.rep(self.decorations.caption[2], string.len(caption))..string.rep(self.decorations.top[2], self.w - (string.len(caption) + 3))..self.decorations.ur[2]..string.rep("0", postlineBuffer)
-					outputBuffer.backColor[i] = string.rep("f", prelineBuffer)..self.decorations.ul[3]..self.decorations.top[3]..string.rep(self.decorations.caption[3], string.len(caption))..string.rep(self.decorations.top[3], self.w - (string.len(caption) + 3))..self.decorations.ur[3]..string.rep("f", postlineBuffer)
-				else
-					outputBuffer.text[i] = string.rep(" ", prelineBuffer)..self.decorations.ul[1]..string.rep(self.decorations.top[1], self.w - 2)..self.decorations.ur[1]..string.rep(" ", postlineBuffer)
-					outputBuffer.textColor[i] = string.rep("0", prelineBuffer)..self.decorations.ul[2]..string.rep(self.decorations.top[2], self.w - 2)..self.decorations.ur[2]..string.rep("0", postlineBuffer)
-					outputBuffer.backColor[i] = string.rep("f", prelineBuffer)..self.decorations.ul[3]..string.rep(self.decorations.top[3], self.w - 2)..self.decorations.ur[3]..string.rep("f", postlineBuffer)
+					local captionLength = self.w - (self.decorations.captionSize[1] - 1) - (math.abs(self.decorations.captionSize[2]) - 1)
+					local caption = string.sub(self.caption, 1, captionLength)
+					local preCapSize = self.x + self.decorations.captionSize[1] - 2
+					local postCapStart = maxX - (maxX - (self.x + self.w)) - (math.abs(self.decorations.captionSize[2]) - 1)
+					outputBuffer.text[i] = string.sub(outputBuffer.text[i], 1, preCapSize)..caption..string.rep(self.decorations.top[1], captionLength - #caption)..string.sub(outputBuffer.text[i], postCapStart)
+					outputBuffer.textColor[i] = string.sub(outputBuffer.textColor[i], 1, preCapSize)..string.rep(self.decorations.caption[2], #caption)..string.rep(self.decorations.top[2], captionLength - #caption)..string.sub(outputBuffer.textColor[i], postCapStart)
+					outputBuffer.backColor[i] = string.sub(outputBuffer.backColor[i], 1, preCapSize)..string.rep(self.decorations.caption[3], #caption)..string.rep(self.decorations.top[3], captionLength - #caption)..string.sub(outputBuffer.backColor[i], postCapStart)
 				end
-				if self.windowType == "modal" then
-					outputBuffer.text[i] = string.sub(outputBuffer.text[i], 1, self.x + self.w - 5)..self.decorations.top[1]..self.decorations.close[1]..string.sub(outputBuffer.text[i], self.x + self.w - 2)
-					outputBuffer.textColor[i] = string.sub(outputBuffer.textColor[i], 1, self.x + self.w - 5)..self.decorations.top[2]..self.decorations.close[2]..string.sub(outputBuffer.textColor[i], self.x + self.w - 2)
-					outputBuffer.backColor[i] = string.sub(outputBuffer.backColor[i], 1, self.x + self.w - 5)..self.decorations.top[3]..self.decorations.close[3]..string.sub(outputBuffer.backColor[i], self.x + self.w - 2)
-				elseif self.windowType == "window" then
-					if self.maximized then
-						outputBuffer.text[i] = string.sub(outputBuffer.text[i], 1, self.x + self.w - 7)..self.decorations.top[1]..self.decorations.min[1]..self.decorations.restore[1]..self.decorations.close[1]..string.sub(outputBuffer.text[i], self.x + self.w - 2)
-						outputBuffer.textColor[i] = string.sub(outputBuffer.textColor[i], 1, self.x + self.w - 7)..self.decorations.top[2]..self.decorations.min[2]..self.decorations.restore[2]..self.decorations.close[2]..string.sub(outputBuffer.textColor[i], self.x + self.w - 2)
-						outputBuffer.backColor[i] = string.sub(outputBuffer.backColor[i], 1, self.x + self.w - 7)..self.decorations.top[3]..self.decorations.min[3]..self.decorations.restore[3]..self.decorations.close[3]..string.sub(outputBuffer.backColor[i], self.x + self.w - 2)
-					else
-						outputBuffer.text[i] = string.sub(outputBuffer.text[i], 1, self.x + self.w - 7)..self.decorations.top[1]..self.decorations.min[1]..self.decorations.max[1]..self.decorations.close[1]..string.sub(outputBuffer.text[i], self.x + self.w - 2)
-						outputBuffer.textColor[i] = string.sub(outputBuffer.textColor[i], 1, self.x + self.w - 7)..self.decorations.top[2]..self.decorations.min[2]..self.decorations.max[2]..self.decorations.close[2]..string.sub(outputBuffer.textColor[i], self.x + self.w - 2)
-						outputBuffer.backColor[i] = string.sub(outputBuffer.backColor[i], 1, self.x + self.w - 7)..self.decorations.top[3]..self.decorations.min[3]..self.decorations.max[3]..self.decorations.close[3]..string.sub(outputBuffer.backColor[i], self.x + self.w - 2)
+				if self.windowType == "modal" or self.windowType == "window" then
+					if not drawDecoration(self.decorations.close, self.decorations.closePos, i) then
+						--invalid decoration, set theme and exit
+						self:setTheme("standard")
+						return self:draw()
+					end
+					
+					if self.windowType == "window" then
+						if not drawDecoration(self.decorations.min, self.decorations.minPos, i) then
+							--invalid decoration, set theme and exit
+							self:setTheme("standard")
+							return self:draw()
+						end
+						if not drawDecoration(self.maximized and self.decorations.restore or self.decorations.max, self.decorations.maxPos, i) then
+							--invalid decoration, set theme and exit
+							self:setTheme("standard")
+							return self:draw()
+						end
 					end
 				end
 			elseif i == self.y + self.h - 1 and not self.fullscreen then

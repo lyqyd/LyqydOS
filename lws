@@ -250,22 +250,31 @@ while true do
 								elseif event[4] == 0 and event[2] == 2 then
 									--right click on window title bar, open window menu.
 									lwsProc:queue("window_action", pID, win)
-								elseif (win.windowType == "modal" and event[4] == 0 and event[2] == 1 and win.w - event[3] == 3) or (win.windowType == "window" and event[4] == 0 and event[2] == 1 and win.w - event[3] > 2 and win.w - event[3] < 6) then
-									local action = win.w - event[3] - 2
-									if action == 1 then
+								elseif (win.windowType == "modal" or win.windowType == "window") and event[4] == 0 and event[2] == 1 then
+									local function findTransformedX(position)
+										if position < 0 then
+											return win.w + position
+										elseif position > 0 then
+											return position - 1
+										end
+									end
+									if event[3] == findTransformedX(win.decorations.closePos) then
 										--close window
 										lwsProc:queue("close_window", pID)
-									elseif action == 2 then
-										if win.maximized then
-											win:restore()
-											proc:queue("window_resize")
-										else
-											win:maximize()
-											proc:queue("window_resize")
+									elseif win.windowType == "window" then
+										if event[3] == findTransformedX(win.decorations.minPos) then
+											--minimize
+											win:minimize()
+											proc:toBack()
+										elseif event[3] == findTransformedX(win.decorations.maxPos) then
+											if win.maximized then
+												win:restore()
+												proc:queue("window_resize")
+											else
+												win:maximize()
+												proc:queue("window_resize")
+											end
 										end
-									elseif action == 3 then
-										win:minimize()
-										proc:toBack()
 									end
 								elseif event[4] == 0 and event[2] == 1 and win.windowType ~= "menu" and not proc.special then
 									--clicked on titlebar, set variables to see if we drag.

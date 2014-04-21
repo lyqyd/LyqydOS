@@ -5,7 +5,7 @@ if #args > 0 then
 		if window.themes[args[2]] then
 			local oldTheme = LyqydOS.userTheme
 			LyqydOS.userTheme = args[2]
-			for pID, proc in pairs(process.processTable) do
+			for pID, proc in pairs(process.list) do
 				if proc and proc.windows then
 					for i, win in ipairs(proc.windows) do
 						if win.theme == oldTheme then
