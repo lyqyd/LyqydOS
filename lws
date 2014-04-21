@@ -282,7 +282,17 @@ while true do
 												proc:queue("window_resize")
 												proc:queue("term_resize")
 											end
+										else
+											watchMouseDragging = true
+											mouseDragAction = "move"
+											mouseStartX = event[3] + win.x
+											mouseStartY = event[4] + win.y
 										end
+									else
+										watchMouseDragging = true
+										mouseDragAction = "move"
+										mouseStartX = event[3] + win.x
+										mouseStartY = event[4] + win.y
 									end
 								elseif event[4] == 0 and event[2] == 1 and win.windowType ~= "menu" and not proc.special then
 									--clicked on titlebar, set variables to see if we drag.
