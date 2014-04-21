@@ -5,9 +5,6 @@ if #process.windowCompositor.bufferStack > 1 then
 	table.insert(process.windowCompositor.bufferStack, 1, table.remove(process.windowCompositor.bufferStack))
 end
 
-local image
-local backgroundColor = colors.lightBlue
-
 process.addHook({"key", 59})
 
 local runHistory = {}
@@ -205,7 +202,7 @@ end
 
 --set up initial view.
 local titlebarFillChar = deskRedirect.isColor() and " " or "="
-setBackground(backgroundColor, image)
+setBackground(LyqydOS.background, LyqydOS.backgroundImage)
 local x, y = deskRedirect.getSize()
 deskRedirect.buffer.text[1] = titlebarFillChar.."LyqydOS"..string.rep(titlebarFillChar, x - 8)
 if deskRedirect.isColor() then

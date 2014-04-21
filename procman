@@ -11,6 +11,8 @@ if process.activeProcess ~= nil then return end
 
 _G.LyqydOS = {
 	userTheme = term.isColor() and "pretty" or "standard",
+	background = colors.lightBlue,
+	backgroundImage = "",
 }
 
 if fs.exists("/LyqydOS/.config") then
