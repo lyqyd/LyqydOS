@@ -200,16 +200,11 @@ local Process = {
 			for i = 1, #self.windows do
 				if self.windows[i].ephemeral and (i < #self.windows or self.id ~= process.focusWindow) then
 					--kill the individual window
-					if self.path == "desktop" then
-						--send terminate signal; pcall wrappers will allow current windows to close without killing process.
-						self:queue("terminate")
+					local proc = process.getFromName("lws")
+					if proc then
+						proc:resume({"close_window", self.id, i})
 					else
-						local proc = process.getFromName("lws")
-						if proc then
-							proc:queue("close_window", self.id, i)
-						else
-							error("no lws", 2)
-						end
+						error("no lws", 2)
 					end
 				end
 			end
