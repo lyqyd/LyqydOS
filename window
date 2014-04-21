@@ -289,7 +289,6 @@ local window = {
 		if process and process.windowCompositor then
 			process.windowCompositor:removeBuffer(self.target.buffer)
 		end
-		self = nil
 	end,
 	setTheme = function(self, theme)
 		if not theme then

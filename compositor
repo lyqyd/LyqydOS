@@ -82,14 +82,11 @@ local compositor = {
 		local pos = nil
 		for i = 1, #self.bufferStack do
 			if self.bufferStack[i] == buffer then
-				pos = i
+				table.remove(self.bufferStack, i)
 				break
 			end
 		end
-		if pos then
-			table.remove(self.bufferStack, pos)
-			if not self.deferDraw then self:draw() end
-		end
+		if not self.deferDraw then self:draw() end
 	end,
 }
 
