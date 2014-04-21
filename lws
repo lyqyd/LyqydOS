@@ -1,6 +1,6 @@
 local function saveDimensions(proc)
 	--saves window dimensions when closing windows
-	if proc.path then
+	if proc.path and proc.windows and #proc.windows > 0 then
 		local wInfo = {}
 		if proc.windows[#proc.windows].maximized then
 			wInfo.x = proc.windows[#proc.windows].normalSize.x
@@ -72,6 +72,7 @@ local function windowAction(pID, win)
 				if win.maximized then
 					win:restore()
 					proc:queue("window_resize")
+					proc:queue("term_resize")
 				elseif win.minimized then
 					win:unMinimize()
 					proc:toFront(win)
@@ -113,18 +114,22 @@ local function windowAction(pID, win)
 							--up
 							win:resize(win.w, win.h - 1)
 							proc:queue("window_resize")
+							proc:queue("term_resize")
 						elseif p1 == 203 then
 							--left
 							win:resize(win.w - 1, win.h)
 							proc:queue("window_resize")
+							proc:queue("term_resize")
 						elseif p1 == 205 then
 							--right
 							win:resize(win.w + 1, win.h)
 							proc:queue("window_resize")
+							proc:queue("term_resize")
 						elseif p1 == 208 then
 							--down
 							win:resize(win.w, win.h + 1)
 							proc:queue("window_resize")
+							proc:queue("term_resize")
 						elseif p1 == 28 then
 							--enter
 							break
@@ -144,6 +149,7 @@ local function windowAction(pID, win)
 					win:maximize()
 					if win.minimized then win:unMinimize() end
 					proc:queue("window_resize")
+					proc:queue("term_resize")
 				end
 			elseif selection == 6 then
 				--close
@@ -173,9 +179,9 @@ local function windowSelect()
 	local _old = term.redirect(lwsWin.redirect)
 	local pList, menuList = {}, {}
 	for tNum, tInfo in ipairs(process.list) do
-		if tInfo and tInfo.window then
+		if tInfo and tInfo.windows and #tInfo.windows > 0 then
 			table.insert(pList, tNum)
-			table.insert(menuList, tInfo.window.caption)
+			table.insert(menuList, tInfo.windows[#tInfo.windows].caption)
 		end
 	end
 	--removes self from list of running programs.
@@ -224,7 +230,7 @@ while true do
 		end
 	elseif event[1] == "key" and event[2] == 62 then
 		if process.focusWindow and process.list[process.focusWindow] then
-			lwsProc:queue("window_action", process.focusWindow, process.list[process.focusWindow].window)
+			lwsProc:queue("window_action", process.focusWindow, process.list[process.focusWindow].windows[#process.list[process.focusWindow].windows])
 		end
 	elseif event[1] == "mouse_click" then
 		watchMouseDragging = false
@@ -270,9 +276,11 @@ while true do
 											if win.maximized then
 												win:restore()
 												proc:queue("window_resize")
+												proc:queue("term_resize")
 											else
 												win:maximize()
 												proc:queue("window_resize")
+												proc:queue("term_resize")
 											end
 										end
 									end
@@ -317,6 +325,7 @@ while true do
 				mouseStartY = event[4]
 				proc.windows[#proc.windows].maximized = false
 				proc:queue("window_resize")
+				proc:queue("term_resize")
 			end
 		elseif process.list[process.focusWindow] and process.list[process.focusWindow].window then
 			local proc = process.list[process.focusWindow]
