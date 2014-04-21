@@ -8,10 +8,10 @@ while true do
 	local event = {os.pullEventRaw()}
 	if event[1] == "modem_message" then
 		if lyqydnet then
-			lyqydnet:queueEvent("modem_message", unpack(event))
+			lyqydnet:queue(unpack(event))
 		else
 			local rm = event[3] == os.getComputerID() or event[3] == RN_BROADCAST
-			for piD, proc in pairs(process.processTable) do
+			for pID, proc in pairs(process.list) do
 				if proc.modem and proc.modem[event[3]] then
 					proc:queue(unpack(event))
 				end
