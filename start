@@ -3,18 +3,11 @@ if #args < 1 then
 	print("No program specified!")
 else
 	local startProcess = process.id()
-	local lws = 1
-	for pID, proc in pairs(process.processTable) do
-		if proc.path == "lws" then
-			lws = pID
-			break
-		end
-	end
 	path = shell.resolveProgram(table.remove(args, 1))
 	if path then
 		local w, h, x, y, max = 19, 9, 1, 1, "false"
 		windowDimensions = {}
-		winDims = io.open("/.lyqwin", "r")
+		winDims = io.open("/LyqydOS/.lyqwin", "r")
 		if winDims then
 			for line in winDims:lines() do
 				if string.match(line, "%d+,%d+,%d+,%d+,%a+,(.*)") == path then
@@ -27,11 +20,11 @@ else
 		local win = window.new(w, h, x, y, fs.getName(path), process.windowCompositor:newBuffer())
 		if process.windowCompositor.target.isColor() then
 			win:setType("window")
-			win:setTheme(LyqydOS.userTheme)
 		end
+		win:setTheme(LyqydOS.userTheme)
 		if max == "true" then win:maximize() end
 		process.new(function() shell.run(path, unpack(args)) end, path, win)
-		if coroutine.status(process.processTable[process.focusWindow].thread) == "dead" then
+		if coroutine.status(process.list[process.focusWindow].thread) == "dead" then
 			process.getFromName("lws"):queue("close_window", process.focusWindow)
 			process.focusWindow = startProcess
 		end
