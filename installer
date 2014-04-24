@@ -94,13 +94,15 @@ if #args < 1 or args[1] ~= "setup" then
 end
 
 --write sane default window sizes
-if not fs.exists("/.lyqwin") then
-	local handle = io.open("/.lyqwin", "w")
+if not fs.exists("/LyqydOS/.lyqwin") then
+	local handle = io.open("/LyqydOS/.lyqwin", "w")
 	if handle then
 		handle:write([[1,1,9,4,false,rom/programs/reboot]].."\n")
 		handle:write([[1,1,9,4,false,rom/programs/shutdown]].."\n")
 		handle:write([[1,1,19,9,true,rom/programs/color/paint]].."\n")
 		handle:close()
+		--if installer is being run from packman
+		if packman then packman.addFile("/LyqydOS/.lyqwin") end
 	end
 end
 
