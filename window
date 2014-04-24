@@ -187,7 +187,7 @@ local window = {
 		local prelineBuffer = self.x - 1
 		local postlineBuffer = maxX - (self.x + self.w - 1)
 		for i=1, maxY do
-			if i == self.y and not self.fullscreen then
+			if i == self.y and not self.fullscreened then
 				outputBuffer.text[i] = string.rep(" ", prelineBuffer)..self.decorations.ul[1]..string.rep(self.decorations.top[1], self.w - 2)..self.decorations.ur[1]..string.rep(" ", postlineBuffer)
 				outputBuffer.textColor[i] = string.rep("0", prelineBuffer)..self.decorations.ul[2]..string.rep(self.decorations.top[2], self.w - 2)..self.decorations.ur[2]..string.rep("0", postlineBuffer)
 				outputBuffer.backColor[i] = string.rep("f", prelineBuffer)..self.decorations.ul[3]..string.rep(self.decorations.top[3], self.w - 2)..self.decorations.ur[3]..string.rep("f", postlineBuffer)
@@ -220,12 +220,12 @@ local window = {
 						end
 					end
 				end
-			elseif i == self.y + self.h - 1 and not self.fullscreen then
+			elseif i == self.y + self.h - 1 and not self.fullscreened then
 				outputBuffer.text[i] = string.rep(" ", prelineBuffer)..self.decorations.ll[1]..string.rep(self.decorations.bottom[1], self.w - 2)..self.decorations.lr[1]..string.rep(" ", postlineBuffer)
 				outputBuffer.textColor[i] = string.rep("0", prelineBuffer)..self.decorations.ll[2]..string.rep(self.decorations.bottom[2], self.w - 2)..self.decorations.lr[2]..string.rep("0", postlineBuffer)
 				outputBuffer.backColor[i] = string.rep("f", prelineBuffer)..self.decorations.ll[3]..string.rep(self.decorations.bottom[3], self.w - 2)..self.decorations.lr[3]..string.rep("f", postlineBuffer)
 			elseif i >= self.y and i <= self.y + self.h - 1 then
-				if self.fullscreen then
+				if self.fullscreened then
 					outputBuffer.text[i] = self.redirect.buffer.text[i]
 					outputBuffer.textColor[i] = self.redirect.buffer.textColor[i]
 					outputBuffer.backColor[i] = self.redirect.buffer.backColor[i]
@@ -396,7 +396,7 @@ local window = {
 	end,
 	fullscreen = function(self)
 		self:minimize()
-		self.fullscreen = true
+		self.fullscreened = true
 		self.normalRedirect = self.redirect
 		self.redirect = self.target
 	end,
@@ -406,9 +406,9 @@ local window = {
 	end,
 	restore = function(self)
 		self.maximized = false
-		if self.fullscreen then
+		if self.fullscreened then
 			self:unMinimize()
-			self.fullscreen = false
+			self.fullscreened = false
 			self.redirect = self.normalRedirect
 		end
 		self:resize(self.normalSize.w, self.normalSize.h)
@@ -459,7 +459,7 @@ function new(w, h, x, y, caption, target)
 		},
 		maximized = false,
 		minimized = false,
-		fullscreen = false,
+		fullscreened = false,
 	}
 	local xlim, ylim = win.target.getSize()
 	--x and y bounding for initial window.
