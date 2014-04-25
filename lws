@@ -55,7 +55,7 @@ local function windowAction(pID, win)
 		lwsProc:addWindow(lwsWin)
 		lwsWin.ephemeral = true
 		lwsWin:setType("menu")
-		lwsWin:setTheme(LyqydOS.userTheme)
+		lwsWin:setTheme(LyqydOS.window.theme)
 		process.focusWindow = lws
 		local _old = term.redirect(lwsWin.redirect)
 		local success, selection = pcall(menu.select, {"Restore", "Move", "Resize", "Minimize", "Maximize", "Close", "Cancel"})
@@ -173,7 +173,7 @@ local function windowSelect()
 	local lwsWin = window.new(19, 11, 1, 1, "Select Window", windowCompositor:newBuffer())
 	lwsProc:addWindow(lwsWin)
 	lwsWin.ephemeral = true
-	lwsWin:setTheme(LyqydOS.userTheme)
+	lwsWin:setTheme(LyqydOS.window.theme)
 	lwsWin:setType("menu")
 	process.focusWindow = lws
 	local _old = term.redirect(lwsWin.redirect)

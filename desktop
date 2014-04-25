@@ -1,3 +1,35 @@
+local themes = {
+	standard = {
+		titlebar = {"=", "0", "f"},
+		ostext = {" ", "0", "f"},
+		tasktext = {" ", "0", "f"},
+		tasksep = {"|", "0", "f"},
+	},
+	pretty = {
+		titlebar = {" ", "0", "8"},
+		ostext = {" ", "b", "8"},
+		tasktext = {" ", "f", "8"},
+		tasksep = {"|", "f", "8"},
+	}
+}
+
+if fs.exists("/LyqydOS/themes/desktop") and fs.isDir("/LyqydOS/themes/desktop") then
+	for _, name in pairs(fs.list("/LyqydOS/themes/desktop")) do
+		local file = fs.combine("/LyqydOS/themes/desktop", name)
+		local env = {}
+		local fn, err = loadfile(file)
+		if fn then
+			setfenv(fn, env)
+			fn()
+			--copy into desktop themes
+			themes[name] = {}
+			for k, v in pairs(env) do
+				themes[name][k] = v
+			end
+		end
+	end
+end
+
 local deskID = process.id()
 local deskRedirect = process.windowCompositor:newBuffer()
 if #process.windowCompositor.bufferStack > 1 then
@@ -66,7 +98,7 @@ local function startProgram(line)
 			if windowCompositor.target.isColor() then
 				win:setType("window")
 			end
-			win:setTheme(LyqydOS.userTheme)
+			win:setTheme(LyqydOS.window.theme)
 			if max == "true" then win:maximize() end
 			process.new(function() shell.run(path, unpack(args)) end, path, win)
 			if coroutine.status(process.list[process.focusWindow].thread) == "dead" then
@@ -88,7 +120,7 @@ local function runProgram()
 	dProc:addWindow(win)
 	win.ephemeral = true
 	win:setType("menu")
-	win:setTheme(LyqydOS.userTheme)
+	win:setTheme(LyqydOS.window.theme)
 	process.focusWindow = desk
 
 	local _old = term.redirect(win.redirect)
@@ -191,7 +223,7 @@ local function recentPrograms()
 	dProc:addWindow(win)
 	win.ephemeral = true
 	win:setType("menu")
-	win:setTheme(LyqydOS.userTheme)
+	win:setTheme(LyqydOS.window.theme)
 	process.focusWindow = desk
 
 	local _old = term.redirect(win.redirect)
@@ -211,13 +243,13 @@ local function recentPrograms()
 end
 
 --set up initial view.
-local titlebarFillChar = deskRedirect.isColor() and " " or "="
-setBackground(LyqydOS.background, LyqydOS.backgroundImage)
+local theme = themes[LyqydOS.desktop.theme]
+setBackground(LyqydOS.desktop.background, LyqydOS.desktop.backgroundImage)
 local x, y = deskRedirect.getSize()
-deskRedirect.buffer.text[1] = titlebarFillChar.."LyqydOS"..string.rep(titlebarFillChar, x - 8)
+deskRedirect.buffer.text[1] = theme.titlebar[1].."LyqydOS"..string.rep(theme.titlebar[1], x - 8)
 if deskRedirect.isColor() then
-	deskRedirect.buffer.textColor[1] = "fbbbbbbb"..string.rep("f", x - 8)
-	deskRedirect.buffer.backColor[1] = string.rep("8", x)
+	deskRedirect.buffer.textColor[1] = theme.titlebar[2]..string.rep(theme.ostext[2], 7)..string.rep(theme.titlebar[2], x - 8)
+	deskRedirect.buffer.backColor[1] = theme.titlebar[3]..string.rep(theme.ostext[3], 7)..string.rep(theme.titlebar[3], x - 8)
 end
 
 local titlebarItems
@@ -239,25 +271,52 @@ while true do
 				end
 			end
 		end
-		local taskText = ""
+		local taskText = {}
 		tasksClickable = 0
 		local usableWidth = x - 10
 		for eNum, eInfo in ipairs(titlebarItems) do
-			if #taskText + 9 > usableWidth then
-				if #taskText > 9 then
-					taskText = string.sub(taskText, 1, -10).."More... |"
+			if #taskText * 9 + 9 > usableWidth then
+				if #taskText > 0 then
+					table.remove(taskText)
+					table.insert(taskText, "More... ")
+					--taskText = string.sub(taskText, 1, -10).."More... |"
 				end
 				break
 			end
 			local str = string.sub(eInfo.text, 1, 8)
 			str = str..string.rep(" ", 8 - #str)
-			if taskText == "" then taskText = "|" end
-			taskText = taskText..str.."|"
+			--if taskText == "" then taskText = "|" end
+			table.insert(taskText, str)
+			--taskText = taskText..str.."|"
 			tasksClickable = tasksClickable + 1
 		end
-		deskRedirect.buffer.text[1] = titlebarFillChar.."LyqydOS"..titlebarFillChar..taskText..string.rep(titlebarFillChar, x - (#taskText + 9))
-	elseif event[1] == "set_background" then
-		setBackground(event[2], event[3])
+		deskRedirect.buffer.text[1] = theme.titlebar[1].."LyqydOS"..theme.titlebar[1]
+		deskRedirect.buffer.textColor[1] = theme.titlebar[2]..string.rep(theme.ostext[2], 7)..theme.titlebar[2]
+		deskRedirect.buffer.backColor[1] = theme.titlebar[3]..string.rep(theme.ostext[3], 7)..theme.titlebar[3]
+		if #taskText > 0 then
+			deskRedirect.buffer.text[1] = deskRedirect.buffer.text[1]..theme.tasksep[1]
+			deskRedirect.buffer.textColor[1] = deskRedirect.buffer.textColor[1]..theme.tasksep[2]
+			deskRedirect.buffer.backColor[1] = deskRedirect.buffer.backColor[1]..theme.tasksep[3]
+			for i = 1, #taskText do
+				deskRedirect.buffer.text[1] = deskRedirect.buffer.text[1]..taskText[i]..theme.tasksep[1]
+				deskRedirect.buffer.textColor[1] = deskRedirect.buffer.textColor[1]..string.rep(theme.tasktext[2], #taskText[i])..theme.tasksep[2]
+				deskRedirect.buffer.backColor[1] = deskRedirect.buffer.backColor[1]..string.rep(theme.tasktext[3], #taskText[i])..theme.tasksep[3]
+			end
+		end
+		deskRedirect.buffer.text[1] = deskRedirect.buffer.text[1]..string.rep(theme.titlebar[1], x - #deskRedirect.buffer.text[1])
+		deskRedirect.buffer.textColor[1] = deskRedirect.buffer.textColor[1]..string.rep(theme.titlebar[2], x - #deskRedirect.buffer.textColor[1])
+		deskRedirect.buffer.backColor[1] = deskRedirect.buffer.backColor[1]..string.rep(theme.titlebar[3], x - #deskRedirect.buffer.backColor[1])
+	elseif event[1] == "set_property" then
+		if event[2] == "background" then
+			setBackground(event[3], event[4])
+		elseif event[2] == "theme" then
+			if themes[event[3]] then
+				theme = themes[event[3]]
+				os.queueEvent("property_changed", process.id(), unpack(event))
+			else
+				os.queueEvent("property_refused", process.id(), unpack(event))
+			end
+		end
 	elseif event[1] == "run_program" then
 		process.new(runProgram, "run")
 	elseif event[1] == "key" and event[2] == 59 then

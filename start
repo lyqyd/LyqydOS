@@ -21,7 +21,7 @@ else
 		if process.windowCompositor.target.isColor() then
 			win:setType("window")
 		end
-		win:setTheme(LyqydOS.userTheme)
+		win:setTheme(LyqydOS.window.theme)
 		if max == "true" then win:maximize() end
 		process.new(function() shell.run(path, unpack(args)) end, path, win)
 		if coroutine.status(process.list[process.focusWindow].thread) == "dead" then

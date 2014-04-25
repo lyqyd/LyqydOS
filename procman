@@ -11,23 +11,29 @@ if not window then if fs.exists("/LyqydOS/window") then if not os.loadAPI("/Lyqy
 if process.activeProcess ~= nil then return end
 
 _G.LyqydOS = {
-	userTheme = term.isColor() and "pretty" or "standard",
-	background = colors.lightBlue,
-	backgroundImage = "",
+	window = {
+		theme = term.isColor() and "pretty" or "standard",
+	},
+	desktop = {
+		background = colors.lightBlue,
+		backgroundImage = "",
+		theme = term.isColor() and "pretty" or "standard",
+	},
 }
 
 if fs.exists("/LyqydOS/.config") then
 	dofile("/LyqydOS/.config")
 end
 
-if fs.exists("/LyqydOS/themes") and fs.isDir("/LyqydOS/themes") then
-	for _, name in pairs(fs.list("/LyqydOS/themes")) do
-		local file = fs.combine("/LyqydOS/themes", name)
+if fs.exists("/LyqydOS/themes/window") and fs.isDir("/LyqydOS/themes/window") then
+	for _, name in pairs(fs.list("/LyqydOS/themes/window")) do
+		local file = fs.combine("/LyqydOS/themes/window", name)
 		local env = {}
 		local fn, err = loadfile(file)
 		if fn then
 			setfenv(fn, env)
 			fn()
+			--copy into window themes
 			window.themes[name] = {}
 			for k, v in pairs(env) do
 				window.themes[name][k] = v

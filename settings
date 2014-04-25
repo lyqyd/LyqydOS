@@ -2,18 +2,48 @@ local args = {...}
 
 if #args > 0 then
 	if args[1] == "theme" then
-		if window.themes[args[2]] then
-			local oldTheme = LyqydOS.userTheme
-			LyqydOS.userTheme = args[2]
-			for pID, proc in pairs(process.list) do
-				if proc and proc.windows then
-					for i, win in ipairs(proc.windows) do
-						if win.theme == oldTheme then
-							win:setTheme(LyqydOS.userTheme)
+		local function setWindowTheme(theme)
+			if theme ~= LyqydOS.window.theme and window.themes[theme] then
+				local oldTheme = LyqydOS.window.theme
+				LyqydOS.window.theme = theme
+				for pID, proc in pairs(process.list) do
+					if proc and proc.windows then
+						for i, win in ipairs(proc.windows) do
+							if win.theme == oldTheme then
+								win:setTheme(LyqydOS.window.theme)
+							end
 						end
 					end
 				end
 			end
+		end
+		local function setDesktopTheme(theme)
+			if theme ~= LyqydOS.desktop.theme then
+				local dProc = process.getFromName("desktop")
+				dProc:queue("set_property", "theme", theme)
+				local event
+				while true do
+					event = {os.pullEvent()}
+					if event[1] == "property_changed" then
+						LyqydOS.desktop.theme = theme
+						break
+					elseif event[1] == "property_refused" then
+						break
+					end
+				end
+			end
+		end
+		if #args == 3 then
+			--check if second arg is "window" or "desktop" to specify *which* theme to set.
+			if args[2] == "desktop" then
+				setDesktopTheme(args[3])
+			elseif args[2] == "window" then
+				setWindowTheme(args[3])
+			end
+		else
+			--try both!
+			setWindowTheme(args[2])
+			setDesktopTheme(args[2])
 		end
 	elseif args[1] == "background" then
 		local dProc = process.getFromName("desktop")
@@ -21,7 +51,7 @@ if #args > 0 then
 			local color = colors[args[2]] or colours[args[2]]
 			local image = args[3] and shell.resolve(args[3])
 			if color then
-				dProc:queue("set_background", color, image)
+				dProc:queue("set_property", "background", color, image)
 			else
 				error("Invalid color specified")
 			end
