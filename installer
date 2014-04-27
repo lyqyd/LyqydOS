@@ -114,7 +114,12 @@ local input = read()
 if #input > 0 then
 	input = string.lower(string.sub(input, 1, 1))
 	if input == "y" then
-		local handle = io.open("/startup", "a")
+		local handle
+		if fs.exists("/startup") then
+			handle = io.open("/startup", "a")
+		else
+			handle = io.open("/startup", "w")
+		end
 		if handle then
 			handle:write([[shell.run("/LyqydOS/procman")]].."\n")
 			handle:close()
