@@ -157,7 +157,7 @@ themes = {
 	},
 }
 
-local window = {
+local Window = {
 	draw = function(self, mode)
 		--render window to table
 		local maxX, maxY = self.target.getSize()
@@ -427,12 +427,12 @@ local window = {
 }
 
 local wmetatable = {
-	__index = window,
+	__index = Window,
 }
 
 function new(w, h, x, y, caption, target)
 	local win = {
-		target = target or term.native,
+		target = target or (type(term.native) == "function" and term.native() or term.native),
 		w = tonumber(w) or 19,
 		h = tonumber(h) or 8,
 		x = tonumber(x) or 1,
@@ -488,4 +488,8 @@ function new(w, h, x, y, caption, target)
 	end
 	setmetatable( win, wmetatable )
 	return win
+end
+
+function active()
+	return process and process.id() and process.getWindow()
 end
