@@ -1,4 +1,4 @@
-local versionNumber = 1.8
+local versionNumber = 1.9
 
 local args = {...}
 
