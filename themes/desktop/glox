@@ -1,0 +1,4 @@
+titlebar = {" ", "0", "7"}
+ostext = {" ", "b", "7"}
+tasktext = {" ", "0", "7"}
+tasksep = {"|", "6", "7"}
