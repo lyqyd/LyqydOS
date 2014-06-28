@@ -72,9 +72,6 @@ do
 	end
 end
 
-local desktop = process.getFromName("desktop")
-if not desktop then error("No desktop initialized!") end
-
 local function findHook(event)
 	local ref = process.eventHooks
 	for i = 1, #event do
@@ -96,9 +93,12 @@ local function distributeEvent(event)
 	if process.list[process.focusWindow] then
 		process.list[process.focusWindow]:resume(event)
 	elseif event[1] == "key" or event[1] == "char" then
-		if desktop then
+		if process.eventHooks.redraw then
 			--events should fall through to desktop if there is no focus window.
-			desktop:resume(event)
+			local pID = findHook({"redraw"})
+			if pID and process.list[pID] then
+				process.list[pID]:resume(event)
+			end
 		end
 	end
 	--handle background processes.
@@ -111,7 +111,7 @@ local function distributeEvent(event)
 	end
 end
 
---causes initial desktop and title bar to draw.
+--causes initial desktop and title bar to draw, if present.
 windowCompositor:draw()
 
 while true do
@@ -126,8 +126,13 @@ while true do
 			end
 		end
 	end
-	--build title bar items.
-	desktop:resume({"redraw"})
+	--build title bar items if a desktop is present.
+	if process.eventHooks.redraw then
+		local pID = findHook({"redraw"})
+		if pID and process.list[pID] then
+			process.list[pID]:resume({"redraw"})
+		end
+	end
 
 	local event = {coroutine.yield()}
 

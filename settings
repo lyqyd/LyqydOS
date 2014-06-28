@@ -19,16 +19,18 @@ if #args > 0 then
 		end
 		local function setDesktopTheme(theme)
 			if theme ~= LyqydOS.desktop.theme then
-				local dProc = process.getFromName("desktop")
-				dProc:queue("set_property", "theme", theme)
-				local event
-				while true do
-					event = {os.pullEvent()}
-					if event[1] == "property_changed" then
-						LyqydOS.desktop.theme = theme
-						break
-					elseif event[1] == "property_refused" then
-						break
+				if process.eventHooks.redraw then
+					local dProc = process.list[process.eventHooks.redraw]
+					dProc:queue("set_property", "theme", theme)
+					local event
+					while true do
+						event = {os.pullEvent()}
+						if event[1] == "property_changed" then
+							LyqydOS.desktop.theme = theme
+							break
+						elseif event[1] == "property_refused" then
+							break
+						end
 					end
 				end
 			end

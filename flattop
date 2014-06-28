@@ -1,13 +1,59 @@
+local themes = {
+	standard = {
+		titlebar = {"=", "0", "f"},
+		ostext = {" ", "0", "f"},
+		tasktext = {" ", "0", "f"},
+		tasksep = {"|", "0", "f"},
+	},
+	pretty = {
+		titlebar = {" ", "0", "8"},
+		ostext = {" ", "b", "8"},
+		tasktext = {" ", "f", "8"},
+		tasksep = {"|", "f", "8"},
+	}
+}
+
+if fs.exists("/LyqydOS/themes/desktop") and fs.isDir("/LyqydOS/themes/desktop") then
+	for _, name in pairs(fs.list("/LyqydOS/themes/desktop")) do
+		local file = fs.combine("/LyqydOS/themes/desktop", name)
+		local env = {}
+		local fn, err = loadfile(file)
+		if fn then
+			setfenv(fn, env)
+			fn()
+			--copy into desktop themes
+			themes[name] = {}
+			for k, v in pairs(env) do
+				themes[name][k] = v
+			end
+		end
+	end
+end
+
 local deskID = process.id()
-process.processTable[deskID].path = "desktop"
+local deskRedirect = process.windowCompositor:newBuffer()
+deskRedirect.setBounds(1, process.windowCompositor.y, process.windowCompositor.x, process.windowCompositor.y)
+local x, y = deskRedirect.getSize()
 
 --new term, previous term, next term keys.
 process.addHook({"key", 59})
 process.addHook({"key", 61})
 process.addHook({"key", 62})
+process.addHook({"redraw"})
 
 local terms = {}
 local focusTerm = nil
+
+local function removeTerm(win)
+	process.windowCompositor:removeBuffer(win.target.buffer)
+	for i = 1, #terms do
+		if terms[i].windows[1] == win then
+			table.remove(terms, i)
+			focusTerm = terms[i - 1] or terms[1]
+			break
+		end
+	end
+end
 
 local function addTerm()
 	local redirect = framebuffer.new(process.windowCompositor.x, process.windowCompositor.y - 1, process.windowCompositor.target.isColor())
@@ -15,12 +61,15 @@ local function addTerm()
 	redirect.buffer.maxX = process.windowCompositor.x
 	redirect.buffer.minY = 1
 	redirect.buffer.maxY = process.windowCompositor.y - 1
-	table.insert(process.windowCompositor.bufferStack, 1, redirect.buffer)
-	process.new(function() shell.run("/rom/programs/shell") end, "shell", nil, redirect)
-	table.insert(terms, process.processTable[#process.processTable])
-	process.focusWindow = #process.processTable
-	focusTerm = #process.processTable
+	table.insert(process.windowCompositor.bufferStack, redirect.buffer)
+	local win = {redirect = redirect, target = redirect, destroy = function(self) removeTerm(self) end, caption = "lsh", setCaption = function(self, cap) self.caption = cap end}
+	local proc = process.new(function() shell.run("/LyqydOS/lsh") end, "lsh", win, redirect)
+	table.insert(terms, proc)
+	process.focusWindow = proc.id
+	focusTerm = proc
 end
+
+local theme = themes[LyqydOS.desktop.theme]
 
 addTerm()
 
@@ -37,8 +86,8 @@ while true do
 				elseif i == 1 then
 					focusTerm = terms[#terms]
 				end
-				process.focusWindow = focusTerm
-				process.windowCompositor:toFront(focusTerm)
+				process.focusWindow = focusTerm.id
+				focusTerm:toFront()
 				break
 			end
 		end
@@ -50,22 +99,62 @@ while true do
 				elseif i == #terms then
 					focusTerm = terms[1]
 				end
-				process.focusWindow = focusTerm
-				process.windowCompositor:toFront(focusTerm)
+				process.focusWindow = focusTerm.id
+				focusTerm:toFront()
 				break
 			end
 		end
-	elseif event == "redraw" then
-		framebuffer.draw(process.processTable[focusTerm].redirect.buffer)
-		do
-			local _old = term.redirect(process.windowCompositor.target)
-			term.setCursorPos(1, process.windowCompositor.y)
-			term.write(string.rep("=", process.windowCompositor.x))
-			if _old then
-				term.redirect(_old)
+	elseif event[1] == "set_property" then
+		if event[2] == "theme" then
+			if themes[event[3]] then
+				theme = themes[event[3]]
+				os.queueEvent("property_changed", process.id(), unpack(event))
 			else
-				term.restore()
+				os.queueEvent("property_refused", process.id(), unpack(event))
 			end
 		end
+	elseif event[1] == "redraw" then
+		titlebarItems = {}
+		for i=1, #process.list do
+			if process.list[i] and #process.list[i].windows >= 1 then
+				local proc = process.list[i]
+				table.insert(titlebarItems, {pID = i, text = proc.windows[#proc.windows].caption})
+			end
+		end
+		local taskText = {}
+		tasksClickable = 0
+		local usableWidth = x - 10
+		for eNum, eInfo in ipairs(titlebarItems) do
+			if #taskText * 9 + 9 > usableWidth then
+				if #taskText > 0 then
+					table.remove(taskText)
+					table.insert(taskText, "More... ")
+					--taskText = string.sub(taskText, 1, -10).."More... |"
+				end
+				break
+			end
+			local str = string.sub(eInfo.text, 1, 8)
+			str = str..string.rep(" ", 8 - #str)
+			--if taskText == "" then taskText = "|" end
+			table.insert(taskText, str)
+			--taskText = taskText..str.."|"
+			tasksClickable = tasksClickable + 1
+		end
+		deskRedirect.buffer.text[y] = theme.titlebar[1].."LyqydOS"..theme.titlebar[1]
+		deskRedirect.buffer.textColor[y] = theme.titlebar[2]..string.rep(theme.ostext[2], 7)..theme.titlebar[2]
+		deskRedirect.buffer.backColor[y] = theme.titlebar[3]..string.rep(theme.ostext[3], 7)..theme.titlebar[3]
+		if #taskText > 0 then
+			deskRedirect.buffer.text[y] = deskRedirect.buffer.text[y]..theme.tasksep[1]
+			deskRedirect.buffer.textColor[y] = deskRedirect.buffer.textColor[y]..theme.tasksep[2]
+			deskRedirect.buffer.backColor[y] = deskRedirect.buffer.backColor[y]..theme.tasksep[3]
+			for i = 1, #taskText do
+				deskRedirect.buffer.text[y] = deskRedirect.buffer.text[y]..taskText[i]..theme.tasksep[1]
+				deskRedirect.buffer.textColor[y] = deskRedirect.buffer.textColor[y]..string.rep(theme.tasktext[2], #taskText[i])..theme.tasksep[2]
+				deskRedirect.buffer.backColor[y] = deskRedirect.buffer.backColor[y]..string.rep(theme.tasktext[3], #taskText[i])..theme.tasksep[3]
+			end
+		end
+		deskRedirect.buffer.text[y] = deskRedirect.buffer.text[y]..string.rep(theme.titlebar[1], x - #deskRedirect.buffer.text[y])
+		deskRedirect.buffer.textColor[y] = deskRedirect.buffer.textColor[y]..string.rep(theme.titlebar[2], x - #deskRedirect.buffer.textColor[y])
+		deskRedirect.buffer.backColor[y] = deskRedirect.buffer.backColor[y]..string.rep(theme.titlebar[3], x - #deskRedirect.buffer.backColor[y])
 	end
 end

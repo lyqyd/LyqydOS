@@ -1,0 +1,388 @@
+local args = {...}
+
+local runHistory = {}
+if fs.exists("/LyqydOS/.lyqshellhistory") then
+	local histFile=io.open("/LyqydOS/.lyqshellhistory","r")
+	if histFile then
+		for line in histFile:lines() do
+			table.insert(runHistory, line)
+		end
+		histFile:close()
+	end
+end
+local sizeOfHistory = #runHistory
+
+local parentShell = shell
+local exit = false
+local dir = parentShell and parentShell.dir() or ""
+local path = parentShell and parentShell.path() or ".:/rom/programs"
+local aliases = parentShell and parentShell.aliases() or {}
+local programStack = {}
+
+local shell = {}
+local env = {
+	shell = shell,
+}
+
+local function splitByQuotes(commandString)
+	local quoteCharacters = {
+		['"'] = true,
+		["'"] = true,
+	}
+	local escapedCharacters = {
+		a = "\a",
+		b = "\b",
+		f = "\f",
+		n = "\n",
+		r = "\r",
+		t = "\t",
+		v = "\v",
+		['"'] = "\"",
+		["'"] = "\'",
+		["["] = "\[",
+		["]"] = "\]",
+	}
+	local escaped = false
+	local outputTable = {""}
+	local inQuote = false
+	for i = 1, #commandString do
+		local char = string.sub(commandString, i, i)
+		if char == "\\" then
+			if escaped then
+				escaped = false
+				outputTable[#outputTable] = outputTable[#outputTable].."\\"
+			else
+				escaped = true
+			end
+		else
+			if escaped then
+				if escapedCharacters[char] then
+					outputTable[#outputTable] = outputTable[#outputTable]..escapedCharacters[char]
+				end
+				escaped = false
+			else
+				if quoteCharacters[char] then
+					if inQuote == char then
+						--finish quote, do not add charater to table.
+						inQuote = false
+					elseif inQuote then
+						--handle in a quote, but not started with this quote character.
+						outputTable[#outputTable] = outputTable[#outputTable]..char
+					else
+						inQuote = char
+					end
+				else
+					if string.match(char, "%s") then
+						if inQuote then
+							outputTable[#outputTable] = outputTable[#outputTable]..char
+						else
+							if #outputTable[#outputTable] > 1 then
+								outputTable[#outputTable + 1] = ""
+							end
+						end
+					else
+						outputTable[#outputTable] = outputTable[#outputTable]..char
+					end
+				end
+			end
+		end
+	end
+	return outputTable
+end
+
+function shell.expand(globString)
+	--
+end
+	
+
+function shell.run(...)
+	local fullCommand = table.concat({...}, " ")
+	local command = splitByQuotes(fullCommand)
+	local resolvedCommand = shell.resolveProgram(command[1])
+	if resolvedCommand then
+		programStack[#programStack + 1] = resolvedCommand
+		local win, oldCaption
+		if LyqydOS and process then
+			win = process.getWindow()
+			if win and win.setCaption then
+				oldCaption = win.caption
+				win:setCaption(fs.getName(resolvedCommand))
+			end
+		end
+		local result = os.run(env, resolvedCommand, unpack(command, 2))
+		programStack[#programStack] = nil
+		if win and oldCaption then
+			win:setCaption(oldCaption)
+		end
+		return result
+	else
+		printError("No such program")
+		return false
+	end
+end
+
+function shell.exit()
+	exit = true
+end
+
+function shell.dir()
+	return dir
+end
+
+function shell.setDir(_dir)
+	dir = _dir
+end
+
+function shell.path()
+	return path
+end
+
+function shell.setPath(_path)
+	path = _path
+end
+
+function shell.resolve(_path)
+	local startChar = string.sub(_path, 1, 1)
+	if startChar == "\\" or startChar == "/" then
+		return fs.combine("", _path)
+	else
+		return fs.combine(dir, _path)
+	end
+end
+
+function shell.resolveProgram(_path)
+	if aliases[_path] then
+		_path = aliases[_path]
+	end
+
+	local startChar = string.sub(_path, 1, 1)
+	if startChar == "\\" or startChar == "/" then
+		local commandPath = fs.combine("", _path)
+		if fs.exists(commandPath) and not fs.isDir(commandPath) then
+			return commandPath
+		end
+		return nil
+	end
+
+	for commandDir in string.gmatch(path, "[^:]+") do
+		commandPath = fs.combine(shell.resolve(commandDir), _path)
+		if fs.exists(commandPath) and not fs.isDir(commandPath) then
+			return commandPath
+		end
+	end
+
+	return nil
+end
+
+function shell.programs(all)
+	local items = {}
+	
+    for _path in string.gmatch(path, "[^:]+") do
+    	_path = shell.resolve(_path)
+		if fs.isDir(_path) then
+			local list = fs.list(_path)
+			for n, file in pairs(list) do
+				if not fs.isDir(fs.combine(_path, file)) and (all or string.sub(file, 1, 1) ~= ".") then
+					items[ sFile ] = true
+				end
+			end
+		end
+    end	
+
+	local itemList = {}
+	for item in pairs(items) do
+		table.insert(itemList, item)
+	end
+	table.sort(itemList)
+	return itemList
+end
+
+
+function shell.getRunningProgram()
+	if #programStack > 0 then
+		return programStack[#programStack]
+	end
+	return nil
+end
+
+function shell.setAlias(_path, _alias)
+	aliases[_path] = _alias
+end
+
+function shell.clearAlias(_path)
+	shell.setAlias(_path, nil)
+end
+
+function shell.aliases()
+	local copy = {}
+	for path, alias in pairs(aliases) do
+		copy[path] = alias
+	end
+	return copy
+end
+
+local function saveHistory()
+	if #runHistory > sizeOfHistory then
+		local histFile = io.open("/LyqydOS/.lyqshellhistory", "a")
+		if histFile then
+			for i = sizeOfHistory + 1, #runHistory do
+				histFile:write(runHistory[i].."\n")
+			end
+			histFile:close()
+		end
+	end
+end
+
+local function customRead(history)
+	term.setCursorBlink(true)
+
+    local sLine = ""
+	local nHistoryPos = nil
+	local nPos = 0
+	
+	local w, h = term.getSize()
+	local sx, sy = term.getCursorPos()	
+	
+	local function redraw()
+		local nScroll = 0
+		if sx + nPos >= w then
+			nScroll = (sx + nPos) - w
+		end
+			
+		term.setCursorPos(sx, sy)
+		term.write(string.sub( sLine, nScroll + 1 ))
+		term.write(string.rep(" ", w - (#sLine - nScroll) - sx))
+		term.setCursorPos(sx + nPos - nScroll, sy)
+	end
+	
+	while true do
+		local sEvent, param = os.pullEvent()
+		if sEvent == "char" then
+			sLine = string.sub(sLine, 1, nPos)..param..string.sub(sLine, nPos + 1)
+			nPos = nPos + 1
+			redraw()
+			
+		elseif sEvent == "key" then
+		    if param == keys.enter then
+				-- Enter
+				break
+				
+			elseif param == keys.left then
+				-- Left
+				if nPos > 0 then
+					nPos = nPos - 1
+					redraw()
+				end
+				
+			elseif param == keys.right then
+				-- Right				
+				if nPos < string.len(sLine) then
+					nPos = nPos + 1
+					redraw()
+				end
+			
+			elseif param == keys.up or param == keys.down then
+                -- Up or down
+				if history then
+					if param == keys.up then
+						-- Up
+						if nHistoryPos == nil then
+							if #history > 0 then
+								nHistoryPos = #history
+							end
+						elseif nHistoryPos > 1 then
+							nHistoryPos = nHistoryPos - 1
+						end
+					else
+						-- Down
+						if nHistoryPos == #history then
+							nHistoryPos = nil
+						elseif nHistoryPos ~= nil then
+							nHistoryPos = nHistoryPos + 1
+						end
+					end
+					
+					if nHistoryPos then
+                    	sLine = history[nHistoryPos]
+                    	nPos = string.len( sLine ) 
+                    else
+						sLine = ""
+						nPos = 0
+					end
+					redraw()
+                end
+			elseif param == keys.backspace then
+				-- Backspace
+				if nPos > 0 then
+					sLine = string.sub( sLine, 1, nPos - 1 ) .. string.sub( sLine, nPos + 1 )
+					nPos = nPos - 1
+					redraw()
+				end
+			elseif param == keys.home then
+				-- Home
+				nPos = 0
+				redraw()
+			elseif param == keys.delete then
+				if nPos < string.len(sLine) then
+					sLine = string.sub( sLine, 1, nPos ) .. string.sub( sLine, nPos + 2 )				
+					redraw()
+				end
+			elseif param == keys["end"] then
+				-- End
+				nPos = string.len(sLine)
+				redraw()
+			elseif param == keys.tab then
+				--tab autocomplete.
+				
+			end
+		end
+	end
+	
+	term.setCursorBlink( false )
+	term.setCursorPos( w + 1, sy )
+	print()
+	
+	return sLine
+end
+
+if parentShell == nil then
+	--handle startup scripts
+	local romStartup = shell.resolveProgram("/rom/startup")
+	if romStartup then
+		shell.run(romStartup)
+	end
+	
+	local userStartup = shell.resolveProgram("/startup")
+	for n, side in pairs(peripheral.getNames()) do
+		if disk.isPresent(side) and disk.hasData(side) then
+			local diskStartup = shell.resolveProgram(fs.combine(disk.getMountPath(side), "startup"))
+			if diskStartup then
+				userStartup = diskStartup
+				break
+			end
+		end
+	end
+	
+	if userStartup then
+		shell.run(userStartup)
+	end
+end
+
+term.clear()
+term.setCursorPos(1, 1)
+print("Lyqyd Shell")
+
+if #args > 0 then
+	shell.run(unpack(args))
+end
+
+while true do
+	write(shell.dir().."> ")
+	local command = customRead(runHistory)
+	if command == "exit" then
+		saveHistory()
+		return
+	end
+	table.insert(runHistory, command)
+	shell.run(command)
+end

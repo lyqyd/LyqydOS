@@ -69,8 +69,8 @@ function setFocus(num)
 end
 
 function getWindow()
-	if process.activeProcess and process.processTable[process.activeProcess] and process.processTable[process.activeProcess].window then
-		return process.processTable[process.activeProcess].window
+	if process.activeProcess and process.list[process.activeProcess] and process.list[process.activeProcess].windows and #process.list[process.activeProcess].windows >= 1 then
+		return process.list[process.activeProcess].windows[#process.list[process.activeProcess].windows]
 	else
 		return nil, "No window!"
 	end
@@ -218,7 +218,9 @@ local Process = {
 	kill = function(self)
 		if self.windows then
 			for _, win in ipairs(self.windows) do
-				win:destroy()
+				if win.destroy then
+					win:destroy()
+				end
 			end
 		end
 		self:remove()

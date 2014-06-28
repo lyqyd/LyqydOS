@@ -38,6 +38,7 @@ if #process.windowCompositor.bufferStack > 1 then
 end
 
 process.addHook({"key", 59})
+process.addHook({"redraw"})
 
 local runHistory = {}
 if fs.exists("/LyqydOS/.lyqrunhistory") then
@@ -262,7 +263,7 @@ while true do
 		for i=1, #process.list do
 			if process.list[i] and #process.list[i].windows >= 1 then
 				local proc = process.list[i]
-				for j = #proc.windows, 1 do
+				for j = #proc.windows, 1, -1 do
 					if not proc.windows[j].ephemeral then
 						local tBarEntry = {pID = i, text = proc.windows[#proc.windows].caption}
 						table.insert(titlebarItems, tBarEntry)
