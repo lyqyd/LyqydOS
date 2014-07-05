@@ -83,32 +83,6 @@ local function addLineToHistory(line)
 	end
 end
 
-local function startProgram(line)
-	if line ~= "" then
-		local args = {}
-		for match in string.gmatch( line, "[^ \t]+" ) do
-			table.insert( args, match )
-		end
-		--fix for previously-changed working directory
-		shell.setDir("")
-		path = shell.resolveProgram(table.remove(args, 1))
-		if path then
-			local x, y, w, h, max = getWindowDimensions(path)
-			if not x then w, h, x, y, max = 19, 9, 1, 1, "false" end
-			local win = window.new(w, h, x, y, fs.getName(path), process.windowCompositor:newBuffer())
-			if windowCompositor.target.isColor() then
-				win:setType("window")
-			end
-			win:setTheme(LyqydOS.window.theme)
-			if max == "true" then win:maximize() end
-			process.new(function() shell.run(path, unpack(args)) end, path, win)
-			if coroutine.status(process.list[process.focusWindow].thread) == "dead" then
-				process.getFromName("lws"):queue("close_window", process.focusWindow)
-			end
-		end
-	end
-end
-
 local function runProgram()
 	local desk = process.id()
 	local dProc = process.list[desk]
@@ -140,7 +114,7 @@ local function runProgram()
 	if success then
 		--don't save empty or repeated lines
 		addLineToHistory(line)
-		startProgram(line)
+		process.getFromName("lws"):queue("start_program", line)
 	end
 end
 
@@ -239,7 +213,7 @@ local function recentPrograms()
 	dProc:removeWindow(win)
 	if success then
 		addLineToHistory(recents[selection])
-		startProgram(recents[selection])
+		process.getFromName("lws"):queue("start_program", recents[selection])
 	end
 end
 

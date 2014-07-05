@@ -1,5 +1,7 @@
-if fs.exists("/LyqydOS") and fs.isDir("/LyqydOS") then shell.setPath(shell.path()..":/LyqydOS") end
+
+if fs.exists("/LyqydOS") and fs.isDir("/LyqydOS") then shell.setPath("/LyqydOS:"..shell.path()) end
 if fs.exists("/usr/apis") and fs.isDir("/usr/apis") then shell.setPath(shell.path()..":/usr/apis") end
+
 
 if not framebuffer then if fs.exists(shell.resolveProgram("framebuffer")) then if not os.loadAPI(shell.resolveProgram("framebuffer")) then print("Could not load framebuffer API!") return end else print("Could not find framebuffer API!") return end end
 if not compositor then if fs.exists("/LyqydOS/compositor") then if not os.loadAPI("/LyqydOS/compositor") then print("Could not load compositor API!") return end else print("Could not find compositor API!") return end end
@@ -18,6 +20,11 @@ _G.LyqydOS = {
 		background = colors.lightBlue,
 		backgroundImage = "",
 		theme = term.isColor() and "pretty" or "standard",
+	},
+
+	shell = {
+		shell = shell,
+		multishell = multishell,
 	},
 }
 

@@ -1,32 +1,12 @@
 local args = {...}
 if #args < 1 then
-	print("No program specified!")
-else
-	local startProcess = process.id()
-	path = shell.resolveProgram(table.remove(args, 1))
-	if path then
-		local w, h, x, y, max = 19, 9, 1, 1, "false"
-		windowDimensions = {}
-		winDims = io.open("/LyqydOS/.lyqwin", "r")
-		if winDims then
-			for line in winDims:lines() do
-				if string.match(line, "%d+,%d+,%d+,%d+,%a+,(.*)") == path then
-					x, y, w, h, max = string.match(line, "(%d+),(%d+),(%d+),(%d+),(%a+),")
-					break
-				end
-			end
-			winDims:close()
-		end
-		local win = window.new(w, h, x, y, fs.getName(path), process.windowCompositor:newBuffer())
-		if process.windowCompositor.target.isColor() then
-			win:setType("window")
-		end
-		win:setTheme(LyqydOS.window.theme)
-		if max == "true" then win:maximize() end
-		process.new(function() shell.run(path, unpack(args)) end, path, win)
-		if coroutine.status(process.list[process.focusWindow].thread) == "dead" then
-			process.getFromName("lws"):queue("close_window", process.focusWindow)
-			process.focusWindow = startProcess
-		end
+	args[1] = "shell"
+end
+do
+	local lwsProc = process.getFromName("lws")
+	if lwsProc then
+		lwsProc:queue("start_program", table.concat(args, " "))
+	else
+		--no lws, must start program another way
 	end
 end
