@@ -1,6 +1,6 @@
-local pID = tonumber((...))
-if process.list[pID] then
-	return process.list[pID]:kill()
+local pID = (...)
+if tonumber(pID) and process.list[tonumber(pID)] then
+	return process.list[tonumber(pID)]:kill()
 else
 	proc = process.getFromName(pID)
 	if proc then
