@@ -76,6 +76,8 @@ elseif process and process.id() then
 		win:resize(w, h)
 	end
 	local captiveWin = window.new(18, 5, 5, 5, "Caption", win.redirect)
+	captiveWin:setTheme(LyqydOS.window.theme)
+	captiveWin:setType("window")
 
 	local themes = {
 		standard = {
