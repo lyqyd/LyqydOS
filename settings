@@ -61,4 +61,120 @@ if #args > 0 then
 			error("No desktop found")
 		end
 	end
+elseif process and process.id() then
+	--use interactive mode
+	term.setBackgroundColor(colors.lightGray)
+	term.clear()
+	local win = process.getWindow()
+	win:setCaption("settings")
+	--resize window to correct size
+	local w = 30
+	local h = 15
+	if win.w ~= w or win.h ~= h then
+		local maxX, maxY = win.target.getSize()
+		win:move(math.min(win.x, maxX - w + 1), math.min(win.y, maxY - h + 1))
+		win:resize(w, h)
+	end
+	local captiveWin = window.new(18, 5, 5, 5, "Caption", win.redirect)
+
+	local themes = {
+		standard = {
+			titlebar = {"=", "0", "f"},
+			ostext = {" ", "0", "f"},
+			tasktext = {" ", "0", "f"},
+			tasksep = {"|", "0", "f"},
+		},
+		pretty = {
+			titlebar = {" ", "0", "8"},
+			ostext = {" ", "b", "8"},
+			tasktext = {" ", "f", "8"},
+			tasksep = {"|", "f", "8"},
+		}
+	}
+
+	if fs.exists("/LyqydOS/themes/desktop") and fs.isDir("/LyqydOS/themes/desktop") then
+		for _, name in pairs(fs.list("/LyqydOS/themes/desktop")) do
+			local file = fs.combine("/LyqydOS/themes/desktop", name)
+			local env = {}
+			local fn, err = loadfile(file)
+			if fn then
+				setfenv(fn, env)
+				fn()
+				--copy into desktop themes
+				themes[name] = {}
+				for k, v in pairs(env) do
+					themes[name][k] = v
+				end
+			end
+		end
+	end
+
+	local theme = themes[LyqydOS.desktop.theme]
+
+	local function drawFakeDesktop()
+		local function charToColor(char)
+			return 2 ^ tonumber(char, 16)
+		end
+		do
+			--draw title bar
+			term.setCursorPos(2, 3)
+			term.setTextColor(charToColor(theme.titlebar[2]))
+			term.setBackgroundColor(charToColor(theme.titlebar[3]))
+			term.write(theme.titlebar[1])
+			term.setTextColor(charToColor(theme.ostext[2]))
+			term.setBackgroundColor(charToColor(theme.ostext[3]))
+			term.write("LyqydOS")
+			term.setTextColor(charToColor(theme.titlebar[2]))
+			term.setBackgroundColor(charToColor(theme.titlebar[3]))
+			term.write(theme.titlebar[1])
+			term.setTextColor(charToColor(theme.tasksep[2]))
+			term.setBackgroundColor(charToColor(theme.tasksep[3]))
+			term.write(theme.tasksep[1])
+			term.setTextColor(charToColor(theme.tasktext[2]))
+			term.setBackgroundColor(charToColor(theme.tasktext[3]))
+			term.write("caption ")
+			term.setTextColor(charToColor(theme.tasksep[2]))
+			term.setBackgroundColor(charToColor(theme.tasksep[3]))
+			term.write(theme.tasksep[1])
+			term.setTextColor(charToColor(theme.titlebar[2]))
+			term.setBackgroundColor(charToColor(theme.titlebar[3]))
+			term.write(string.rep(theme.titlebar[1], 7))
+		end
+		do
+			--draw background
+			for i = 4, 11 do
+				term.setCursorPos(2, i)
+				term.setBackgroundColor(LyqydOS.desktop.background)
+				term.write(string.rep(" ", 26))
+			end
+			if LyqydOS.desktop.backgroundImage then
+				local image = LyqydOS.desktop.backgroundImage
+				local x, y = 26, 8
+				local background = {}
+				if fs.exists(image) then
+					local handle = io.open(image, "r")
+					if handle then
+						for line in handle:lines() do
+							table.insert(background, string.sub(line, 1, x))
+						end
+						handle:close()
+					end
+					local backColor = color or backgroundColor
+					backColor = string.format("%x", math.floor(math.log(backColor) / math.log(2)))
+					for i = 1, y do
+						if background[i] then
+							term.setCursorPos(2, i + 3)
+							for j = 1, x do
+								term.setBackgroundColor(charToColor(string.sub(background, j, j)))
+								term.write(" ")
+							end
+						end
+					end
+				end
+			end
+		end
+		captiveWin:draw()
+	end
+
+	drawFakeDesktop()
 end
