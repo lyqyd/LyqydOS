@@ -63,21 +63,31 @@ if #args > 0 then
 	end
 elseif process and process.id() then
 	--use interactive mode
-	term.setBackgroundColor(colors.lightGray)
-	term.clear()
+	local newWindowTheme, newDesktopTheme = LyqydOS.window.theme, LyqydOS.desktop.theme
+	local newDesktopBackground, newDesktopImage = LyqydOS.desktop.background, LyqydOS.desktop.backgroundImage
+	local ephemeralWin
 	local win = process.getWindow()
 	win:setCaption("settings")
+	win.resizable = false
 	--resize window to correct size
-	local w = 30
+	local w = 47
 	local h = 15
 	if win.w ~= w or win.h ~= h then
 		local maxX, maxY = win.target.getSize()
 		win:move(math.min(win.x, maxX - w + 1), math.min(win.y, maxY - h + 1))
 		win:resize(w, h)
 	end
-	local captiveWin = window.new(18, 5, 5, 5, "Caption", win.redirect)
-	captiveWin:setTheme(LyqydOS.window.theme)
-	captiveWin:setType("window")
+
+	--establish captive compositor and captive window
+	local captiveCompositor, captiveWin, canvas
+	do
+		captiveCompositor = compositor.new(win.redirect)
+		captiveCompositor.deferDraw = true
+		canvas = captiveCompositor:newBuffer()
+		captiveWin = window.new(18, 7, 3, 4, "caption", captiveCompositor:newBuffer())
+		captiveWin:setTheme(LyqydOS.window.theme)
+		captiveWin:setType("window")
+	end
 
 	local themes = {
 		standard = {
@@ -111,72 +121,168 @@ elseif process and process.id() then
 		end
 	end
 
-	local theme = themes[LyqydOS.desktop.theme]
-
 	local function drawFakeDesktop()
 		local function charToColor(char)
 			return 2 ^ tonumber(char, 16)
 		end
 		do
-			--draw title bar
-			term.setCursorPos(2, 3)
-			term.setTextColor(charToColor(theme.titlebar[2]))
-			term.setBackgroundColor(charToColor(theme.titlebar[3]))
-			term.write(theme.titlebar[1])
-			term.setTextColor(charToColor(theme.ostext[2]))
-			term.setBackgroundColor(charToColor(theme.ostext[3]))
-			term.write("LyqydOS")
-			term.setTextColor(charToColor(theme.titlebar[2]))
-			term.setBackgroundColor(charToColor(theme.titlebar[3]))
-			term.write(theme.titlebar[1])
-			term.setTextColor(charToColor(theme.tasksep[2]))
-			term.setBackgroundColor(charToColor(theme.tasksep[3]))
-			term.write(theme.tasksep[1])
-			term.setTextColor(charToColor(theme.tasktext[2]))
-			term.setBackgroundColor(charToColor(theme.tasktext[3]))
-			term.write("caption ")
-			term.setTextColor(charToColor(theme.tasksep[2]))
-			term.setBackgroundColor(charToColor(theme.tasksep[3]))
-			term.write(theme.tasksep[1])
-			term.setTextColor(charToColor(theme.titlebar[2]))
-			term.setBackgroundColor(charToColor(theme.titlebar[3]))
-			term.write(string.rep(theme.titlebar[1], 7))
-		end
-		do
-			--draw background
-			for i = 4, 11 do
-				term.setCursorPos(2, i)
-				term.setBackgroundColor(LyqydOS.desktop.background)
-				term.write(string.rep(" ", 26))
+			--redirect to buffer inside captive compositor
+			local _old = term.redirect(canvas)
+			local theme = themes[newDesktopTheme]
+
+			do
+				--draw title bar
+				term.setCursorPos(2, 2)
+				term.setTextColor(charToColor(theme.titlebar[2]))
+				term.setBackgroundColor(charToColor(theme.titlebar[3]))
+				term.write(theme.titlebar[1])
+				term.setTextColor(charToColor(theme.ostext[2]))
+				term.setBackgroundColor(charToColor(theme.ostext[3]))
+				term.write("LyqydOS")
+				term.setTextColor(charToColor(theme.titlebar[2]))
+				term.setBackgroundColor(charToColor(theme.titlebar[3]))
+				term.write(theme.titlebar[1])
+				term.setTextColor(charToColor(theme.tasksep[2]))
+				term.setBackgroundColor(charToColor(theme.tasksep[3]))
+				term.write(theme.tasksep[1])
+				term.setTextColor(charToColor(theme.tasktext[2]))
+				term.setBackgroundColor(charToColor(theme.tasktext[3]))
+				term.write("caption ")
+				term.setTextColor(charToColor(theme.tasksep[2]))
+				term.setBackgroundColor(charToColor(theme.tasksep[3]))
+				term.write(theme.tasksep[1])
+				term.setTextColor(charToColor(theme.titlebar[2]))
+				term.setBackgroundColor(charToColor(theme.titlebar[3]))
+				term.write(string.rep(theme.titlebar[1], 7))
 			end
-			if LyqydOS.desktop.backgroundImage then
-				local image = LyqydOS.desktop.backgroundImage
-				local x, y = 26, 8
-				local background = {}
-				if fs.exists(image) then
-					local handle = io.open(image, "r")
-					if handle then
-						for line in handle:lines() do
-							table.insert(background, string.sub(line, 1, x))
+			do
+				--draw background
+				for i = 3, 12 do
+					term.setCursorPos(2, i)
+					term.setBackgroundColor(LyqydOS.desktop.background)
+					term.write(string.rep(" ", 26))
+				end
+				if LyqydOS.desktop.backgroundImage then
+					local image = LyqydOS.desktop.backgroundImage
+					local x, y = 26, 8
+					local background = {}
+					if fs.exists(image) then
+						local handle = io.open(image, "r")
+						if handle then
+							for line in handle:lines() do
+								table.insert(background, string.sub(line, 1, x))
+							end
+							handle:close()
 						end
-						handle:close()
-					end
-					local backColor = color or backgroundColor
-					backColor = string.format("%x", math.floor(math.log(backColor) / math.log(2)))
-					for i = 1, y do
-						if background[i] then
-							term.setCursorPos(2, i + 3)
-							for j = 1, x do
-								term.setBackgroundColor(charToColor(string.sub(background, j, j)))
-								term.write(" ")
+						local backColor = LyqydOS.desktop.background
+						backColor = string.format("%x", math.floor(math.log(backColor) / math.log(2)))
+						for i = 1, y do
+							if background[i] then
+								term.setCursorPos(2, i + 3)
+								for j = 1, x do
+									term.setBackgroundColor(charToColor(string.sub(background, j, j)))
+									term.write(" ")
+								end
 							end
 						end
 					end
 				end
 			end
+			if _old then
+				term.redirect(_old)
+			else
+				term.restore()
+			end
 		end
 		captiveWin:draw()
 	end
 
-	drawFakeDesktop()
+	local function drawInterface()
+		local colorLookup = {}
+		for k, v in pairs(colors) do
+			if type(k) == "string" and type(v) == "number" then
+				colorLookup[v] = k
+			end
+		end
+
+		local _old = term.redirect(canvas)
+		do
+			term.setCursorPos(29, 2)
+			term.setTextColor(colors.white)
+			term.setBackgroundColor(colors.gray)
+			term.write("Window Theme")
+			term.setCursorPos(29, 3)
+			term.setBackgroundColor(colors.lightGray)
+			term.setTextColor(colors.black)
+			term.write(newWindowTheme..string.rep(" ", 15 - #newWindowTheme).."v")
+		end
+		do
+			term.setCursorPos(29, 5)
+			term.setTextColor(colors.white)
+			term.setBackgroundColor(colors.gray)
+			term.write("Desktop Theme")
+			term.setCursorPos(29, 6)
+			term.setBackgroundColor(colors.lightGray)
+			term.setTextColor(colors.black)
+			term.write(newDesktopTheme..string.rep(" ", 15 - #newDesktopTheme).."v")
+		end
+		do
+			term.setCursorPos(29, 8)
+			term.setTextColor(colors.white)
+			term.setBackgroundColor(colors.gray)
+			term.write("Background Color")
+			term.setCursorPos(29, 9)
+			term.setBackgroundColor(colors.lightGray)
+			term.setTextColor(colors.black)
+			term.write(colorLookup[newDesktopBackground]..string.rep(" ", 15 - #colorLookup[newDesktopBackground]).."v")
+		end
+		do
+			term.setCursorPos(29, 11)
+			term.setTextColor(colors.white)
+			term.setBackgroundColor(colors.gray)
+			term.write("Background Image")
+			term.setCursorPos(29, 12)
+			term.setBackgroundColor(colors.lightGray)
+			term.setTextColor(colors.black)
+			term.write(newDesktopImage..string.rep(" ", 15 - #newDesktopImage).."v")
+		end
+	end
+
+	local function redraw()
+		local _old = term.redirect(canvas)
+		term.setBackgroundColor(colors.gray)
+		term.clear()
+		if _old then
+			term.redirect(_old)
+		else
+			term.restore()
+		end
+		drawFakeDesktop()
+		drawInterface()
+		captiveCompositor:draw()
+	end
+
+	while true do
+		redraw()
+		local event = {os.pullEvent()}
+		local currentWindow = process.getWindow()
+		if currentWindow == win then
+			--logic for events in the main window
+			if event[1] == "mouse_click" then
+				if event[3] >= 29 and event[3] <= 44 then
+					if event[4] == 3 then
+						--clicked Window Theme drop-down
+					elseif event[4] == 6 then
+						--clicked Desktop Theme drop-down
+					elseif event[4] == 9 then
+						--clicked Background Color drop-down
+					elseif event[4] == 12 then
+						--clicked Background Image drop-down
+					end
+				end
+			end
+		elseif currentWindow == ephemeralWin then
+			--logic for events in the current ephemeral window
+		end
+	end
 end
