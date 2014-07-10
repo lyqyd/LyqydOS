@@ -1,4 +1,4 @@
-local compositor = {
+local Compositor = {
 	newBuffer = function(self)
 		local _redirect = framebuffer.new(self.x, self.y, self.target.isColor())
 		local redirect = {}
@@ -91,7 +91,7 @@ local compositor = {
 }
 
 local cmetatable = {
-	__index = compositor,
+	__index = Compositor,
 }
 
 function new(target)
