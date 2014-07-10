@@ -370,11 +370,12 @@ end
 
 term.clear()
 term.setCursorPos(1, 1)
-print("Lyqyd Shell")
 
 if #args > 0 then
-	shell.run(unpack(args))
+	return shell.run(unpack(args))
 end
+
+print("Lyqyd Shell")
 
 while true do
 	write(shell.dir().."> ")
