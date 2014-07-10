@@ -110,6 +110,14 @@ function id()
 	end
 end
 
+function this()
+	if process.id() and process.list[process.id()] then
+		return process.list[process.id()]
+	else
+		return nil, "No active process!"
+	end
+end
+
 function getFromPath(path)
 	for pID, proc in ipairs(process.list) do
 		if proc and proc.path == path then
