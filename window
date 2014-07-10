@@ -289,6 +289,7 @@ local Window = {
 		end
 	end,
 	move = function(self, x, y)
+		if not self.movable then return nil, "not movable" end
 		if x and y then
 			local xlim, ylim = self.target.getSize()
 			if (x < 1 or x + self.w - 1 > xlim) and (y < 1 or y + self.h - 1 > ylim) then
@@ -307,6 +308,7 @@ local Window = {
 		end
 	end,
 	resize = function(self, w, h)
+		if not self.resizable then return nil, "not resizable" end
 		if w and h then
 			local w = tonumber(w)
 			local h = tonumber(h)
@@ -472,6 +474,8 @@ function new(w, h, x, y, caption, target)
 		maximized = false,
 		minimized = false,
 		fullscreened = false,
+		resizable = true,
+		movable = true,
 	}
 	local xlim, ylim = win.target.getSize()
 	--x and y bounding for initial window.
