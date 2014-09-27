@@ -321,10 +321,9 @@ while true do
 				if proc then
 					for j, win in ipairs(proc.windows) do
 						if win.target.buffer == process.windowCompositor.bufferStack[i] and not win.minimized then
-							--correct window in order, break even if we don't get the click here.
 							if event[3] >= win.x and event[3] <= win.x + win.w - 1 and event[4] >= win.y and event[4] <= win.y + win.h - 1 then
 								windowFound = true
-								if process.focusWindow ~= pID then
+								if process.focusWindow ~= pID or j < #proc.windows then
 									process.focusWindow = pID
 									proc:toFront(win)
 								end
@@ -388,10 +387,10 @@ while true do
 									mouseStartY = event[4]
 								end
 							end
-							break
 						end
 					end
 				end
+				if windowFound then break end
 			end
 			if windowFound then break end
 		end

@@ -239,7 +239,7 @@ while true do
 				local proc = process.list[i]
 				for j = #proc.windows, 1, -1 do
 					if not proc.windows[j].ephemeral then
-						local tBarEntry = {pID = i, text = proc.windows[#proc.windows].caption}
+						local tBarEntry = {pID = i, text = proc.windows[j].caption}
 						table.insert(titlebarItems, tBarEntry)
 						break
 					end

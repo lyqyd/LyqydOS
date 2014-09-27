@@ -101,7 +101,7 @@ themes = {
 			ul = {" ", "0", "8"},
 			ur = {" ", "0", "8"},
 			ll = {" ", "0", "8"},
-			lr = {" ", "0", "7"},
+			lr = {"/", "7", "8"},
 			top = {" ", "0", "8"},
 			bottom = {" ", "0", "8"},
 			left = {" ", "0", "8"},
@@ -446,7 +446,7 @@ local wmetatable = {
 
 function new(w, h, x, y, caption, target)
 	local win = {
-		target = target or (type(term.native) == "function" and term.native() or term.native),
+		target = target or (type(term.native) == "function" and term.current() or term.native),
 		w = tonumber(w) or 19,
 		h = tonumber(h) or 8,
 		x = tonumber(x) or 1,
@@ -470,6 +470,10 @@ function new(w, h, x, y, caption, target)
 			restore = {"-", "0", "f"},
 			close = {"-", "e", "f"},
 			caption = {"", "0", "f"},
+			minPos = 0,
+			maxPos = 0,
+			closePos = 0,
+			captionSize = {3, -3},
 		},
 		maximized = false,
 		minimized = false,
@@ -477,6 +481,7 @@ function new(w, h, x, y, caption, target)
 		resizable = true,
 		movable = true,
 	}
+	if win.target.setBounds then win.target.setBounds(win.x, win.y, win.x + win.w - 1, win.y + win.h - 1) end
 	local xlim, ylim = win.target.getSize()
 	--x and y bounding for initial window.
 	if win.x < 1 then
