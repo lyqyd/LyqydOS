@@ -63,9 +63,9 @@ end
 
 function rednet.open(side)
 	if validateSide(side) then
-		local proc = process.list[process.id()]
-		if not proc.rednet then proc.rednet = {} proc.rednet.open = {} end
-		proc.rednet.open[side] = true
+		local proc = process.this()
+		if not proc.rednet then proc.rednet = {} end
+		proc.rednet[side] = true
 		peripheral.call(side, "open", os.getComputerID())
 		peripheral.call(side, "open", 65535)
 	end
@@ -73,9 +73,9 @@ end
 
 function rednet.close(side)
 	if validateSide(side) then
-		local proc = process.list[process.id()]
+		local proc = process.this()
 		if not proc.rednet then return nil end
-		proc.rednet.open[side] = nil
+		proc.rednet[side] = nil
 		peripheral.call(side, "close", os.getComputerID())
 		peripheral.call(side, "close", 65535)
 	end
