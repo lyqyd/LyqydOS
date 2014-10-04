@@ -1,0 +1,101 @@
+local configuration = {}
+
+local function log(level, message)
+	print(level..": "..message)
+	os.queueEvent("service_message", level, process and process.id() or multishell and multishell.getCurrent() or 0, message)
+end
+
+local translate = {
+	fileQuery = "FQ",
+	fileSend = "FS",
+	fileResponse = "FR",
+	fileHeader = "FH",
+	fileData = "FD",
+	fileEnd = "FE",
+	fileCopy = "FC",
+	fileDelete = "FM",
+	fileMove = "FV",
+	fileMakeDirectory = "FK",
+	fileList = "FL",
+	fileInformation = "FI",
+	fileStatus = "FZ",
+	FQ = "fileQuery",
+	FS = "fileSend",
+	FR = "fileResponse",
+	FH = "fileHeader",
+	FD = "fileData",
+	FE = "fileEnd",
+	FC = "fileCopy",
+	FM = "fileDelete",
+	FV = "fileMove",
+	FK = "fileMakeDirectory",
+	FL = "fileList",
+	FI = "fileInformation",
+	FZ = "fileStatus",
+}
+
+local currentDir = string.match(shell.getRunningProgram, "^(.*)"..fs.getName(shell.getRunningProgram()).."$")
+
+if fs.exists(fs.combine(currentDir, "rnfsd.conf")) then
+	local handle = io.open(fs.combine(currentDir, "rnfsd.conf"), "r")
+	if handle then
+		local env = {}
+		local fn, err = loadstring(handle:read("*a"))
+		if fn then
+			setfenv(fn, env)
+			fn()
+			--copy into configuration
+			for k, v in pairs(env) do
+				configuration[k] = v
+			end
+		else
+			log("warning", "Config file could not be parsed:\n"..err)
+		end
+		handle:close()
+	else
+		log("warning", "Could not open config file: "..fs.combine(currentDir, "rnfsd.conf"))
+	end
+else
+	log("warning", "Config file "..fs.combine(currentDir, "rnfsd.conf").." does not exist")
+end
+
+local connections = {}
+
+while true do
+	local pack, conn = connection.listen(21)
+	if connections[conn] == "open" then
+		--handle most things
+		local pType, message = translate[pack.type], pack.payload
+		if pType == "fileList" then
+			if fs.exists(message) and fs.isDir(message) then
+				local all = fs.list(message)
+				local files = {}
+				local dirs = {}
+				for n, item in pairs(all) do
+					if string.sub(item, 1, 1) ~= "." then
+						local path = fs.combine(message, item)
+						if fs.isDir(path) then
+							table.insert(dirs, item)
+						else
+							table.insert(files, item)
+						end
+					end
+				end
+				table.sort(dirs)
+				table.sort(files)
+				conn:send("fileInformation", {dirs = dirs, files = files})
+			end
+		elseif pType == "fileStatus" then
+			local response = {file = message, exists = false}
+			if fs.exists(message) then
+				response.exists = true
+				response.isDir = fs.isDir(message)
+				response.isReadOnly = fs.isReadOnly(message)
+				response.size = fs.getSize(message)
+			end
+			conn:send("fileInformation", response)
+		end
+	elseif connections[host] == "receive_file" then
+		--we are currently receiving a file
+	end
+end
