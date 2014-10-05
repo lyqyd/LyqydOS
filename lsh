@@ -101,19 +101,27 @@ function shell.run(...)
 	local resolvedCommand = shell.resolveProgram(command[1])
 	if resolvedCommand then
 		programStack[#programStack + 1] = resolvedCommand
-		local win, oldCaption
+		local win, oldCaption, oldPath, oldName
 		if LyqydOS and process then
 			win = process.getWindow()
 			if win and win.setCaption then
 				oldCaption = win.caption
 				win:setCaption(fs.getName(resolvedCommand))
 			end
+			local proc = process.this()
+			oldPath = proc.path
+			oldName = proc.name
+			proc.path = resolvedCommand
+			proc.name = fs.getName(resolvedCommand)
 		end
 		local result = os.run(env, resolvedCommand, unpack(command, 2))
 		programStack[#programStack] = nil
 		if win and oldCaption then
 			win:setCaption(oldCaption)
 		end
+		local proc = process.this()
+		proc.path = oldPath
+		proc.name = oldName
 		return result
 	else
 		printError("No such program")
