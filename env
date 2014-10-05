@@ -107,3 +107,205 @@ end
 function rednet.broadcast(message)
 	return rednet.send(65535, message)
 end
+
+local oldfs = {}
+for k, v in pairs(fs) do
+	if type(k) == "string" and type(v) == "function" then
+		oldfs[k] = v
+	end
+end
+
+LyqydOS.fs = {}
+LyqydOS.fs.raw = oldfs
+LyqydOS.fs.mounts = {}
+
+local function getMount(path)
+	if string.sub(path, 1, 1) ~= "/" then
+		path = "/"..path
+	end
+	local matchLen, matchID = 0, false
+	for i, mnt in ipairs(LyqydOS.fs.mounts) do
+		local match = string.match(path, "^("..mnt.path..")")
+		if match and #match > matchLen then
+			matchLen = #match
+			matchID = i
+		end
+	end
+	if matchID then
+		return LyqydOS.fs.mounts[matchID]
+	end
+end
+
+local function getRelativePath(path, mount)
+	if string.sub(path, 1, 1) ~= "/" then
+		path = "/"..path
+	end
+	return string.match(path, "^"..mount.path.."(.*)")
+end
+
+local fsTransformTable = {
+	"list",
+	"exists",
+	"isDir",
+	"isReadOnly",
+	"getDrive",
+	"getSize",
+	"getFreeSpace",
+	"makeDir",
+	"delete",
+	"find",
+}
+
+for i, name in ipairs(fsTransformTable) do
+	fs[name] = function(path)
+		local mnt = getMount(path)
+		if mnt then
+			return mnt.mount[name](getRelativePath(path, mnt))
+		else
+			return oldfs[name](path)
+		end
+	end
+end
+
+fs.move = function(origin, destination)
+	local omnt = getMount(origin)
+	local dmnt = getMount(destination)
+	if omnt == dmnt and omnt then
+		--both file paths are within the same mount point
+		omnt.mount.move(getRelativePath(origin, omnt), getRelativePath(destination, omnt))
+	elseif omnt then
+		--the origin file has a mount point.
+		omnt.mount.get(getRelativePath(origin, omnt), "/LyqydOS/.temp")
+		if dmnt then
+			dmnt.mount.put( "/LyqydOS/.temp", getRelativePath(destination, dmnt))
+		else
+			oldfs.move("/LyqydOS/.temp", destination)
+		end
+		omnt.mount.delete(getRelativePath(origin, omnt))
+	elseif dmnt then
+		--the origin file does not have a mount point, but the destination does.
+		dmnt.mount.put(origin, getRelativePath(destination, dmnt))
+		oldfs.delete(origin)
+	else
+		oldfs.move(origin, destination)
+	end
+end
+
+fs.copy = function(origin, destination)
+	local omnt = getMount(origin)
+	local dmnt = getMount(destination)
+	if omnt == dmnt and omnt then
+		--both file paths are within the same mount point
+		omnt.mount.copy(getRelativePath(origin, omnt), getRelativePath(destination, omnt))
+	elseif omnt then
+		--the origin file has a mount point.
+		omnt.mount.get(getRelativePath(origin, omnt), "/LyqydOS/.temp")
+		if dmnt then
+			dmnt.mount.put( "/LyqydOS/.temp", getRelativePath(destination, dmnt))
+		else
+			oldfs.copy("/LyqydOS/.temp", destination)
+		end
+	elseif dmnt then
+		--the origin file does not have a mount point, but the destination does.
+		dmnt.mount.put(origin, getRelativePath(destination, dmnt))
+	else
+		oldfs.copy(origin, destination)
+	end
+end
+
+local function fillPath(path, mountPath)
+	if string.sub(path, 1, 1) ~= "/" then path = "/"..path end
+	if string.sub(mountPath, 1, 1) ~= "/" then mountPath = "/"..mountPath end
+	local paths = {}
+	local pathCursor = "/"..oldfs.getDir(pathCursor)
+	while pathCursor ~= mountPath do
+		table.insert(paths, pathCursor)
+		pathCursor = "/"..oldfs.getDir(pathCursor)
+	end
+	for i = #paths, 1, -1 do
+		oldfs.makeDir(paths[i])
+	end
+	return paths
+end
+
+local function reservePaths(mount, pathTable)
+	if not mount.tempfolders then mount.tempfolders = {} end
+	for i = #pathTable, 1, -1 do
+		if mount.tempfolders[pathTable[i]] then
+			mount.tempfolders[pathTable[i]] = mount.tempfolders[pathTable[i]] + 1
+		else
+			mount.tempfolders[pathTable[i]] = 1
+		end
+		if mount.tempfolders[pathTable[i]] == 1 then
+			oldfs.makeDir(pathTable[i])
+		end
+	end
+end
+
+local function freePaths(mount, pathTable)
+	if not mount.tempfolders then error("cannot free folders already freed") end
+	for i = #pathTable, 1, -1 do
+		if mount.tempfolders[pathTable[i]] then
+			mount.tempfolders[pathTable[i]] = mount.tempfolders[pathTable[i]] - 1
+		else
+			error("cannot free folder already freed")
+		end
+		if mount.tempfolders[pathTable[i]] == 0 then
+			oldfs.delete(pathTable[i])
+		end
+	end
+end
+
+fs.open = function(path, mode)
+	local mount = getMount(path)
+	if mount then
+		if mode == "r" or mode == "rb" then
+			local folders = fillPath(path, mount.path)
+			reservePaths(mount, folders)
+			mount.mount.get(getRelativePath(path, mount), "/LyqydOS/.temp")
+			oldfs.move("/LyqydOS/.temp", path)
+			local handle = oldfs.open(path, mode)
+			if handle then
+				local oldHandleClose = handle.close
+				handle.close = function()
+					oldHandleClose()
+					oldfs.delete(path)
+					freePaths(mount, folders)
+				end
+			end
+			return handle
+		elseif mode == "w" or mode == "wb" then
+			local folders = fillPath(path, mount.path)
+			reservePaths(mount, folders)
+			local handle = oldfs.open(path, mode)
+			if handle then
+				local oldHandleClose = handle.close
+				handle.close = function()
+					oldHandleClose()
+					oldfs.move(path, "/LyqydOS/.temp")
+					mount.mount.put("/LyqydOS/.temp", getRelativePath(path, mount))
+					freePaths(mount, folders)
+				end
+			end
+			return handle
+		elseif mode == "a" or mode == "ab" then
+			local folders = fillPath(path, mount.path)
+			reservePaths(mount, folders)
+			mount.mount.get(getRelativePath(path, mount), "/LyqydOS/.temp")
+			oldfs.move("/LyqydOS/.temp", path)
+			local handle = oldfs.open(path, mode)
+			if handle then
+				local oldHandleClose = handle.close
+				handle.close = function()
+					oldHandleClose()
+					oldfs.move(path, "/LyqydOS/.temp")
+					mount.mount.put("/LyqydOS/.temp", getRelativePath(path, mount))
+					freePaths(mount, folders)
+				end
+			end
+			return handle
+		end
+	else
+		return oldfs.open(path, mode)
+	end
+end
