@@ -4,8 +4,8 @@ local lyqydnet = false
 process.addHook({"modem_message"})
 
 while true do
-	if not lyqydnet then lyqydnet = process.getFromName("lyqydnet") end
 	local event = {os.pullEventRaw()}
+	if not lyqydnet then lyqydnet = process.getFromName("lyqydnet") end
 	if event[1] == "modem_message" then
 		if lyqydnet then
 			lyqydnet:queue(unpack(event))

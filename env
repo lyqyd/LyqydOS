@@ -6,23 +6,26 @@ function peripheral.call(side, func, ...)
 			local proc = process.id() and process.list[process.id()]
 			if not proc then return false end
 			if not proc.modem then return false end
-			if proc.modem[(...)] then return true end
+			if not proc.modem[side] then return false end
+			if proc.modem[side][(...)] then return true end
 			return false
 		elseif func == "open" then
 			local proc = process.list[process.id()]
 			if not proc.modem then proc.modem = {} end
+			if not proc.modem[side] then proc.modem[side] = {} end
 			local channel = (...)
-			proc.modem[channel] = true
+			proc.modem[side][channel] = true
 			oldPeripheralCall(side, func, channel)
 		elseif func == "close" then
 			local proc = process.list[process.id()]
 			if not proc.modem then return nil end
+			if not proc.modem[side] then return nil end
 			local channel = (...)
-			if proc.modem[channel] then
-				proc.modem[channel] = nil
+			if proc.modem[side][channel] then
+				proc.modem[side][channel] = nil
 				local close = true
 				for pID, pInfo in pairs(process.list) do
-					if pInfo and pInfo.modem and pInfo.modem[channel] then
+					if pInfo and pInfo.modem and pInfo.modem[side] and pInfo.modem[side][channel] then
 						close = false
 						break
 					end
@@ -32,7 +35,8 @@ function peripheral.call(side, func, ...)
 		elseif func == "closeAll" then
 			local proc = process.list[process.id()]
 			if not proc.modem then return nil end
-			for channel in pairs(proc.modem) do
+			if not proc.modem[side] then return nil end
+			for channel in pairs(proc.modem[side]) do
 				peripheral.call(side, "close", channel)
 			end
 		else
@@ -85,7 +89,8 @@ function rednet.isOpen(side)
 	if validateSide(side) then
 		local proc = process.list[process.id()]
 		if not proc.modem then return false end
-		return (proc.modem[os.getComputerID()] and proc.modem[65535]) or false
+		if not proc.modem[side] then return false end
+		return (proc.modem[side][os.getComputerID()] and proc.modem[side][65535]) or false
 	end
 end
 
