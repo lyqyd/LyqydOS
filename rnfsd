@@ -75,29 +75,14 @@ end
 local connections = {}
 
 while true do
-	local pack, conn = connection.listen(21)
+	local pack, conn = connection.listen(configuration.lyqydnet.listenPort)
 	local pType, message = translate[pack.type], pack.payload
 	if connections[conn] and connections[conn].status == "open" then
 		--handle most things
 		if pType == "fileList" then
 			local path = fs.combine(configuration.shares[connections[conn].share].path, message)
 			if fs.exists(path) and fs.isDir(path) then
-				local all = fs.list(path)
-				local files = {}
-				local dirs = {}
-				for n, item in pairs(all) do
-					if string.sub(item, 1, 1) ~= "." then
-						local path = fs.combine(path, item)
-						if fs.isDir(path) then
-							table.insert(dirs, item)
-						else
-							table.insert(files, item)
-						end
-					end
-				end
-				table.sort(dirs)
-				table.sort(files)
-				conn:send("fileInformation", {dirs = dirs, files = files})
+				conn:send("fileInformation", fs.list(path))
 			end
 		elseif pType == "fileStatus" then
 			local path = fs.combine(configuration.shares[connections[conn].share].path, message)
@@ -107,6 +92,7 @@ while true do
 				response.isDir = fs.isDir(path)
 				response.isReadOnly = fs.isReadOnly(path)
 				response.size = fs.getSize(path)
+				response.space = fs.getFreeSpace(path)
 			end
 			conn:send("fileInformation", response)
 		elseif pType == "fileMove" or pType == "fileCopy" then
