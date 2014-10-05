@@ -6,12 +6,18 @@ local function log(level, message)
 end
 
 local translate = {
+	query = "SQ",
+	response = "SR",
+	data = "SP",
+	done = "SB",
+	close = "SC",
 	fileQuery = "FQ",
 	fileSend = "FS",
 	fileResponse = "FR",
 	fileHeader = "FH",
 	fileData = "FD",
 	fileEnd = "FE",
+	fileFind = "FF",
 	fileCopy = "FC",
 	fileDelete = "FM",
 	fileMove = "FV",
@@ -19,12 +25,18 @@ local translate = {
 	fileList = "FL",
 	fileInformation = "FI",
 	fileStatus = "FZ",
+	SQ = "query",
+	SR = "response",
+	SP = "data",
+	SB = "done",
+	SC = "close",
 	FQ = "fileQuery",
 	FS = "fileSend",
 	FR = "fileResponse",
 	FH = "fileHeader",
 	FD = "fileData",
 	FE = "fileEnd",
+	FF = "fileFind",
 	FC = "fileCopy",
 	FM = "fileDelete",
 	FV = "fileMove",
@@ -63,17 +75,18 @@ local connections = {}
 
 while true do
 	local pack, conn = connection.listen(21)
-	if connections[conn] == "open" then
+	local pType, message = translate[pack.type], pack.payload
+	if connections[conn] and connections[conn].status == "open" then
 		--handle most things
-		local pType, message = translate[pack.type], pack.payload
 		if pType == "fileList" then
-			if fs.exists(message) and fs.isDir(message) then
-				local all = fs.list(message)
+			local path = fs.combine(configuration.shares[connections[conn].share].path, message)
+			if fs.exists(path) and fs.isDir(path) then
+				local all = fs.list(path)
 				local files = {}
 				local dirs = {}
 				for n, item in pairs(all) do
 					if string.sub(item, 1, 1) ~= "." then
-						local path = fs.combine(message, item)
+						local path = fs.combine(path, item)
 						if fs.isDir(path) then
 							table.insert(dirs, item)
 						else
@@ -86,16 +99,108 @@ while true do
 				conn:send("fileInformation", {dirs = dirs, files = files})
 			end
 		elseif pType == "fileStatus" then
+			local path = fs.combine(configuration.shares[connections[conn].share].path, message)
 			local response = {file = message, exists = false}
-			if fs.exists(message) then
+			if fs.exists(path) then
 				response.exists = true
-				response.isDir = fs.isDir(message)
-				response.isReadOnly = fs.isReadOnly(message)
-				response.size = fs.getSize(message)
+				response.isDir = fs.isDir(path)
+				response.isReadOnly = fs.isReadOnly(path)
+				response.size = fs.getSize(path)
 			end
 			conn:send("fileInformation", response)
+		elseif pType == "fileMove" or pType == "fileCopy" then
+			local func = pType == "fileMove" and fs.move or fs.copy
+			local originPath = fs.combine(configuration.shares[connections[conn].share].path, message.origin)
+			local destinationPath = fs.combine(configuration.shares[connections[conn].share].path, message.destination)
+			func(originPath, destinationPath)
+			conn:send("done", "ok")
+		elseif pType == "fileDelete" or pType == "fileMakeDirectory" then
+			local func = pType == "fileDelete" and fs.delete or fs.makeDir
+			local path = fs.combine(configuration.shares[connections[conn].share].path, message)
+			func(path)
+			conn:send("done", "ok")
+		elseif pType == "fileFind" then
+			if fs.find then
+				local path = fs.combine(configuration.shares[connections[conn].share].path, message)
+				conn:send("fileInformation", fs.find(path))
+			else
+				conn:send("done", "too old")
+			end
+		elseif pType == "fileSend" then
+			--client wants to send us a file.
+			if connections[conn].state == "" then
+				local path = fs.combine(configuration.shares[connections[conn].share].path, message)
+				if (fs.exists(path) and not fs.isDir(path)) or not fs.exists(path) then
+					conn:send("fileResponse", "ok")
+					connections[conn].state = "receive"
+					connections[conn].rxpath = path
+					connections[conn].rxdata = ""
+				else
+					conn:send("done", "ok")
+				end
+			else
+				conn:send("done", "ok")
+			end
+		elseif pType == "fileHeader" then
+			conn:send("done", "ok")
+		elseif pType == "fileData" then
+			if connections[conn].state == "receive" then
+				connections[conn].rxdata = connections[conn].rxdata..message
+			end
+			conn:send("done", "ok")
+		elseif pType == "fileEnd" then
+			if connections[conn].state == "receive" then
+				local handle = io.open(connections[conn].rxpath, "w")
+				if handle then
+					handle:write(connections[conn].rxdata)
+					handle:close()
+					conn:send("done", "ok")
+					connections[conn].state = ""
+					connections[conn].rxpath = nil
+					connections[conn].rxdata = nil
+				else
+					conn:send("done", "failed to write file")
+				end
+			else
+				conn:send("done", "ignored")
+			end
+		elseif pType == "fileQuery" then
+			if connections[conn].state == "" then
+				local path = fs.combine(configuration.shares[connections[conn].share].path, message)
+				if fs.exists(path) then
+					local handle = io.open(path, "r")
+					if handle then
+						conn:send("fileHeader", message)
+						conn:send("fileData", handle:read("*a"))
+						conn:send("fileEnd", "eof")
+						handle:close()
+					else
+						conn:send("fileHeader", "FileOpenFailure")
+					end
+				else
+					conn:send("fileHeader", "FileNotFound")
+				end
+			end
+		elseif pType == "close" then
+			connections[conn] = nil
+			conn:send("close", "ok")
 		end
-	elseif connections[host] == "receive_file" then
-		--we are currently receiving a file
+	else
+		--no currently established connection.
+		if pType == "query" then
+			if configuration.shares[message] then
+				--requested share exists
+				if configuration.shares[message].public then
+					conn:send("response", "ok")
+					connections[conn] = {
+						status = "open",
+						state = "",
+						share = message,
+					}
+				else
+					conn:send("close", "access denied")
+				end
+			end
+		end
 	end
 end
