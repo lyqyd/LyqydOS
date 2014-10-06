@@ -94,10 +94,22 @@ function rednet.isOpen(side)
 	end
 end
 
-function rednet.send(recipient, message)
+function rednet.send(recipient, message, protocol)
 	for _, side in pairs(rs.getSides()) do
 		if rednet.isOpen(side) then
-			peripheral.call(side, "transmit", recipient, os.getComputerID(), message)
+			if term.current then
+				local id = math.random(1, 2147483547)
+				local messTable = {
+					nMessageID = id,
+					nRecipient = recipient,
+					message = message,
+					sProtocol = protocol,
+				}
+				peripheral.call(side, "transmit", recipient, os.getComputerID(), message)
+				peripheral.call(side, "transmit", 65533, os.getComputerID(), message)
+			else
+				peripheral.call(side, "transmit", recipient, os.getComputerID(), message)
+			end
 			return true
 		end
 	end
@@ -217,7 +229,7 @@ local function fillPath(path, mountPath)
 	if string.sub(path, 1, 1) ~= "/" then path = "/"..path end
 	if string.sub(mountPath, 1, 1) ~= "/" then mountPath = "/"..mountPath end
 	local paths = {}
-	local pathCursor = "/"..oldfs.getDir(pathCursor)
+	local pathCursor = "/"..oldfs.getDir(path)
 	while pathCursor ~= mountPath do
 		table.insert(paths, pathCursor)
 		pathCursor = "/"..oldfs.getDir(pathCursor)
