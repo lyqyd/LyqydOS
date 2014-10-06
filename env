@@ -105,8 +105,8 @@ function rednet.send(recipient, message, protocol)
 					message = message,
 					sProtocol = protocol,
 				}
-				peripheral.call(side, "transmit", recipient, os.getComputerID(), message)
-				peripheral.call(side, "transmit", 65533, os.getComputerID(), message)
+				peripheral.call(side, "transmit", recipient, os.getComputerID(), messTable)
+				peripheral.call(side, "transmit", 65533, os.getComputerID(), messTable)
 			else
 				peripheral.call(side, "transmit", recipient, os.getComputerID(), message)
 			end
