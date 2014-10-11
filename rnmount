@@ -78,6 +78,16 @@ mount.mount.getDrive = function(path)
 	return args[1].."."..args[2]
 end
 
+mount.mount.getSize = function(path)
+	conn:send("fileStatus", path)
+	local result = conn:listen(0.3)
+	if result and result.payload then
+		return result.payload.size
+	else
+		return false
+	end
+end
+
 mount.mount.getFreeSpace = function(path)
 	conn:send("fileStatus", path)
 	local result = conn:listen(0.3)
@@ -120,13 +130,13 @@ mount.mount.get = function(origin, destination)
 	local data = ""
 	repeat
 		local pack = conn:listen(0.3)
-		if pack.type == "FH" then
+		if pack and pack.type == "FH" then
 			if pack.payload ~= origin then
 				return false
 			end
-		elseif pack.type == "FD" then
+		elseif pack and pack.type == "FD" then
 			data = data..pack.payload
-		elseif pack.type == "FE" then
+		elseif pack and pack.type == "FE" then
 			local handle = fs.open(destination, "w")
 			if handle then
 				handle.write(data)
@@ -141,7 +151,7 @@ mount.mount.put = function(origin, destination)
 	if fs.exists(origin) then
 		conn:send("fileSend", destination)
 		local response = conn:listen(0.3)
-		if response.type == "FR" then
+		if response and response.type == "FR" then
 			local handle = fs.open(origin, "r")
 			if handle then
 				conn:send("fileHeader", origin)
