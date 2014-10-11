@@ -131,6 +131,24 @@ LyqydOS.fs = {}
 LyqydOS.fs.raw = oldfs
 LyqydOS.fs.mounts = {}
 
+LyqydOS.fs.canMountToPath = function(path)
+	if string.sub(path, 1, 1) ~= "/" then
+		path = "/"..path
+	end
+	for i, mount in ipairs(LyqydOS.fs.mounts) do
+		if mount and mount.path == path then
+			return false
+		end
+	end
+	if LyqydOS.fs.raw.exists(path) and LyqydOS.fs.raw.isDir(path) then
+		local list = LyqydOS.fs.raw.list(path)
+		if #list == 0 then
+			return true
+		end
+	end
+	return false
+end
+
 local function getMount(path)
 	if string.sub(path, 1, 1) ~= "/" then
 		path = "/"..path
@@ -296,6 +314,7 @@ fs.open = function(path, mode)
 					oldHandleClose()
 					oldfs.move(path, "/LyqydOS/.temp")
 					mount.mount.put("/LyqydOS/.temp", getRelativePath(path, mount))
+					oldfs.delete("/LyqydOS/.temp")
 					freePaths(mount, folders)
 				end
 			end
@@ -312,6 +331,7 @@ fs.open = function(path, mode)
 					oldHandleClose()
 					oldfs.move(path, "/LyqydOS/.temp")
 					mount.mount.put("/LyqydOS/.temp", getRelativePath(path, mount))
+					oldfs.delete("/LyqydOS/.temp")
 					freePaths(mount, folders)
 				end
 			end
