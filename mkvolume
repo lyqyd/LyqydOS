@@ -5,6 +5,7 @@ if #args < 4 then
 	print(fs.getName(shell.getRunningProgram()).." <volume> <drive> ... <drive>")
 	print("<volume> A name for the RAID volume, used when mounting")
 	print("<drive>  At least three drives, by peripheral name")
+	return
 end
 
 local drives = {}
