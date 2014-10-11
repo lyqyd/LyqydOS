@@ -1,4 +1,4 @@
-local versionNumber = 1.9
+local versionNumber = 2.0
 
 local args = {...}
 
@@ -25,9 +25,14 @@ local fileList = {
 	"lsh",
 	"lws",
 	"menu",
+	"mkvolume",
 	"process",
 	"procman",
 	"ps",
+	"raidmount",
+	"rnfsd",
+	"rnfsd.conf",
+	"rnmount",
 	"service",
 	"settings",
 	"start",
