@@ -1,6 +1,7 @@
+if process and process.activeProcess ~= nil then return end
+
 if fs.exists("/LyqydOS") and fs.isDir("/LyqydOS") then shell.setPath("/LyqydOS:"..shell.path()) end
 if fs.exists("/usr/apis") and fs.isDir("/usr/apis") then shell.setPath(shell.path()..":/usr/apis") end
-
 
 if not framebuffer then if fs.exists(shell.resolveProgram("framebuffer")) then if not os.loadAPI(shell.resolveProgram("framebuffer")) then print("Could not load framebuffer API!") return end else print("Could not find framebuffer API!") return end end
 if not compositor then if fs.exists("/LyqydOS/compositor") then if not os.loadAPI("/LyqydOS/compositor") then print("Could not load compositor API!") return end else print("Could not find compositor API!") return end end
@@ -9,7 +10,7 @@ if not process then if fs.exists("/LyqydOS/process") then if not os.loadAPI("/Ly
 if window and window.create then os.unloadAPI("window") end --kill 1.6 window API.
 if not window then if fs.exists("/LyqydOS/window") then if not os.loadAPI("/LyqydOS/window") then print("Could not load window API!") return end else print("Could not find window API!") return end end
 
-if process.activeProcess ~= nil then return end
+dofile(shell.resolveProgram("env"))
 
 _G.LyqydOS = {
 	window = {
@@ -56,8 +57,6 @@ do
 	local x, y = term.getSize()
 	process.nullRedirect = framebuffer.new(x, y, term.isColor())
 end
-
-dofile(shell.resolveProgram("env"))
 
 do
 	local initPath = ""
