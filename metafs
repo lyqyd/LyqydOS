@@ -1,0 +1,103 @@
+local oldfs = {}
+
+for k, v in pairs(fs) do
+	oldfs[k] = v
+end
+
+fs = {}
+
+fs.combine = oldfs.combine
+fs.list = oldfs.list
+fs.exists = oldfs.exists
+fs.isDir = oldfs.isDir
+fs.isReadOnly = oldfs.isReadOnly
+fs.getName = oldfs.getName
+fs.getDrive = oldfs.getDrive
+fs.getSize = oldfs.getSize
+fs.getFreeSpace = oldfs.getFreeSpace
+fs.makeDir = oldfs.makeDir --directories do not have their own metadata
+fs.find = oldfs.find
+fs.getDir = oldfs.getDir
+
+local function isPathMeta(path)
+	local metapath = string.match(metadata.getMetaFolderForPath(path), "/?(.*)")
+	local path = string.sub(string.match(path, "/?(.*)"), #metapath, #metapath)
+	return path == metapath
+end
+
+local function getTimeStamp()
+	return os.day() * 24 + os.time()
+end
+
+local function deleteMetadata(path)
+	if oldfs.exists(fs.combine(metadata.getMetaFolderForPath(path), path)) then oldfs.delete(fs.combine(metadata.getMetaFolderForPath(path), path)) end
+end
+
+fs.copy = function(from, to)
+	if isPathMeta(from) and isPathMeta(to) then
+		return oldfs.copy(from, to)
+	elseif isPathMeta(from) then
+		--to is not in meta
+		oldfs.copy(from, to)
+		local timestamp = getTimeStamp()
+		metadata.save(to, {timestamp = {created = timestamp, modified = timestamp}})
+	elseif isPathMeta(to) then
+		return oldfs.copy(from, to)
+	else
+		oldfs.copy(from, to)
+		metadata.save(to, metadata.getForFile(from))
+	end
+end
+
+fs.move = function(from, to)
+	if isPathMeta(from) and isPathMeta(to) then
+		return oldfs.move(from, to)
+	elseif isPathMeta(from) then
+		oldfs.move(from, to)
+		local timestamp = getTimeStamp()
+		metadata.save(to, {timestamp = {created = timestamp, modified = timestamp}})
+	elseif isPathMeta(to) then
+		deleteMetadata(from)
+		return oldfs.move(from, to)
+	else
+		oldfs.move(from, to)
+		metadata.save(to, metadata.getForFile(from))
+		deleteMetadata(from)
+	end
+end
+
+fs.delete = function(path)
+	if isPathMeta(path) then
+		oldfs.delete(path)
+	else
+		oldfs.delete(path)
+		deleteMetadata(path)
+	end
+end
+
+fs.open = function(path, mode)
+	if isPathMeta(path) then
+		return oldfs.open(path, mode)
+	else
+		local filePath = path
+		local created = false
+		if not fs.exists(filePath) then created = true end
+		local handle = oldfs.open(path, mode)
+		if handle then
+			local oldClose = handle.close
+			handle.close = function()
+				oldClose()
+				local data = metadata.getForFile(filePath)
+				if not data.timestamp then data.timestamp = {} end
+				if mode == "r" or mode == "rb" then
+					data.timestamp.accessed = getTimeStamp()
+				else
+					data.timestamp.modified = getTimeStamp()
+				end
+				if created then data.timestamp.created = getTimeStamp() end
+				metadata.save(filePath, data)
+			end
+			return handle
+		end
+	end
+end

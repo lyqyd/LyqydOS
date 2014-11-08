@@ -120,6 +120,8 @@ function rednet.broadcast(message)
 	return rednet.send(65535, message)
 end
 
+--FS modifications.
+
 local oldfs = {}
 for k, v in pairs(fs) do
 	if type(k) == "string" and type(v) == "function" then
@@ -130,6 +132,7 @@ end
 LyqydOS.fs = {}
 LyqydOS.fs.raw = oldfs
 LyqydOS.fs.mounts = {}
+LyqydOS.fs.tempFiles = {}
 
 LyqydOS.fs.canMountToPath = function(path)
 	if string.sub(path, 1, 1) ~= "/" then
@@ -149,7 +152,7 @@ LyqydOS.fs.canMountToPath = function(path)
 	return false
 end
 
-local function getMount(path)
+local function getMountID(path)
 	if string.sub(path, 1, 1) ~= "/" then
 		path = "/"..path
 	end
@@ -162,7 +165,13 @@ local function getMount(path)
 		end
 	end
 	if matchID then
-		return LyqydOS.fs.mounts[matchID]
+		return matchID
+	end
+
+local function getMount(path)
+	local id = getMountID(path)
+	if id then
+		return LyqydOS.fs.mounts[id]
 	end
 end
 
@@ -178,7 +187,6 @@ local fsTransformTable = {
 	"exists",
 	"isDir",
 	"isReadOnly",
-	"getDrive",
 	"getSize",
 	"getFreeSpace",
 	"makeDir",
@@ -194,6 +202,15 @@ for i, name in ipairs(fsTransformTable) do
 		else
 			return oldfs[name](path)
 		end
+	end
+end
+
+fs.getDrive = function(path)
+	local id = getMountID(path)
+	if id then
+		return "lyq_vfs_"..tostring(id)
+	else
+		return oldfs.getDrive(path)
 	end
 end
 
@@ -286,14 +303,29 @@ local function freePaths(mount, pathTable)
 	end
 end
 
+local function reserveFile()
+	local fileNum = 0
+	repeat
+		fileNum = fileNum + 1
+	until LyqydOS.fs.tempFiles[fileNum] == nil
+	LyqydOS.fs.tempFiles[fileNum] = true
+	return fileNum
+end
+
+local function freeFile(num)
+	LyqydOS.fs.tempFiles[num] = nil
+end
+
 fs.open = function(path, mode)
 	local mount = getMount(path)
 	if mount then
 		if mode == "r" or mode == "rb" then
 			local folders = fillPath(path, mount.path)
 			reservePaths(mount, folders)
-			mount.mount.get(getRelativePath(path, mount), "/LyqydOS/.temp")
-			oldfs.move("/LyqydOS/.temp", path)
+			local fileNum = reserveFile()
+			mount.mount.get(getRelativePath(path, mount), "/LyqydOS/.temp"..fileNum)
+			oldfs.move("/LyqydOS/.temp"..fileNum, path)
+			freeFile(fileNum)
 			local handle = oldfs.open(path, mode)
 			if handle then
 				local oldHandleClose = handle.close
@@ -312,9 +344,11 @@ fs.open = function(path, mode)
 				local oldHandleClose = handle.close
 				handle.close = function()
 					oldHandleClose()
-					oldfs.move(path, "/LyqydOS/.temp")
-					mount.mount.put("/LyqydOS/.temp", getRelativePath(path, mount))
-					oldfs.delete("/LyqydOS/.temp")
+					local fileNum = reserveFile()
+					oldfs.move(path, "/LyqydOS/.temp"..fileNum)
+					mount.mount.put("/LyqydOS/.temp"..fileNum, getRelativePath(path, mount))
+					oldfs.delete("/LyqydOS/.temp"..fileNum)
+					freeFile(fileNum)
 					freePaths(mount, folders)
 				end
 			end
@@ -322,16 +356,20 @@ fs.open = function(path, mode)
 		elseif mode == "a" or mode == "ab" then
 			local folders = fillPath(path, mount.path)
 			reservePaths(mount, folders)
-			mount.mount.get(getRelativePath(path, mount), "/LyqydOS/.temp")
-			oldfs.move("/LyqydOS/.temp", path)
+			local fileNum = reserveFile()
+			mount.mount.get(getRelativePath(path, mount), "/LyqydOS/.temp"..fileNum)
+			oldfs.move("/LyqydOS/.temp"..fileNum, path)
+			freeFile(fileNum)
 			local handle = oldfs.open(path, mode)
 			if handle then
 				local oldHandleClose = handle.close
 				handle.close = function()
 					oldHandleClose()
-					oldfs.move(path, "/LyqydOS/.temp")
-					mount.mount.put("/LyqydOS/.temp", getRelativePath(path, mount))
-					oldfs.delete("/LyqydOS/.temp")
+					local fileNum = reserveFile()
+					oldfs.move(path, "/LyqydOS/.temp"..fileNum)
+					mount.mount.put("/LyqydOS/.temp"..fileNum, getRelativePath(path, mount))
+					oldfs.delete("/LyqydOS/.temp"..fileNum)
+					freeFile(fileNum)
 					freePaths(mount, folders)
 				end
 			end
@@ -339,5 +377,18 @@ fs.open = function(path, mode)
 		end
 	else
 		return oldfs.open(path, mode)
+	end
+end
+
+--Disk modifications.
+
+local oldGetMountPath = disk.getMountPath
+
+disk.getMountPath = function(side)
+	local drive, num = string.match(side, "(.-)_(%d+)$")
+	if drive == "lyq_vfs" then
+		return LyqydOS.fs.mounts[tonumber(num)].path
+	else
+		return oldGetMountPath(side)
 	end
 end

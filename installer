@@ -25,6 +25,8 @@ local fileList = {
 	"lsh",
 	"lws",
 	"menu",
+	"metadata",
+	"metafs",
 	"mkvolume",
 	"process",
 	"procman",

@@ -1,0 +1,109 @@
+function parse(path)
+	if fs.exists(path) then
+		local handle = fs.open(path, "r")
+		if handle then
+			local data = {}
+			local fn, err = loadstring(handle.readAll())
+			handle.close()
+			if fn then
+				setfenv(fn, data)
+				local success, err = pcall(fn)
+				if success then
+					return data
+				else
+					return nil, err
+				end
+			else
+				return nil, err
+			end
+		else
+			return nil, "could not read metadata"
+		end
+	else
+		return nil, "no metadata found"
+	end
+end
+
+function getMetaFolderForPath(path)
+	local drive = fs.getDrive(path)
+	if drive == "hdd" or drive == "rom" then
+		return "/.meta"
+	else
+		return fs.combine(disk.getMountPath(drive), ".meta")
+	end
+end
+
+function getForFile(path)
+	return metadata.parse(fs.combine(metadata.getMetaFolderForPath(path), path))
+end
+
+function getForFolder(path)
+	if fs.exists(path) and fs.isDir(path) then
+		local data = {}
+		for _, file in ipairs(fs.list(fs.combine(metadata.getMetaFolderForPath(path), path))) do
+			data[fs.combine(path, file)] = metadata.parse(fs.combine(fs.combine(metadata.getMetaFolderForPath(path), path), file))
+		end
+		return data
+	end
+end
+
+local function walkFolder(path, meta)
+	local path = path or "/"
+	local data = meta or {}
+	if fs.exists(path) and fs.isDir(path) then
+		for _, file in ipairs(fs.list(path)) do
+			local current = fs.combine(path, file)
+			if fs.isDir(current) then
+				walkFolder(current, data)
+			else
+				data[current] = metadata.getForFile(current)
+			end
+		end
+		return data
+	end
+end
+
+function load()
+	if fs.exists(".meta") and fs.isDir(".meta") then
+		return walkFolder()
+	else
+		return nil, "no metadata available"
+	end
+end
+
+function prepare(meta)
+	local str = ""
+	for k, v in pairs(meta) do
+		if type(k) == "string" then
+			if type(v) == "number" or type(v) == "string" or type(v) == "boolean" then
+				str = str..k.." = "..tostring(v).."\n"
+			elseif type(v) == "table" then
+				str = str..k.." = "..textutils.serialize(v).."\n"
+			end
+		end
+	end
+	return str
+end
+
+function save(path, meta)
+	if meta then
+		local data = prepare(meta)
+		local handle = fs.open(fs.combine(metadata.getMetaFolderForPath(path), path), "w")
+		if handle then
+			handle.write(data)
+			handle.close()
+		else
+			return nil, "could not open metadata file"
+		end
+	else
+		return nil, "no metadata to write"
+	end
+end
+
+function saveAll(meta)
+	if meta then
+		for k, v in pairs(meta) do
+			metadata.save(k, v)
+		end
+	end
+end
