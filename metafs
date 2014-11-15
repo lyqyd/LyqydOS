@@ -1,27 +1,14 @@
 local oldfs = {}
 
 for k, v in pairs(fs) do
-	oldfs[k] = v
+	if k == "copy" or k == "move" or k == "delete" or k == "open" then
+		oldfs[k] = v
+	end
 end
 
-fs = {}
-
-fs.combine = oldfs.combine
-fs.list = oldfs.list
-fs.exists = oldfs.exists
-fs.isDir = oldfs.isDir
-fs.isReadOnly = oldfs.isReadOnly
-fs.getName = oldfs.getName
-fs.getDrive = oldfs.getDrive
-fs.getSize = oldfs.getSize
-fs.getFreeSpace = oldfs.getFreeSpace
-fs.makeDir = oldfs.makeDir --directories do not have their own metadata
-fs.find = oldfs.find
-fs.getDir = oldfs.getDir
-
 local function isPathMeta(path)
-	local metapath = string.match(metadata.getMetaFolderForPath(path), "/?(.*)")
-	local path = string.sub(string.match(path, "/?(.*)"), #metapath, #metapath)
+	local metapath = string.match((metadata.getMetaFolderForPath(fs.getDir(path))), "/?(.*)")
+	local path = string.sub(string.match(path, "/?(.*)"), 1, #metapath)
 	return path == metapath
 end
 
@@ -30,7 +17,7 @@ local function getTimeStamp()
 end
 
 local function deleteMetadata(path)
-	if oldfs.exists(fs.combine(metadata.getMetaFolderForPath(path), path)) then oldfs.delete(fs.combine(metadata.getMetaFolderForPath(path), path)) end
+	if fs.exists(fs.combine(metadata.getMetaFolderForPath(path))) then oldfs.delete(fs.combine(metadata.getMetaFolderForPath(path))) end
 end
 
 fs.copy = function(from, to)
@@ -88,13 +75,14 @@ fs.open = function(path, mode)
 			handle.close = function()
 				oldClose()
 				local data = metadata.getForFile(filePath)
+				if not data then data = {} end
 				if not data.timestamp then data.timestamp = {} end
+				if created then data.timestamp.created = getTimeStamp() end
 				if mode == "r" or mode == "rb" then
 					data.timestamp.accessed = getTimeStamp()
 				else
 					data.timestamp.modified = getTimeStamp()
 				end
-				if created then data.timestamp.created = getTimeStamp() end
 				metadata.save(filePath, data)
 			end
 			return handle

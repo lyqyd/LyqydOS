@@ -27,9 +27,14 @@ end
 function getMetaFolderForPath(path)
 	local drive = fs.getDrive(path)
 	if drive == "hdd" or drive == "rom" then
-		return "/.meta"
+		return "/.meta", path
 	else
-		return fs.combine(disk.getMountPath(drive), ".meta")
+		local mountPath = disk.getMountPath(drive)
+		local metaPath = fs.combine(mountPath, ".meta")
+		if string.sub(mountPath, 1, 1) ~= "/" then mountPath = "/"..mountPath end
+		if string.sub(path, 1, 1) ~= "/" then path = "/"..path end
+		local pathRemainder = string.match(path, fs.combine(mountPath, "(.*)"))
+		return metaPath, pathRemainder
 	end
 end
 
@@ -85,10 +90,22 @@ function prepare(meta)
 	return str
 end
 
+local function makeFolders(path)
+	local folders = ""
+	repeat
+		local newFolder = string.match(path, folders.."([^/]+/)")
+		if not newFolder then break end
+		folders = folders..newFolder
+		if not fs.exists(folders) then fs.makeDir(folders) end
+	until false
+end
+
 function save(path, meta)
 	if meta then
 		local data = prepare(meta)
-		local handle = fs.open(fs.combine(metadata.getMetaFolderForPath(path), path), "w")
+		local path = fs.combine(metadata.getMetaFolderForPath(path))
+		makeFolders(path)
+		local handle = fs.open(path, "w")
 		if handle then
 			handle.write(data)
 			handle.close()
