@@ -345,6 +345,21 @@ mnt.mount.copy = function(origin, destination)
 	writeData()
 end
 
+mnt.mount.delete = function(path)
+	if string.sub(path, 1, 1) ~= "/" then path = "/"..path end
+	for i = 1, #paths do
+		if paths[i].path == path then
+			files[path] = nil
+			binaryFiles[path] = nil
+			binarySplitFiles[path] = nil
+			table.remove(paths, i)
+			buildData()
+			writeData()
+			break
+		end
+	end
+end
+
 mnt.mount.get = function(origin, destination)
 	if string.sub(origin, 1, 1) ~= "/" then origin = "/"..origin end
 	local handle = io.open(destination, "w")
