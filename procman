@@ -9,14 +9,9 @@ if not menu then if fs.exists("/LyqydOS/menu") then if not os.loadAPI("/LyqydOS/
 if not process then if fs.exists("/LyqydOS/process") then if not os.loadAPI("/LyqydOS/process") then print("Could not load process API!") return end else print("Could not find process API!") return end end
 if window and window.create then os.unloadAPI("window") end --kill 1.6 window API.
 if not window then if fs.exists("/LyqydOS/window") then if not os.loadAPI("/LyqydOS/window") then print("Could not load window API!") return end else print("Could not find window API!") return end end
+if not metadata then if fs.exists("/LyqydOS/metadata") then if not os.loadAPI("/LyqydOS/metadata") then print("Could not load metadata API!") return end else print("Could not find metadata API!") return end end
 
-dofile(shell.resolveProgram("env"))
-
-if fs.exists("/LyqydOS/metadata") then
-	os.loadAPI("/LyqydOS/metadata")
-	dofile("/LyqydOS/metafs")
-end
-
+--establish this before loading the environment
 _G.LyqydOS = {
 	window = {
 		theme = term.isColor() and "pretty" or "standard",
@@ -31,6 +26,12 @@ _G.LyqydOS = {
 		multishell = multishell,
 	},
 }
+
+--set up environment.
+dofile(shell.resolveProgram("env"))
+if fs.exists("/LyqydOS/metafs") then
+	dofile("/LyqydOS/metafs")
+end
 
 if fs.exists("/LyqydOS/themes/window") and fs.isDir("/LyqydOS/themes/window") then
 	for _, name in pairs(fs.list("/LyqydOS/themes/window")) do
