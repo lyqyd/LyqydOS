@@ -167,6 +167,7 @@ local function getMountID(path)
 	if matchID then
 		return matchID
 	end
+end
 
 local function getMount(path)
 	local id = getMountID(path)
