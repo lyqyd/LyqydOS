@@ -111,7 +111,7 @@ local function runProgram()
 	end
 
 	dProc:removeWindow(win)
-	if success then
+	if success and #line > 0 then
 		--don't save empty or repeated lines
 		addLineToHistory(line)
 		process.getFromName("lws"):queue("start_program", line)
