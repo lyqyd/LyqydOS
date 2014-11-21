@@ -301,6 +301,22 @@ mnt.mount.makeDir = function(path)
 	table.insert(paths, {path = path, isDir = true})
 end
 
+mnt.mount.find = function(mask)
+	mask = string.gsub(mask, "%%", "%%%%")
+	mask = string.gsub(mask, "([%^%$%(%)%%%.%[%]%+%-%?])", "%%%1")
+	mask = string.gsub(mask, "(%*)", ".*")
+	local matches = {}
+	for i = 1, #paths do
+		local match = string.match(paths[i].path, mask)
+		if match then
+			table.insert(matches, paths[i].path)
+		end
+	end
+	return matches
+end
+
+	
+
 mnt.mount.move = function(origin, destination)
 	if string.sub(origin, 1, 1) ~= "/" then origin = "/"..origin end
 	if string.sub(destination, 1, 1) ~= "/" then destination = "/"..destination end
