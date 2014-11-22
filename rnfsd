@@ -172,6 +172,19 @@ while true do
 			connections[conn] = nil
 			log("info", "client disconnected: "..conn.remote)
 			conn:send("close", "ok")
+		elseif pType == "query" then
+			--connection being re-opened by client, reset status.
+			if configuration.shares[message] then
+				log("info", "client connected:"..conn.remote)
+				conn:send("response", "ok")
+				connections[conn] = {
+					status = "open",
+					state = "",
+					share = message,
+				}
+			else
+				conn:send("close", "access denied")
+			end
 		end
 	else
 		--no currently established connection.
