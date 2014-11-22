@@ -57,8 +57,8 @@ if fs.exists(fs.combine(path, "themes/window")) and fs.isDir(fs.combine(path, "t
 	end
 end
 
-if fs.exists(fs.combine(paths, ".config")) then
-	dofile(fs.combine(paths, ".config"))
+if fs.exists(fs.combine(path, ".config")) then
+	dofile(fs.combine(path, ".config"))
 end
 
 process.focusWindow = nil
