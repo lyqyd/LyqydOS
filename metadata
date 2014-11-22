@@ -39,7 +39,7 @@ function getMetaFolderForPath(path)
 end
 
 function getForFile(path)
-	return metadata.parse(fs.combine(metadata.getMetaFolderForPath(path), path))
+	return metadata.parse(fs.combine(metadata.getMetaFolderForPath(path)))
 end
 
 function getForFolder(path)
