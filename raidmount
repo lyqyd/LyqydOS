@@ -13,6 +13,8 @@ if not LyqydOS.fs.canMountToPath(shell.resolve(args[2])) then
 	return
 end
 
+local driveRoot = shell.resolve(args[2])
+
 --files table is keyed by path, value is textual file contents.  When these are changed, we re-generate the binary, binary striped versions and re-write it to the disks.
 local files = {}
 --binaryFiles table is keyed by path, value is table of binary file contents.  When this is changed, we re-generate the textual, binary striped versions and re-write it to the disks.
@@ -27,38 +29,41 @@ local directories = nil
 local paths = nil
 
 local drives = {peripheral.find("drive")}
+--arrayDrives table is keyed by ID, value is wrapped drive peripheral.
 local arrayDrives = {}
 local count, max = 0, 0
 
 for i, drive in ipairs(drives) do
 	if drive.isDiskPresent() then
 		local label = drive.getDiskLabel()
-		local volume, id, total = string.match(label, "^(%w+): (%d+)/(%d+)")
-		id = tonumber(id)
-		data[id] = {}
-		if volume == args[1] then
-			if not arrayDrives[id] then count = count + 1 end
-			arrayDrives[id] = drive
-			max = math.max(max, tonumber(total))
-			if not paths then
-				local handle = io.open(fs.combine(drive.getMountPath(), "paths"), "r")
-				if handle then
-					paths = {}
-					directories = {}
-					for line in handle:lines() do
-						local size, path = string.match(line, "(%d+), (.*)")
-						if size and path then
-							size = tonumber(size)
-							table.insert(paths, {size = size, path = path})
-						else
-							local path = string.match(line, "dir: (.*)")
-							if path then
-								directories[path] = true
-								table.insert(paths, {path = path, isDir = true})
+		if label then
+			local volume, id, total = string.match(label, "^(%w+): (%d+)/(%d+)")
+			id = tonumber(id)
+			data[id] = {}
+			if volume == args[1] then
+				if not arrayDrives[id] then count = count + 1 end
+				arrayDrives[id] = drive
+				max = math.max(max, tonumber(total))
+				if not paths then
+					local handle = io.open(fs.combine(drive.getMountPath(), "paths"), "r")
+					if handle then
+						paths = {}
+						directories = {}
+						for line in handle:lines() do
+							local size, path = string.match(line, "(%d+), (.*)")
+							if size and path then
+								size = tonumber(size)
+								table.insert(paths, {size = size, path = path})
+							else
+								local path = string.match(line, "dir: (.*)")
+								if path then
+									directories[path] = true
+									table.insert(paths, {path = path, isDir = true})
+								end
 							end
 						end
+						handle:close()
 					end
-					handle:close()
 				end
 			end
 		end
@@ -162,20 +167,27 @@ local function writePaths()
 	end
 end
 
+local function doWriteData(id, drive)
+	local handle = io.open(fs.combine(drive.getMountPath(), ".data"), "wb")
+	if handle then
+		for j = 1, #data[id] do
+			handle:write(data[id][j])
+		end
+		handle:close()
+	else
+		print("Failed to write to disk "..id.."!")
+	end
+end
+
 local function writeData()
 	for i, drive in pairs(arrayDrives) do
-		local handle = io.open(fs.combine(drive.getMountPath(), ".data"), "wb")
-		if handle then
-			for j = 1, #data[i] do
-				handle:write(data[i][j])
-			end
-			handle:close()
-		else
-			print("Failed to write to disk "..i.."!")
-		end
+		doWriteData(i, drive)
 		doWritePathFile(drive.getMountPath())
 	end
 end
+
+local recovery = false
+local missingDrive
 
 if max > 0 and paths then
 	--theoretically, we've found the array
@@ -191,7 +203,8 @@ if max > 0 and paths then
 			end
 			return
 		end
-		--it's recoverable, so do so here.
+		--it's recoverable, set flag.
+		recovery = true
 	end
 
 	--array loading
@@ -214,6 +227,47 @@ if max > 0 and paths then
 			print("Disk "..i.." removed!")
 		end
 	end
+
+	if recovery then
+		--do recovery from degraded state.
+		for i = 1, max do
+			if not data[i] then
+				--drive needing recovery
+				data[i] = {}
+				for j = 1, i == 1 and #data[2] or #data[1] do
+					local byte = 0
+					for k = 1, max do
+						if k ~= i then
+							bit.bxor(byte, data[k][j])
+						end
+					end
+					data[i][j] = byte
+				end
+				missingDrive = i
+				break
+			end
+		end
+	end
+
+	if missingDrive then
+		print("Recovered data from missing drive "..tostring(missingDrive))
+		print("Mounting Halted. Please provide a new disk to continue.")
+		local aDrive = false
+		while not aDrive do
+			print("Side/Network name of drive holding new disk?")
+			local newDrive = read()
+			if peripheral.getType(newDrive) == "drive" then
+				local drive = peripheral.wrap(newDrive)
+				if drive.isDiskPresent() and drive.hasData() and #(fs.list(drive.getMountPath())) == 0 then
+					--drive is present and contains a blank disk
+					drive.setDiskLabel(args[1]..": "..missingDrive.."/"..max)
+					aDrive = drive
+				end
+			end
+		end
+		doWriteData(missingDrive, aDrive)
+	end
+
 
 	local dataCursor = 1
 	for i = 1, #paths do
@@ -309,7 +363,7 @@ mnt.mount.find = function(mask)
 	for i = 1, #paths do
 		local match = string.match(paths[i].path, mask)
 		if match then
-			table.insert(matches, paths[i].path)
+			table.insert(matches, driveRoot..paths[i].path)
 		end
 	end
 	return matches
