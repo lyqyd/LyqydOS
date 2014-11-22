@@ -15,8 +15,8 @@ local function saveDimensions(proc)
 		end
 		wInfo.max = tostring(proc.windows[#proc.windows].maximized)
 		local lines = {}
-		if fs.exists("/LyqydOS/.lyqwin") then
-			local dimsFile = io.open("/LyqydOS/.lyqwin", "r")
+		if fs.exists(fs.combine(LyqydOS.folderPath, ".lyqwin")) then
+			local dimsFile = io.open(fs.combine(LyqydOS.folderPath, ".lyqwin"), "r")
 			if dimsFile then
 				for line in dimsFile:lines() do
 					if string.match(line, "%d+,%d+,%d+,%d+,%a+,(.*)") ~= proc.path then
@@ -28,7 +28,7 @@ local function saveDimensions(proc)
 		end
 		table.insert(lines, wInfo.x..","..wInfo.y..","..wInfo.w..","..wInfo.h..","..wInfo.max..","..proc.path)
 
-		winDims = io.open("/LyqydOS/.lyqwin", "w")
+		winDims = io.open(fs.combine(LyqydOS.folderPath, ".lyqwin"), "w")
 		if winDims then
 			for _, line in ipairs(lines) do
 				winDims:write(line.."\n")
@@ -233,7 +233,7 @@ do
 			if path then
 				local w, h, x, y, max = 19, 9, 1, 1, "false"
 				windowDimensions = {}
-				winDims = io.open("/LyqydOS/.lyqwin", "r")
+				winDims = io.open(fs.combine(LyqydOS.folderPath, ".lyqwin"), "r")
 				if winDims then
 					for line in winDims:lines() do
 						if string.match(line, "%d+,%d+,%d+,%d+,%a+,(.*)") == path then
@@ -249,7 +249,7 @@ do
 				end
 				win:setTheme(LyqydOS.window.theme)
 				if max == "true" then win:maximize() end
-				process.new(function() os.run(env, "/LyqydOS/lsh", path, unpack(args)) end, path, win)
+				process.new(function() os.run(env, fs.combine(LyqydOS.folderPath, "lsh"), path, unpack(args)) end, path, win)
 				if coroutine.status(process.list[process.focusWindow].thread) == "dead" then
 					process.getFromName("lws"):queue("close_window", process.focusWindow)
 					process.focusWindow = startProcess
@@ -483,7 +483,7 @@ while true do
 		if path then
 			local w, h, x, y, max = 19, 9, 1, 1, "false"
 			windowDimensions = {}
-			winDims = io.open("/LyqydOS/.lyqwin", "r")
+			winDims = io.open(fs.combine(LyqydOS.folderPath, ".lyqwin"), "r")
 			if winDims then
 				for line in winDims:lines() do
 					if string.match(line, "%d+,%d+,%d+,%d+,%a+,(.*)") == path then
