@@ -126,7 +126,7 @@ local function setBackground(color, image)
 				deskRedirect.buffer.backColor[i] = string.rep(string.format("%x", math.floor(math.log(color) / math.log(2))), x)
 			end
 		end
-		if image then
+		if image and #image > 0 then
 			local x, y = deskRedirect.getSize()
 			local background = {}
 			if fs.exists(image) then
