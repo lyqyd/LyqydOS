@@ -8,6 +8,7 @@ do
 	path = fs.getDir and fs.getDir(procPath) or string.match(procPath, "^(.*)/"..fs.getName(procPath).."$")
 	shell.setPath("/"..path..":"..shell.path())
 	if fs.exists("/usr/apis") and fs.isDir("/usr/apis") then shell.setPath(shell.path()..":/usr/apis") end
+	if fs.exists("/usr/bin") and fs.isDir("/usr/bin") then shell.setPath(shell.path()..":/usr/bin") end
 end
 
 if not framebuffer then if shell.resolveProgram("framebuffer") and fs.exists(shell.resolveProgram("framebuffer")) then if not os.loadAPI(shell.resolveProgram("framebuffer")) then print("Could not load framebuffer API!") return end else print("Could not find framebuffer API!") return end end
