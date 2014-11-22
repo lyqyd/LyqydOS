@@ -96,7 +96,7 @@ end
 
 function rednet.send(recipient, message, protocol)
 	for _, side in pairs(rs.getSides()) do
-		if rednet.isOpen(side) then
+		if peripheral.getType(side) == "modem" and rednet.isOpen(side) then
 			if term.current then
 				local id = math.random(1, 2147483547)
 				local messTable = {

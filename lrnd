@@ -16,7 +16,11 @@ while true do
 					proc:queue(unpack(event))
 				end
 				if rm and proc and proc.rednet and proc.rednet[event[2]] then
-					proc:queue("rednet_message", event[4], event[5], event[6])
+					if term.current then
+						proc:queue("rednet_message", event[4], event[5].message, event[5].sProtocol)
+					else
+						proc:queue("rednet_message", event[4], event[5], event[6])
+					end
 				end
 			end
 		end
