@@ -1,15 +1,22 @@
 if process and process.activeProcess ~= nil then return end
 
-if fs.exists("/LyqydOS") and fs.isDir("/LyqydOS") then shell.setPath("/LyqydOS:"..shell.path()) end
-if fs.exists("/usr/apis") and fs.isDir("/usr/apis") then shell.setPath(shell.path()..":/usr/apis") end
+local path
 
-if not framebuffer then if fs.exists(shell.resolveProgram("framebuffer")) then if not os.loadAPI(shell.resolveProgram("framebuffer")) then print("Could not load framebuffer API!") return end else print("Could not find framebuffer API!") return end end
-if not compositor then if fs.exists("/LyqydOS/compositor") then if not os.loadAPI("/LyqydOS/compositor") then print("Could not load compositor API!") return end else print("Could not find compositor API!") return end end
-if not menu then if fs.exists("/LyqydOS/menu") then if not os.loadAPI("/LyqydOS/menu") then print("Could not load menu API!") return end else print("Could not find menu API!") return end end
-if not process then if fs.exists("/LyqydOS/process") then if not os.loadAPI("/LyqydOS/process") then print("Could not load process API!") return end else print("Could not find process API!") return end end
+do
+	--current path discovery, set up shell paths.
+	local procPath = shell.getRunningProgram()
+	path = fs.getDir and fs.getDir(procPath) or string.match(procPath, "^(.*)/"..fs.getName(procPath).."$")
+	shell.setPath("/"..path..":"..shell.path())
+	if fs.exists("/usr/apis") and fs.isDir("/usr/apis") then shell.setPath(shell.path()..":/usr/apis") end
+end
+
+if not framebuffer then if shell.resolveProgram("framebuffer") and fs.exists(shell.resolveProgram("framebuffer")) then if not os.loadAPI(shell.resolveProgram("framebuffer")) then print("Could not load framebuffer API!") return end else print("Could not find framebuffer API!") return end end
+if not compositor then if shell.resolveProgram("compositor") and fs.exists(shell.resolveProgram("compositor")) then if not os.loadAPI(shell.resolveProgram("compositor")) then print("Could not load compositor API!") return end else print("Could not find compositor API!") return end end
+if not menu then if shell.resolveProgram("menu") and fs.exists(shell.resolveProgram("menu")) then if not os.loadAPI(shell.resolveProgram("menu")) then print("Could not load menu API!") return end else print("Could not find menu API!") return end end
+if not process then if shell.resolveProgram("process") and fs.exists(shell.resolveProgram("process")) then if not os.loadAPI(shell.resolveProgram("process")) then print("Could not load process API!") return end else print("Could not find process API!") return end end
 if window and window.create then os.unloadAPI("window") end --kill 1.6 window API.
-if not window then if fs.exists("/LyqydOS/window") then if not os.loadAPI("/LyqydOS/window") then print("Could not load window API!") return end else print("Could not find window API!") return end end
-if not metadata then if fs.exists("/LyqydOS/metadata") then if not os.loadAPI("/LyqydOS/metadata") then print("Could not load metadata API!") return end else print("Could not find metadata API!") return end end
+if not window then if shell.resolveProgram("window") and fs.exists(shell.resolveProgram("window")) then if not os.loadAPI(shell.resolveProgram("window")) then print("Could not load window API!") return end else print("Could not find window API!") return end end
+if not metadata then if shell.resolveProgram("metadata") and fs.exists(shell.resolveProgram("metadata")) then if not os.loadAPI(shell.resolveProgram("metadata")) then print("Could not load metadata API!") return end else print("Could not find metadata API!") return end end
 
 --establish this before loading the environment
 _G.LyqydOS = {
@@ -29,13 +36,13 @@ _G.LyqydOS = {
 
 --set up environment.
 dofile(shell.resolveProgram("env"))
-if fs.exists("/LyqydOS/metafs") then
-	dofile("/LyqydOS/metafs")
+if fs.exists(fs.combine(path, "metafs")) then
+	dofile(fs.combine(path, "metafs"))
 end
 
-if fs.exists("/LyqydOS/themes/window") and fs.isDir("/LyqydOS/themes/window") then
-	for _, name in pairs(fs.list("/LyqydOS/themes/window")) do
-		local file = fs.combine("/LyqydOS/themes/window", name)
+if fs.exists(fs.combine(path, "themes/window")) and fs.isDir(fs.combine(path, "themes/window")) then
+	for _, name in pairs(fs.list(fs.combine(path, "themes/window"))) do
+		local file = fs.combine(fs.combine(path, "themes/window"), name)
 		local env = {}
 		local fn, err = loadfile(file)
 		if fn then
@@ -50,8 +57,8 @@ if fs.exists("/LyqydOS/themes/window") and fs.isDir("/LyqydOS/themes/window") th
 	end
 end
 
-if fs.exists("/LyqydOS/.config") then
-	dofile("/LyqydOS/.config")
+if fs.exists(fs.combine(paths, ".config")) then
+	dofile(fs.combine(paths, ".config"))
 end
 
 process.focusWindow = nil
@@ -66,8 +73,8 @@ end
 
 do
 	local initPath = ""
-	if fs.exists("/LyqydOS/.init") then
-		initPath = "/LyqydOS/.init"
+	if fs.exists(fs.combine(path, ".init")) then
+		initPath = fs.combine(path, ".init")
 	else
 		initPath = shell.resolveProgram(".init")
 	end
