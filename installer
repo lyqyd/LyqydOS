@@ -1,153 +1,78 @@
-local versionNumber = 2.1
+local versionNumber = 3.0
 
 local args = {...}
 
-if #args == 1 and args[1] == "remove" then
-	if fs.exists("/LyqydOS") then
-		fs.delete("/LyqydOS")
-		if fs.exists("/.lyqwin") then fs.delete("/.lyqwin") end
-		if fs.exists("/.lyqrunhistory") then fs.delete("/.lyqrunhistory") end
-	end
-	return
-end
-
-local fileList = {
-	".init",
-	"compositor",
-	"debug",
-	"desktop",
-	"env",
-	"flattop",
-	"framebuffer",
-	"kill",
-	"LICENSE",
-	"lrnd",
-	"lsh",
-	"lws",
-	"menu",
-	"metadata",
-	"metafs",
-	"mkvolume",
-	"process",
-	"procman",
-	"ps",
-	"raidmount",
-	"rnfsd",
-	"rnfsd.conf",
-	"rnmount",
-	"service",
-	"settings",
-	"start",
-	"window",
-}
-
-function resetScreen()
-	term.clear()
-	term.setCursorPos(1,1)
-	xlim, ylim = term.getSize()
-	if xlim >= 20 then
-		term.write("=LyqydOS Installer"..string.rep("=", xlim - 18))
-		term.setCursorPos(1,2)
-	end
-end
-
-resetScreen()
-
-if not fs.exists("/LyqydOS") or not fs.isDir("/LyqydOS") then
-	fs.makeDir("/LyqydOS")
-end
-
-if #args < 1 or (args[1] ~= "noupdate" and args[1] ~= "setup") then
-	print("Updating Installer")
-	local remoteHandle = http.get("http://pastebin.com/raw.php?i=WmFHmuZq")
-	if remoteHandle then
-		fileHandle = io.open(shell.getRunningProgram(), "w")
-		if fileHandle then
-			fileHandle:write(remoteHandle.readAll())
-			fileHandle:close()
-		else
-			error("Could not open file "..shell.getRunningProgram())
-		end
-	else
-		error("Could not retrieve remote file.")
-	end
-	local fileHandle = io.open(shell.getRunningProgram(), "r")
-	if fileHandle then
-		local newVersionNumber = tonumber(string.match(fileHandle:read("*l"), "local versionNumber = (.*)"))
-		fileHandle:close()
-		if newVersionNumber > versionNumber then
-			shell.run(shell.getRunningProgram(), "noupdate")
-			return
-		end
-	end
-	resetScreen()
-end
-
-if #args < 1 or args[1] ~= "setup" then
-	for _, file in ipairs(fileList) do
-		print("Fetching file: "..file)
-		local remoteHandle = http.get("https://raw.github.com/lyqyd/LyqydOS/master/"..file)
-		if remoteHandle then
-			fileHandle = io.open("/LyqydOS/"..file, "w")
-			if fileHandle then
-				fileHandle:write(remoteHandle.readAll())
-				fileHandle:close()
-			else
-				error("Could not open file /LyqydOS/"..file)
+if #args >= 1 then
+	if args[1] == "setup" then
+		--write sane default window sizes
+		if not fs.exists("/LyqydOS/.lyqwin") then
+			local handle = io.open("/LyqydOS/.lyqwin", "w")
+			if handle then
+				handle:write([[1,1,9,4,false,rom/programs/reboot]].."\n")
+				handle:write([[1,1,9,4,false,rom/programs/shutdown]].."\n")
+				handle:write([[1,1,19,9,true,rom/programs/color/paint]].."\n")
+				handle:close()
+				--if installer is being run from packman
+				if packman then packman.addFile("/LyqydOS/.lyqwin") end
 			end
-		else
-			error("Could not retrieve remote file: "..file)
 		end
-	end
-	print("Finished fetching!")
-	sleep(1)
-end
-
---write sane default window sizes
-if not fs.exists("/LyqydOS/.lyqwin") then
-	local handle = io.open("/LyqydOS/.lyqwin", "w")
-	if handle then
-		handle:write([[1,1,9,4,false,rom/programs/reboot]].."\n")
-		handle:write([[1,1,9,4,false,rom/programs/shutdown]].."\n")
-		handle:write([[1,1,19,9,true,rom/programs/color/paint]].."\n")
-		handle:close()
-		--if installer is being run from packman
-		if packman then packman.addFile("/LyqydOS/.lyqwin") end
-	end
-end
-
-resetScreen()
-
-print("Run LyqydOS on startup? (y/N)")
-term.write("> ")
-local input = read()
-if #input > 0 then
-	input = string.lower(string.sub(input, 1, 1))
-	if input == "y" then
-		local handle
-		if fs.exists("/startup") then
-			handle = io.open("/startup", "a")
-		else
-			handle = io.open("/startup", "w")
+		print("Run LyqydOS on startup? (y/N)")
+		term.write("> ")
+		local input = read()
+		if #input > 0 then
+			input = string.lower(string.sub(input, 1, 1))
+			if input == "y" then
+				local handle
+				if fs.exists("/startup") then
+					handle = io.open("/startup", "a")
+				else
+					handle = io.open("/startup", "w")
+				end
+				if handle then
+					handle:write([[shell.run("/LyqydOS/procman")]].."\n")
+					handle:close()
+				end
+			end
 		end
-		if handle then
-			handle:write([[shell.run("/LyqydOS/procman")]].."\n")
-			handle:close()
-		end
-	end
-end
-
-print("Reboot now? (Y/n)")
-term.write("> ")
-input = read()
-if #input > 0 then
-	input = string.lower(string.sub(input, 1, 1))
-	if input == "y" then
-		os.reboot()
+	elseif args[1] == "remove" then
+		if fs.exists("/LyqydOS/themes") then fs.delete("/LyqydOS/themes") end
+		if fs.exists("/LyqydOS/.config") then fs.delete("/LyqydOS/.config") end
+		if fs.exists("/LyqydOS/.lyqrunhistory") then fs.delete("/LyqydOS/.lyqrunhistory") end
+		if fs.exists("/LyqydOS/.lyqshellrunhistory") then fs.delete("/LyqydOS/.lyqshellrunhistory") end
+		if fs.exists("/LyqydOS/.lyqwin") then fs.delete("/LyqydOS/.lyqwin") end
 	end
 else
-	os.reboot()
+	--get packman and use it.
+	if not fs.exists("/packman") and not fs.exists("/usr/bin/packman") then
+		local response = http and http.get("https://raw.github.com/lyqyd/cc-packman/master/packman")
+		if response then
+			if not fs.exists("/usr/bin") then fs.makeDir("/usr/bin") end
+			local handle = io.open("/usr/bin/packman", "w")
+			if handle then
+				handle:write(response.readAll())
+				handle:close()
+			else
+				error("Could not write /usr/bin/packman")
+			end
+			response.close()
+			local response = http.get("https://raw.github.com/lyqyd/cc-packman/master/package")
+			if response then
+				if not fs.exists("/usr/apis") then fs.makeDir("/usr/apis") end
+				local handle = io.open("/usr/apis/package", "w")
+				if handle then
+					handle:write(response.readAll())
+					handle:close()
+				else
+					error("Could not write /usr/apis/package")
+				end
+				response.close()
+			else
+				error("Could not fetch package API")
+			end
+		else
+			error("Could not fetch packman")
+		end
+		shell.run("/usr/bin/packman fetch")
+	end
+	shell.run("/usr/bin/packman force install lyqydos")
 end
-
-term.clear()
-term.setCursorPos(1,1)
