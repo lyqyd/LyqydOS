@@ -1,395 +1,479 @@
-local oldPeripheralCall = peripheral.call
 
-function peripheral.call(side, func, ...)
-	if peripheral.getType(side) == "modem" then
-		if func == "isOpen" then
-			local proc = process.id() and process.list[process.id()]
-			if not proc then return false end
-			if not proc.modem then return false end
-			if not proc.modem[side] then return false end
-			if proc.modem[side][(...)] then return true end
-			return false
-		elseif func == "open" then
-			local proc = process.list[process.id()]
-			if not proc.modem then proc.modem = {} end
-			if not proc.modem[side] then proc.modem[side] = {} end
-			local channel = (...)
-			proc.modem[side][channel] = true
-			oldPeripheralCall(side, func, channel)
-		elseif func == "close" then
-			local proc = process.list[process.id()]
-			if not proc.modem then return nil end
-			if not proc.modem[side] then return nil end
-			local channel = (...)
-			if proc.modem[side][channel] then
-				proc.modem[side][channel] = nil
-				local close = true
-				for pID, pInfo in pairs(process.list) do
-					if pInfo and pInfo.modem and pInfo.modem[side] and pInfo.modem[side][channel] then
-						close = false
-						break
+--Peripheral modifications.
+do
+	local oldPeripheralCall = peripheral.call
+
+	function peripheral.call(side, func, ...)
+		if peripheral.getType(side) == "modem" then
+			if func == "isOpen" then
+				local proc = process.id() and process.list[process.id()]
+				if not proc then return false end
+				if not proc.modem then return false end
+				if not proc.modem[side] then return false end
+				if proc.modem[side][(...)] then return true end
+				return false
+			elseif func == "open" then
+				local proc = process.list[process.id()]
+				if not proc.modem then proc.modem = {} end
+				if not proc.modem[side] then proc.modem[side] = {} end
+				local channel = (...)
+				proc.modem[side][channel] = true
+				oldPeripheralCall(side, func, channel)
+			elseif func == "close" then
+				local proc = process.list[process.id()]
+				if not proc.modem then return nil end
+				if not proc.modem[side] then return nil end
+				local channel = (...)
+				if proc.modem[side][channel] then
+					proc.modem[side][channel] = nil
+					local close = true
+					for pID, pInfo in pairs(process.list) do
+						if pInfo and pInfo.modem and pInfo.modem[side] and pInfo.modem[side][channel] then
+							close = false
+							break
+						end
 					end
+					if close then return oldPeripheralCall(side, func, channel) end
 				end
-				if close then return oldPeripheralCall(side, func, channel) end
-			end
-		elseif func == "closeAll" then
-			local proc = process.list[process.id()]
-			if not proc.modem then return nil end
-			if not proc.modem[side] then return nil end
-			for channel in pairs(proc.modem[side]) do
-				peripheral.call(side, "close", channel)
+			elseif func == "closeAll" then
+				local proc = process.list[process.id()]
+				if not proc.modem then return nil end
+				if not proc.modem[side] then return nil end
+				for channel in pairs(proc.modem[side]) do
+					peripheral.call(side, "close", channel)
+				end
+			else
+				return oldPeripheralCall(side, func, ...)
 			end
 		else
 			return oldPeripheralCall(side, func, ...)
 		end
-	else
-		return oldPeripheralCall(side, func, ...)
 	end
 end
 
-local validSides = {}
-for k, v in pairs(rs.getSides()) do
-	validSides[v] = true
-end
+--Rednet modifications
+do
+	local validSides = {}
+	for k, v in pairs(rs.getSides()) do
+		validSides[v] = true
+	end
 
-local function validateSide(side)
-	if type(side) ~= "string" then
-		error("string expected")
+	local function validateSide(side)
+		if type(side) ~= "string" then
+			error("string expected")
+		end
+		if not validSides[side] then
+			error("Invalid side")
+		end
+		if peripheral.getType(side) ~= "modem" then	
+			error("No modem on "..side.." side")
+		end
+		return true
 	end
-	if not validSides[side] then
-		error("Invalid side")
-	end
-	if peripheral.getType(side) ~= "modem" then	
-		error("No modem on "..side.." side")
-	end
-	return true
-end
 
-function rednet.open(side)
-	if validateSide(side) then
-		local proc = process.this()
-		if not proc.rednet then proc.rednet = {} end
-		proc.rednet[side] = true
-		peripheral.call(side, "open", os.getComputerID())
-		peripheral.call(side, "open", 65535)
-	end
-end
-
-function rednet.close(side)
-	if validateSide(side) then
-		local proc = process.this()
-		if not proc.rednet then return nil end
-		proc.rednet[side] = nil
-		peripheral.call(side, "close", os.getComputerID())
-		peripheral.call(side, "close", 65535)
-	end
-end
-
-function rednet.isOpen(side)
-	if validateSide(side) then
-		local proc = process.list[process.id()]
-		if not proc.modem then return false end
-		if not proc.modem[side] then return false end
-		return (proc.modem[side][os.getComputerID()] and proc.modem[side][65535]) or false
-	end
-end
-
-function rednet.send(recipient, message, protocol)
-	for _, side in pairs(rs.getSides()) do
-		if peripheral.getType(side) == "modem" and rednet.isOpen(side) then
-			if term.current then
-				local id = math.random(1, 2147483547)
-				local messTable = {
-					nMessageID = id,
-					nRecipient = recipient,
-					message = message,
-					sProtocol = protocol,
-				}
-				peripheral.call(side, "transmit", recipient, os.getComputerID(), messTable)
-				peripheral.call(side, "transmit", 65533, os.getComputerID(), messTable)
-			else
-				peripheral.call(side, "transmit", recipient, os.getComputerID(), message)
-			end
-			return true
+	function rednet.open(side)
+		if validateSide(side) then
+			local proc = process.this()
+			if not proc.rednet then proc.rednet = {} end
+			proc.rednet[side] = true
+			peripheral.call(side, "open", os.getComputerID())
+			peripheral.call(side, "open", 65535)
 		end
 	end
-	error("No open sides")
-end
 
-function rednet.broadcast(message)
-	return rednet.send(65535, message)
+	function rednet.close(side)
+		if validateSide(side) then
+			local proc = process.this()
+			if not proc.rednet then return nil end
+			proc.rednet[side] = nil
+			peripheral.call(side, "close", os.getComputerID())
+			peripheral.call(side, "close", 65535)
+		end
+	end
+
+	function rednet.isOpen(side)
+		if validateSide(side) then
+			local proc = process.list[process.id()]
+			if not proc.modem then return false end
+			if not proc.modem[side] then return false end
+			return (proc.modem[side][os.getComputerID()] and proc.modem[side][65535]) or false
+		end
+	end
+
+	function rednet.send(recipient, message, protocol)
+		for _, side in pairs(rs.getSides()) do
+			if peripheral.getType(side) == "modem" and rednet.isOpen(side) then
+				if term.current then
+					local id = math.random(1, 2147483547)
+					local messTable = {
+						nMessageID = id,
+						nRecipient = recipient,
+						message = message,
+						sProtocol = protocol,
+					}
+					peripheral.call(side, "transmit", recipient, os.getComputerID(), messTable)
+					peripheral.call(side, "transmit", 65533, os.getComputerID(), messTable)
+				else
+					peripheral.call(side, "transmit", recipient, os.getComputerID(), message)
+				end
+				return true
+			end
+		end
+		error("No open sides")
+	end
+
+	function rednet.broadcast(message)
+		return rednet.send(65535, message)
+	end
 end
 
 --FS modifications.
-
-local oldfs = {}
-for k, v in pairs(fs) do
-	if type(k) == "string" and type(v) == "function" then
-		oldfs[k] = v
-	end
-end
-
-LyqydOS.fs = {}
-LyqydOS.fs.raw = oldfs
-LyqydOS.fs.mounts = {}
-LyqydOS.fs.tempFiles = {}
-
-LyqydOS.fs.canMountToPath = function(path)
-	if string.sub(path, 1, 1) ~= "/" then
-		path = "/"..path
-	end
-	for i, mount in ipairs(LyqydOS.fs.mounts) do
-		if mount and mount.path == path then
-			return false
+do
+	local oldfs = {}
+	for k, v in pairs(fs) do
+		if type(k) == "string" and type(v) == "function" then
+			oldfs[k] = v
 		end
 	end
-	if LyqydOS.fs.raw.exists(path) and LyqydOS.fs.raw.isDir(path) then
-		local list = LyqydOS.fs.raw.list(path)
-		if #list == 0 then
-			return true
+
+	LyqydOS.fs = {}
+	LyqydOS.fs.raw = oldfs
+	LyqydOS.fs.mounts = {}
+	LyqydOS.fs.tempFiles = {}
+
+	LyqydOS.fs.canMountToPath = function(path)
+		if string.sub(path, 1, 1) ~= "/" then
+			path = "/"..path
 		end
-	end
-	return false
-end
-
-local function getMountID(path)
-	if string.sub(path, 1, 1) ~= "/" then
-		path = "/"..path
-	end
-	local matchLen, matchID = 0, false
-	for i, mnt in ipairs(LyqydOS.fs.mounts) do
-		local match = string.match(path, "^("..mnt.path..")")
-		if match and #match > matchLen then
-			matchLen = #match
-			matchID = i
-		end
-	end
-	if matchID then
-		return matchID
-	end
-end
-
-local function getMount(path)
-	local id = getMountID(path)
-	if id then
-		return LyqydOS.fs.mounts[id]
-	end
-end
-
-local function getRelativePath(path, mount)
-	if string.sub(path, 1, 1) ~= "/" then
-		path = "/"..path
-	end
-	return string.match(path, "^"..mount.path.."(.*)")
-end
-
-local fsTransformTable = {
-	"list",
-	"exists",
-	"isDir",
-	"isReadOnly",
-	"getSize",
-	"getFreeSpace",
-	"makeDir",
-	"delete",
-	"find",
-}
-
-for i, name in ipairs(fsTransformTable) do
-	fs[name] = function(path)
-		local mnt = getMount(path)
-		if mnt then
-			return mnt.mount[name](getRelativePath(path, mnt))
-		else
-			return oldfs[name](path)
-		end
-	end
-end
-
-fs.getDrive = function(path)
-	local id = getMountID(path)
-	if id then
-		return "lyq_vfs_"..tostring(id)
-	else
-		return oldfs.getDrive(path)
-	end
-end
-
-fs.move = function(origin, destination)
-	local omnt = getMount(origin)
-	local dmnt = getMount(destination)
-	if omnt == dmnt and omnt then
-		--both file paths are within the same mount point
-		omnt.mount.move(getRelativePath(origin, omnt), getRelativePath(destination, omnt))
-	elseif omnt then
-		--the origin file has a mount point.
-		omnt.mount.get(getRelativePath(origin, omnt), "/LyqydOS/.temp")
-		if dmnt then
-			dmnt.mount.put( "/LyqydOS/.temp", getRelativePath(destination, dmnt))
-		else
-			oldfs.move("/LyqydOS/.temp", destination)
-		end
-		omnt.mount.delete(getRelativePath(origin, omnt))
-	elseif dmnt then
-		--the origin file does not have a mount point, but the destination does.
-		dmnt.mount.put(origin, getRelativePath(destination, dmnt))
-		oldfs.delete(origin)
-	else
-		oldfs.move(origin, destination)
-	end
-end
-
-fs.copy = function(origin, destination)
-	local omnt = getMount(origin)
-	local dmnt = getMount(destination)
-	if omnt == dmnt and omnt then
-		--both file paths are within the same mount point
-		omnt.mount.copy(getRelativePath(origin, omnt), getRelativePath(destination, omnt))
-	elseif omnt then
-		--the origin file has a mount point.
-		omnt.mount.get(getRelativePath(origin, omnt), "/LyqydOS/.temp")
-		if dmnt then
-			dmnt.mount.put( "/LyqydOS/.temp", getRelativePath(destination, dmnt))
-		else
-			oldfs.copy("/LyqydOS/.temp", destination)
-		end
-	elseif dmnt then
-		--the origin file does not have a mount point, but the destination does.
-		dmnt.mount.put(origin, getRelativePath(destination, dmnt))
-	else
-		oldfs.copy(origin, destination)
-	end
-end
-
-local function fillPath(path, mountPath)
-	if string.sub(path, 1, 1) ~= "/" then path = "/"..path end
-	if string.sub(mountPath, 1, 1) ~= "/" then mountPath = "/"..mountPath end
-	local paths = {}
-	local pathCursor = "/"..oldfs.getDir(path)
-	while pathCursor ~= mountPath do
-		table.insert(paths, pathCursor)
-		pathCursor = "/"..oldfs.getDir(pathCursor)
-	end
-	for i = #paths, 1, -1 do
-		oldfs.makeDir(paths[i])
-	end
-	return paths
-end
-
-local function reservePaths(mount, pathTable)
-	if not mount.tempfolders then mount.tempfolders = {} end
-	for i = #pathTable, 1, -1 do
-		if mount.tempfolders[pathTable[i]] then
-			mount.tempfolders[pathTable[i]] = mount.tempfolders[pathTable[i]] + 1
-		else
-			mount.tempfolders[pathTable[i]] = 1
-		end
-		if mount.tempfolders[pathTable[i]] == 1 then
-			oldfs.makeDir(pathTable[i])
-		end
-	end
-end
-
-local function freePaths(mount, pathTable)
-	if not mount.tempfolders then error("cannot free folders already freed") end
-	for i = #pathTable, 1, -1 do
-		if mount.tempfolders[pathTable[i]] then
-			mount.tempfolders[pathTable[i]] = mount.tempfolders[pathTable[i]] - 1
-		else
-			error("cannot free folder already freed")
-		end
-		if mount.tempfolders[pathTable[i]] == 0 then
-			oldfs.delete(pathTable[i])
-		end
-	end
-end
-
-local function reserveFile()
-	local fileNum = 0
-	repeat
-		fileNum = fileNum + 1
-	until LyqydOS.fs.tempFiles[fileNum] == nil
-	LyqydOS.fs.tempFiles[fileNum] = true
-	return fileNum
-end
-
-local function freeFile(num)
-	LyqydOS.fs.tempFiles[num] = nil
-end
-
-fs.open = function(path, mode)
-	local mount = getMount(path)
-	if mount then
-		if mode == "r" or mode == "rb" then
-			local folders = fillPath(path, mount.path)
-			reservePaths(mount, folders)
-			local fileNum = reserveFile()
-			mount.mount.get(getRelativePath(path, mount), "/LyqydOS/.temp"..fileNum)
-			oldfs.move("/LyqydOS/.temp"..fileNum, path)
-			freeFile(fileNum)
-			local handle = oldfs.open(path, mode)
-			if handle then
-				local oldHandleClose = handle.close
-				handle.close = function()
-					oldHandleClose()
-					oldfs.delete(path)
-					freePaths(mount, folders)
-				end
+		for i, mount in ipairs(LyqydOS.fs.mounts) do
+			if mount and mount.path == path then
+				return false
 			end
-			return handle
-		elseif mode == "w" or mode == "wb" then
-			local folders = fillPath(path, mount.path)
-			reservePaths(mount, folders)
-			local handle = oldfs.open(path, mode)
-			if handle then
-				local oldHandleClose = handle.close
-				handle.close = function()
-					oldHandleClose()
-					local fileNum = reserveFile()
-					oldfs.move(path, "/LyqydOS/.temp"..fileNum)
-					mount.mount.put("/LyqydOS/.temp"..fileNum, getRelativePath(path, mount))
-					oldfs.delete("/LyqydOS/.temp"..fileNum)
-					freeFile(fileNum)
-					freePaths(mount, folders)
-				end
-			end
-			return handle
-		elseif mode == "a" or mode == "ab" then
-			local folders = fillPath(path, mount.path)
-			reservePaths(mount, folders)
-			local fileNum = reserveFile()
-			mount.mount.get(getRelativePath(path, mount), "/LyqydOS/.temp"..fileNum)
-			oldfs.move("/LyqydOS/.temp"..fileNum, path)
-			freeFile(fileNum)
-			local handle = oldfs.open(path, mode)
-			if handle then
-				local oldHandleClose = handle.close
-				handle.close = function()
-					oldHandleClose()
-					local fileNum = reserveFile()
-					oldfs.move(path, "/LyqydOS/.temp"..fileNum)
-					mount.mount.put("/LyqydOS/.temp"..fileNum, getRelativePath(path, mount))
-					oldfs.delete("/LyqydOS/.temp"..fileNum)
-					freeFile(fileNum)
-					freePaths(mount, folders)
-				end
-			end
-			return handle
 		end
-	else
-		return oldfs.open(path, mode)
+		if LyqydOS.fs.raw.exists(path) and LyqydOS.fs.raw.isDir(path) then
+			local list = LyqydOS.fs.raw.list(path)
+			if #list == 0 then
+				return true
+			end
+		end
+		return false
+	end
+
+	local function getMountID(path)
+		if string.sub(path, 1, 1) ~= "/" then
+			path = "/"..path
+		end
+		local matchLen, matchID = 0, false
+		for i, mnt in ipairs(LyqydOS.fs.mounts) do
+			local match = string.match(path, "^("..mnt.path..")")
+			if match and #match > matchLen then
+				matchLen = #match
+				matchID = i
+			end
+		end
+		if matchID then
+			return matchID
+		end
+	end
+
+	local function getMount(path)
+		local id = getMountID(path)
+		if id then
+			return LyqydOS.fs.mounts[id]
+		end
+	end
+
+	local function getRelativePath(path, mount)
+		if string.sub(path, 1, 1) ~= "/" then
+			path = "/"..path
+		end
+		return string.match(path, "^"..mount.path.."(.*)")
+	end
+
+	local fsTransformTable = {
+		"list",
+		"exists",
+		"isDir",
+		"isReadOnly",
+		"getSize",
+		"getFreeSpace",
+		"makeDir",
+		"delete",
+		"find",
+	}
+
+	for i, name in ipairs(fsTransformTable) do
+		fs[name] = function(path)
+			local mnt = getMount(path)
+			if mnt then
+				return mnt.mount[name](getRelativePath(path, mnt))
+			else
+				return oldfs[name](path)
+			end
+		end
+	end
+
+	fs.getDrive = function(path)
+		local id = getMountID(path)
+		if id then
+			return "lyq_vfs_"..tostring(id)
+		else
+			return oldfs.getDrive(path)
+		end
+	end
+
+	fs.move = function(origin, destination)
+		local omnt = getMount(origin)
+		local dmnt = getMount(destination)
+		if omnt == dmnt and omnt then
+			--both file paths are within the same mount point
+			omnt.mount.move(getRelativePath(origin, omnt), getRelativePath(destination, omnt))
+		elseif omnt then
+			--the origin file has a mount point.
+			omnt.mount.get(getRelativePath(origin, omnt), "/LyqydOS/.temp")
+			if dmnt then
+				dmnt.mount.put( "/LyqydOS/.temp", getRelativePath(destination, dmnt))
+			else
+				oldfs.move("/LyqydOS/.temp", destination)
+			end
+			omnt.mount.delete(getRelativePath(origin, omnt))
+		elseif dmnt then
+			--the origin file does not have a mount point, but the destination does.
+			dmnt.mount.put(origin, getRelativePath(destination, dmnt))
+			oldfs.delete(origin)
+		else
+			oldfs.move(origin, destination)
+		end
+	end
+
+	fs.copy = function(origin, destination)
+		local omnt = getMount(origin)
+		local dmnt = getMount(destination)
+		if omnt == dmnt and omnt then
+			--both file paths are within the same mount point
+			omnt.mount.copy(getRelativePath(origin, omnt), getRelativePath(destination, omnt))
+		elseif omnt then
+			--the origin file has a mount point.
+			omnt.mount.get(getRelativePath(origin, omnt), "/LyqydOS/.temp")
+			if dmnt then
+				dmnt.mount.put( "/LyqydOS/.temp", getRelativePath(destination, dmnt))
+			else
+				oldfs.copy("/LyqydOS/.temp", destination)
+			end
+		elseif dmnt then
+			--the origin file does not have a mount point, but the destination does.
+			dmnt.mount.put(origin, getRelativePath(destination, dmnt))
+		else
+			oldfs.copy(origin, destination)
+		end
+	end
+
+	local function fillPath(path, mountPath)
+		if string.sub(path, 1, 1) ~= "/" then path = "/"..path end
+		if string.sub(mountPath, 1, 1) ~= "/" then mountPath = "/"..mountPath end
+		local paths = {}
+		local pathCursor = "/"..oldfs.getDir(path)
+		while pathCursor ~= mountPath do
+			table.insert(paths, pathCursor)
+			pathCursor = "/"..oldfs.getDir(pathCursor)
+		end
+		for i = #paths, 1, -1 do
+			oldfs.makeDir(paths[i])
+		end
+		return paths
+	end
+
+	local function reservePaths(mount, pathTable)
+		if not mount.tempfolders then mount.tempfolders = {} end
+		for i = #pathTable, 1, -1 do
+			if mount.tempfolders[pathTable[i]] then
+				mount.tempfolders[pathTable[i]] = mount.tempfolders[pathTable[i]] + 1
+			else
+				mount.tempfolders[pathTable[i]] = 1
+			end
+			if mount.tempfolders[pathTable[i]] == 1 then
+				oldfs.makeDir(pathTable[i])
+			end
+		end
+	end
+
+	local function freePaths(mount, pathTable)
+		if not mount.tempfolders then error("cannot free folders already freed") end
+		for i = #pathTable, 1, -1 do
+			if mount.tempfolders[pathTable[i]] then
+				mount.tempfolders[pathTable[i]] = mount.tempfolders[pathTable[i]] - 1
+			else
+				error("cannot free folder already freed")
+			end
+			if mount.tempfolders[pathTable[i]] == 0 then
+				oldfs.delete(pathTable[i])
+			end
+		end
+	end
+
+	local function reserveFile()
+		local fileNum = 0
+		repeat
+			fileNum = fileNum + 1
+		until LyqydOS.fs.tempFiles[fileNum] == nil
+		LyqydOS.fs.tempFiles[fileNum] = true
+		return fileNum
+	end
+
+	local function freeFile(num)
+		LyqydOS.fs.tempFiles[num] = nil
+	end
+
+	fs.open = function(path, mode)
+		local mount = getMount(path)
+		if mount then
+			if mode == "r" or mode == "rb" then
+				local folders = fillPath(path, mount.path)
+				reservePaths(mount, folders)
+				local fileNum = reserveFile()
+				mount.mount.get(getRelativePath(path, mount), "/LyqydOS/.temp"..fileNum)
+				oldfs.move("/LyqydOS/.temp"..fileNum, path)
+				freeFile(fileNum)
+				local handle = oldfs.open(path, mode)
+				if handle then
+					local oldHandleClose = handle.close
+					handle.close = function()
+						oldHandleClose()
+						oldfs.delete(path)
+						freePaths(mount, folders)
+					end
+				end
+				return handle
+			elseif mode == "w" or mode == "wb" then
+				local folders = fillPath(path, mount.path)
+				reservePaths(mount, folders)
+				local handle = oldfs.open(path, mode)
+				if handle then
+					local oldHandleClose = handle.close
+					handle.close = function()
+						oldHandleClose()
+						local fileNum = reserveFile()
+						oldfs.move(path, "/LyqydOS/.temp"..fileNum)
+						mount.mount.put("/LyqydOS/.temp"..fileNum, getRelativePath(path, mount))
+						oldfs.delete("/LyqydOS/.temp"..fileNum)
+						freeFile(fileNum)
+						freePaths(mount, folders)
+					end
+				end
+				return handle
+			elseif mode == "a" or mode == "ab" then
+				local folders = fillPath(path, mount.path)
+				reservePaths(mount, folders)
+				local fileNum = reserveFile()
+				mount.mount.get(getRelativePath(path, mount), "/LyqydOS/.temp"..fileNum)
+				oldfs.move("/LyqydOS/.temp"..fileNum, path)
+				freeFile(fileNum)
+				local handle = oldfs.open(path, mode)
+				if handle then
+					local oldHandleClose = handle.close
+					handle.close = function()
+						oldHandleClose()
+						local fileNum = reserveFile()
+						oldfs.move(path, "/LyqydOS/.temp"..fileNum)
+						mount.mount.put("/LyqydOS/.temp"..fileNum, getRelativePath(path, mount))
+						oldfs.delete("/LyqydOS/.temp"..fileNum)
+						freeFile(fileNum)
+						freePaths(mount, folders)
+					end
+				end
+				return handle
+			end
+		else
+			return oldfs.open(path, mode)
+		end
 	end
 end
 
 --Disk modifications.
+do
+	local oldGetMountPath = disk.getMountPath
 
-local oldGetMountPath = disk.getMountPath
+	disk.getMountPath = function(side)
+		local drive, num = string.match(side, "(.-)_(%d+)$")
+		if drive == "lyq_vfs" then
+			return LyqydOS.fs.mounts[tonumber(num)].path
+		else
+			return oldGetMountPath(side)
+		end
+	end
+end
 
-disk.getMountPath = function(side)
-	local drive, num = string.match(side, "(.-)_(%d+)$")
-	if drive == "lyq_vfs" then
-		return LyqydOS.fs.mounts[tonumber(num)].path
-	else
-		return oldGetMountPath(side)
+--Rednet modifications.
+do
+	local oldrs = {}
+	for k, v in pairs(rs) do
+		if type(k) == "string" and type(v) == "function" then
+			oldrs[k] = v
+		end
+	end
+
+	local validSides = {}
+	for k, v in pairs(rs.getSides()) do
+		validSides[v] = true
+	end
+
+	local function validate(side, value, exType)
+		if type(side) ~= "string" or type(value) ~= exType then
+			error("Expected string, "..exType)
+		end
+		if not validSides[side] then
+			error("Invalid side")
+		end
+		return true
+	end
+
+	local function getCurrentValue(side)
+		local value = 0
+		for pID, pInfo in pairs(process.list) do
+			if pInfo and pInfo.redstone and pInfo.redstone[side] and pID ~= process.id() then
+				value = math.max(value, pInfo.redstone[side].value)
+			end
+		end
+		return value
+	end
+
+	local function getCurrentBundled(side)
+		local value = 0
+		for pID, pInfo in pairs(process.list) do
+			if pInfo and pInfo.redstone and pInfo.redstone[side] and pID ~= process.id() then
+				value = bit.bor(value, pInfo.redstone[side].bundled)
+			end
+		end
+		return value
+	end
+
+	redstone.setAnalogOutput = function(side, value)
+		if validate(side, value, "number") then
+			local current = getCurrentValue(side)
+			local proc = process.list[process.id()]
+			if not proc.redstone then proc.redstone = {} end
+			if not proc.redstone[side] then proc.redstone[side] = {} end
+			proc.redstone[side].value = value
+			value = math.max(value, current)
+			oldrs.setAnalogOutput(side, value)
+		end
+	end
+
+	redstone.setOutput = function(side, value)
+		if validate(side, value, "boolean") then
+			redstone.setAnalogOutput(side, value == true and 15 or 0)
+		end
+	end
+
+	redstone.setBundledOutput = function(side, value)
+		if validate(side, value, number) then
+			local current = getCurrentBundled(side)
+			local proc = process.list[process.id()]
+			if not proc.redstone then proc.redstone = {} end
+			if not proc.redstone[side] then proc.redstone[side] = {} end
+			proc.redstone[side].bundled = value
+			value = bit.bor(value, current)
+			oldrs.setBundledOutput(side, value)
+		end
 	end
 end
