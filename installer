@@ -35,7 +35,6 @@ if #args >= 1 then
 			end
 		end
 	elseif args[1] == "remove" then
-		if fs.exists("/LyqydOS/themes") then fs.delete("/LyqydOS/themes") end
 		if fs.exists("/LyqydOS/.config") then fs.delete("/LyqydOS/.config") end
 		if fs.exists("/LyqydOS/.lyqrunhistory") then fs.delete("/LyqydOS/.lyqrunhistory") end
 		if fs.exists("/LyqydOS/.lyqshellrunhistory") then fs.delete("/LyqydOS/.lyqshellrunhistory") end
