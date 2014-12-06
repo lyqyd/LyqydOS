@@ -12,7 +12,7 @@ while true do
 		else
 			local rm = event[3] == os.getComputerID() or event[3] == RN_BROADCAST
 			for pID, proc in pairs(process.list) do
-				if proc and proc.modem and proc.modem[event[3]] then
+				if proc and proc.name ~= "lrnd" and proc.name ~= "lyqydnet" and proc.modem and proc.modem[event[2]] and proc.modem[event[2]][event[3]] then
 					proc:queue(unpack(event))
 				end
 				if rm and proc and proc.rednet and proc.rednet[event[2]] then
