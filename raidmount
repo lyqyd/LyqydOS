@@ -136,7 +136,7 @@ local function buildData()
 			--loop across stripes
 			for j = 1, max do
 				--and then actual data length.
-				newData[j] = {}
+				if not newData[j] then newData[j] = {} end
 				for k = 1, #binStrDat[j] do
 					newData[j][#newData[j] + 1] = binStrDat[j][k]
 				end
