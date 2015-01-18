@@ -18,6 +18,7 @@ if not process then if shell.resolveProgram("process") and fs.exists(shell.resol
 if window and window.create then os.unloadAPI("window") end --kill 1.6 window API.
 if not window then if shell.resolveProgram("window") and fs.exists(shell.resolveProgram("window")) then if not os.loadAPI(shell.resolveProgram("window")) then print("Could not load window API!") return end else print("Could not find window API!") return end end
 if not metadata then if shell.resolveProgram("metadata") and fs.exists(shell.resolveProgram("metadata")) then if not os.loadAPI(shell.resolveProgram("metadata")) then print("Could not load metadata API!") return end else print("Could not find metadata API!") return end end
+if not configuration then if shell.resolveProgram("configuration") and fs.exists(shell.resolveProgram("configuration")) then if not os.loadAPI(shell.resolveProgram("configuration")) then print("Could not load configuration API!") return end else print("Could not find configuration API!") return end end
 
 --establish this before loading the environment
 _G.LyqydOS = {
@@ -44,17 +45,12 @@ end
 
 if fs.exists(fs.combine(path, "themes/window")) and fs.isDir(fs.combine(path, "themes/window")) then
 	for _, name in pairs(fs.list(fs.combine(path, "themes/window"))) do
-		local file = fs.combine(fs.combine(path, "themes/window"), name)
-		local env = {}
-		local fn, err = loadfile(file)
-		if fn then
-			setfenv(fn, env)
-			fn()
-			--copy into window themes
-			window.themes[name] = {}
-			for k, v in pairs(env) do
-				window.themes[name][k] = v
-			end
+		local theme, err = configuration.load(fs.combine(fs.combine(path, "themes/window"), name))
+		if theme then
+			window.themes[name] = theme
+		else
+			print("Could not load window theme "..name.."\n"..err)
+			sleep(1)
 		end
 	end
 end
