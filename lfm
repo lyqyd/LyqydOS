@@ -59,6 +59,7 @@ local function walkFileTree(tree, depth, result)
 			walkFileTree(v, depth + 1, result)
 		end
 	end
+	return result
 end
 
 displayTree = walkFileTree(fileTree, 1)
