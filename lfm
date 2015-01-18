@@ -1,14 +1,165 @@
 local focus = "folders"
-local fileTree = {}
+--fileTable is a flat table, numerically indexed, of all files/folders in the system
+local fileTable
+--fileTree is a filename-indexed table, wherein each directory is a table of tables, and each file is a reference to the fileTable entry for that file.
+local fileTree
+--fileLookup is a path-indexed table, wherein each entry is a reference to the fileTable entry for that path.
 local fileLookup = {}
-local displayFolder = {}
+--displayTree is used for collapsed/expanded states of folders
+local displayTree
+--the currently selected folder, used for file view on the right pane.
+local currentFolder = "/"
 
-local function addDirectory
+local folderListState = {
+	totalHeight = 1,
+	cursor = 1,
+	offset = 1,
+}
 
-for _, file in pairs(fs.list("/")) do
-	if fs.isDir(file) then
-		table.insert(fileTree, {name = file, path = "/", contents = {}, type = "directory"})
-	else
-		table.insert(fileTree, {name = file, path = "/", type = "file"})
+local function navigateToFolder(path)
+	if path == "" or path == "/" then
+		return fileTree
 	end
+end
+
+local function buildFileList(path, treeEntry)
+	local list = {}
+	for k, v in pairs(treeEntry) do
+		table.insert(list, fs.combine(path, k))
+	end
+	return list
+end
+
+local function parseFolder(path, fileTable, fileTree)
+	for _, file in ipairs(fs.list(path)) do
+		local fullPath = fs.combine(path, file)
+		local fTable = {name = file, path = fullPath}
+		if fs.isDir(file) then
+			fTable.type = "directory"
+			table.insert(fileTable, fTable)
+			fileLookup[fullPath] = fTable
+			_, fileTree[file] = parseFolder(fullPath, fileTable, {})
+		else
+			fTable.type = "file"
+			table.insert(fileTable, fTable)
+			fileTree[file] = fTable
+			fileLookup[fullPath] = fTable
+		end
+	end
+	return fileTable, fileTree
+end
+
+fileTable, fileTree = parseFolder("/", {}, {})
+
+local function walkFileTree(tree, depth, result)
+	if not result then result = {} end
+	for k, v in pairs(tree) do
+		if not v.type then
+			table.insert(result, {name = k, depth = depth, collapsed = true})
+			walkFileTree(v, depth + 1, result)
+		end
+	end
+end
+
+displayTree = walkFileTree(fileTree, 1)
+table.insert(displayTree, 1, {name = "/", depth = 0, collapsed = false})
+
+local function drawFolderList()
+	local function prepareLines(displayTable, width)
+		--prepares a displayable set of lines given a displayTree table and a width
+		local displayedLines = {}
+		local drawDepth = 0
+		for i = 1, #displayTable do
+			if displayTable[i].depth <= drawDepth then
+				if drawDepth > displayTable[i].depth then drawDepth = displayTable[i].depth end
+				table.insert(displayedLines, string.rep(" ", displayTable[i].depth)..(displayTable[i].collapsed and "+ " or "- ")..displayTable[i].name)
+				if not displayTable[i].collapsed then
+					drawDepth = displayTable[i].depth + 1
+				end
+			end
+		end
+		return displayedLines
+	end
+
+	local lines = prepareLines(displayTree, 19)
+
+	term.clear()
+	term.setCursorPos(1, 1)
+	for i = 1, #lines do
+		print(lines[i])
+	end
+end
+
+local fileSorts = {
+	alpha = function(fileList)
+		local dirs, files = {}, {}
+		for _, file in ipairs(fileList) do
+			if fs.isDir(file) then
+				table.insert(dirs, file)
+			else
+				table.insert(files, file)
+			end
+		end
+		local function alphaSort(a, b)
+			return a:lower() < b:lower()
+		end
+		table.sort(dirs, alphaSort)
+		table.sort(files, alphaSort)
+		for i = 1, #files do
+			dirs[#dirs + 1] = files[i]
+		end
+		return dirs
+	end,
+}
+
+
+--fileViews must be redirected to contain them.
+local fileViews = {
+	detailed = function(fileList)
+		local list = fileSorts.alpha(fileList)
+		term.clear()
+		local x, y = term.getSize()
+		for i = 1, math.min(#list, y) do
+			term.setCursorPos(1, i)
+			term.write(fs.getName(list[i]))
+			term.setCursorPos(x - 5, i)
+			term.write(tostring(fs.getSize(list[i])))
+		end
+	end,
+}
+
+local x, y = term.getSize()
+local color = term.isColor()
+
+local fileView = framebuffer.new(x - 16, y, color, 18, 1)
+local oldFileView = framebuffer.new(x - 16, y, color, 18, 1)
+local folderView = framebuffer.new(15, y, color)
+local oldFolderView = framebuffer.new(15, y, color)
+
+local list = buildFileList("/", navigateToFolder("/"))
+
+term.clear()
+for i = 1, y do
+	term.setCursorPos(16, i)
+	term.write("|")
+end
+
+while true do
+	local _old = term.redirect(folderView)
+	drawFolderList()
+	if _old then
+		term.redirect(_old)
+	else
+		term.restore()
+	end
+	local _old = term.redirect(fileView)
+	fileViews.detailed(list)
+	if _old then
+		term.redirect(_old)
+	else
+		term.restore()
+	end
+	framebuffer.draw(folderView.buffer, oldFolderView.buffer)
+	framebuffer.draw(fileView.buffer, oldFileView.buffer)
+	os.pullEvent()
 end
