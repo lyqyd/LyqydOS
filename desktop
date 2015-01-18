@@ -302,7 +302,11 @@ while true do
 			if event[3] > 1 and event[3] < 9 then
 				if event[2] == 1 then
 					--clicked on the LyqydOS button
-					process.new(recentPrograms, "recent")
+					if #runHistory > 0 then
+						process.new(recentPrograms, "recent")
+					else
+						process.new(runProgram, "run")
+					end
 				elseif event[2] == 2 then
 					--right-clicked on the LyqydOS button
 					process.new(runProgram, "run")
