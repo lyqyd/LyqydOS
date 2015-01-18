@@ -17,9 +17,17 @@ elseif #args == 2 and args[1] == "stop" or args[1] == "restart" then
 			process.new(function() shell.run(path) end, fs.getName(path))
 		end
 	end
+elseif #args == 1 and args[1] == "console" then
+	while true do
+		local event = {os.pullEvent()}
+		if string.match(event[1], "^service_.*") then
+			print(event[2].."-"..string.match(event[1], "^service_(.*)")..": "..event[3])
+		end
+	end
 else
 	print("Usage:")
 	print(fs.getName(shell.getRunningProgram()).." start <path>")
 	print(fs.getName(shell.getRunningProgram()).." stop <path>")
+	print(fs.getName(shell.getRunningProgram()).." console")
 	return
 end
