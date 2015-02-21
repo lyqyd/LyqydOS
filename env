@@ -60,13 +60,13 @@ do
 
 	local function validateSide(side)
 		if type(side) ~= "string" then
-			error("string expected")
+			error("string expected", 3)
 		end
 		if not validSides[side] then
-			error("Invalid side")
+			error("Invalid side", 3)
 		end
 		if peripheral.getType(side) ~= "modem" then	
-			error("No modem on "..side.." side")
+			error("No modem on "..side.." side", 3)
 		end
 		return true
 	end
@@ -119,11 +119,90 @@ do
 				return true
 			end
 		end
-		error("No open sides")
+		error("No open sides", 2)
 	end
 
-	function rednet.broadcast(message)
-		return rednet.send(65535, message)
+	function rednet.broadcast(message, protocol)
+		return rednet.send(65535, message, protocol)
+	end
+
+	function rednet.host(protocol, hostname)
+		if type(protocol) ~= "string" or type(hostname) ~= "string" then
+			error("expected string, string", 2)
+		end
+		if hostname == "localhost" then
+			error("Reserved hostname", 2)
+		end
+		local proc = process.this()
+		if not proc.rednet then proc.rednet = {} end
+		if not proc.rednet.hosting then proc.rednet.hosting = {} end
+		if rednet.lookup(protocol, hostname) ~= nil then
+			error("Hostname in use", 2)
+		end
+		proc.rednet.hosting[protocol] = hostname
+	end
+
+	function rednet.unhost(protocol)
+		if type(protocol) ~= "string" then
+			error("expected string", 2)
+		end
+		local proc = process.this()
+		if not proc.rednet then return end
+		if not proc.rednet.hosting then return end
+		proc.rednet.hosting[protocol] = nil
+	end
+
+	function rednet.lookup(protocol, hostname)
+		if type(protocol) ~= "string" then
+			error("expected string", 2)
+		end
+
+		local result
+		if not hostname then
+			result = {}
+		end
+
+		for pID, proc in pairs(process.list) do
+			if proc and proc.rednet and proc.rednet.hosting then
+				if proc.rednet.hosting[protocol] then
+					if not hostname then
+						table.insert(result, os.getComputerID())
+					elseif hostname == "localhost" or hostname == proc.rednet.hosting[protocol] then
+						return os.getComputerID()
+					end
+				end
+			end
+		end
+
+		if not rednet.isOpen() then
+			if result then
+				unpack(result)
+			end
+			return nil
+		end
+
+		rednet.broadcast({sType = "lookup", sProtocol = protocol, sHostname = hostname,}, "dns")
+
+		local timer = os.startTimer(2)
+		while true do
+			local event = {os.pullEvent()}
+			if event[1] == "rednet_message" then
+				if event[4] == "dns" and event[3].sType == "lookup response" then
+					if event[3].sProtocol == protocol then
+						if not hostname then
+							table.insert(result, event[2])
+						elseif event[3].sHostname == hostname then
+							return event[2]
+						end
+					end
+				end
+			elseif event[1] == "timer" and event[2] == timer then
+				break
+			end
+		end
+		if result then
+			return unpack(result)
+		end
 	end
 end
 
