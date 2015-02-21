@@ -20,8 +20,8 @@ elseif #args == 2 and args[1] == "stop" or args[1] == "restart" then
 elseif #args == 1 and args[1] == "console" then
 	while true do
 		local event = {os.pullEvent()}
-		if string.match(event[1], "^service_.*") then
-			print(event[2].."-"..string.match(event[1], "^service_(.*)")..": "..event[3])
+		if event[1] == "service_message" then
+			print(event[3].."-"..event[2]..": "..event[4])
 		end
 	end
 else
