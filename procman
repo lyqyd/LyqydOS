@@ -11,14 +11,28 @@ do
 	if fs.exists("/usr/bin") and fs.isDir("/usr/bin") then shell.setPath(shell.path()..":/usr/bin") end
 end
 
-if not framebuffer then if shell.resolveProgram("framebuffer") and fs.exists(shell.resolveProgram("framebuffer")) then if not os.loadAPI(shell.resolveProgram("framebuffer")) then print("Could not load framebuffer API!") return end else print("Could not find framebuffer API!") return end end
-if not compositor then if shell.resolveProgram("compositor") and fs.exists(shell.resolveProgram("compositor")) then if not os.loadAPI(shell.resolveProgram("compositor")) then print("Could not load compositor API!") return end else print("Could not find compositor API!") return end end
-if not menu then if shell.resolveProgram("menu") and fs.exists(shell.resolveProgram("menu")) then if not os.loadAPI(shell.resolveProgram("menu")) then print("Could not load menu API!") return end else print("Could not find menu API!") return end end
-if not process then if shell.resolveProgram("process") and fs.exists(shell.resolveProgram("process")) then if not os.loadAPI(shell.resolveProgram("process")) then print("Could not load process API!") return end else print("Could not find process API!") return end end
+local function load(api)
+	if shell.resolveProgram(api) and fs.exists(shell.resolveProgram(api)) then
+		if not os.loadAPI(shell.resolveProgram(api)) then
+			print("Could not load "..api.." API!")
+			return false
+		else
+			return true
+		end
+	else
+		print("Could not find "..api.." API!")
+		return false
+	end
+end
+
+if not framebuffer and not load("framebuffer") then return end
+if not compositor and not load("compositor") then return end
+if not menu and not load("menu") then return end
+if not process and not load("process") then return end
 if window and window.create then os.unloadAPI("window") end --kill 1.6 window API.
-if not window then if shell.resolveProgram("window") and fs.exists(shell.resolveProgram("window")) then if not os.loadAPI(shell.resolveProgram("window")) then print("Could not load window API!") return end else print("Could not find window API!") return end end
-if not metadata then if shell.resolveProgram("metadata") and fs.exists(shell.resolveProgram("metadata")) then if not os.loadAPI(shell.resolveProgram("metadata")) then print("Could not load metadata API!") return end else print("Could not find metadata API!") return end end
-if not configuration then if shell.resolveProgram("configuration") and fs.exists(shell.resolveProgram("configuration")) then if not os.loadAPI(shell.resolveProgram("configuration")) then print("Could not load configuration API!") return end else print("Could not find configuration API!") return end end
+if not window and not load("window") then return end
+if not metadata and not load("metadata") then return end
+if not configuration and not load("configuration") then return end
 
 --establish this before loading the environment
 _G.LyqydOS = {
