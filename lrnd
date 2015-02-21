@@ -1,5 +1,7 @@
 local RN_BROADCAST = 65535
 local lyqydnet = false
+local rnReceivedMessages = {}
+local rnReceivedTimeouts = {}
 
 process.addHook({"modem_message"})
 
@@ -17,12 +19,34 @@ while true do
 				end
 				if rm and proc and proc.rednet and proc.rednet[event[2]] then
 					if term.current then
-						proc:queue("rednet_message", event[4], event[5].message, event[5].sProtocol)
+						if not rnReceivedMessages[event[5].nMessageID] then
+							proc:queue("rednet_message", event[4], event[5].message, event[5].sProtocol)
+						end
 					else
 						proc:queue("rednet_message", event[4], event[5], event[6])
 					end
 				end
 			end
+			if rm and term.current then
+				if not rnReceivedMessages[event[5].nMessageID] then
+					rnReceivedMessages[event[5].nMessageID] = true
+					rnReceivedTimeouts[os.startTimer(30)] = event[5].nMessageID
+				end
+				if event[5].sProtocol == "dns" and event[5].message.sType == "lookup" then
+					for pID, proc in ipairs(process.list) do
+						if proc and proc.rednet and proc.rednet.hosting then
+							local hostname = proc.rednet.hosting[event[5].message.sProtocol]
+							if hostname then
+								rednet.send(event[4], {sType = "lookup response", sHostname = hostname, sProtocol = event[5].message.sProtocol}, "dns")
+								break
+							end
+						end
+					end
+				end
+			end
 		end
+	elseif event[1] == "timer" and rnReceivedTimeouts[event[2]] then
+		rnReceivedMessages[rnReceivedTimeouts[event[2]]] = nil
+		rnReceivedTimeouts[event[2]] = nil
 	end
 end
