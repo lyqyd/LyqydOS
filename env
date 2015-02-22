@@ -1,4 +1,3 @@
-
 --Peripheral modifications.
 do
 	local oldPeripheralCall = peripheral.call
@@ -92,11 +91,22 @@ do
 	end
 
 	function rednet.isOpen(side)
-		if validateSide(side) then
-			local proc = process.list[process.id()]
-			if not proc.modem then return false end
-			if not proc.modem[side] then return false end
-			return (proc.modem[side][os.getComputerID()] and proc.modem[side][65535]) or false
+		if side then
+			if type(side) ~= "string" then
+				error("expected string", 2)
+			end
+			if peripheral.getType(side) == "modem" then
+				local proc = process.this()
+				if not proc.modem then return false end
+				if not proc.modem[side] then return false end
+				return (proc.modem[side][os.getComputerID()] and proc.modem[side][65535]) or false
+			end
+		else
+			for n, side in ipairs(peripheral.getNames()) do
+				if rednet.isOpen(side) then
+					return true
+				end
+			end
 		end
 	end
 
