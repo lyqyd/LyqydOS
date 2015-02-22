@@ -341,9 +341,9 @@ local Window = {
 					until #buf.text == buf.sizeY
 				elseif #buf.text < buf.sizeY then
 					repeat
-						table.insert(buf.text, string.rep(" ", buf.sizeY))
-						table.insert(buf.textColor, string.rep(buf.curTextColor, buf.sizeY))
-						table.insert(buf.backColor, string.rep(buf.curBackColor, buf.sizeY))
+						table.insert(buf.text, string.rep(" ", buf.sizeX))
+						table.insert(buf.textColor, string.rep(buf.curTextColor, buf.sizeX))
+						table.insert(buf.backColor, string.rep(buf.curBackColor, buf.sizeX))
 					until #buf.text == buf.sizeY
 				end
 				self.h = h
