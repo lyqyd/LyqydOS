@@ -53,7 +53,7 @@ local function windowAction(pID, win)
 		end
 		local lwsWin = window.new(15, 9, x, y, "Action Menu", process.windowCompositor:newBuffer())
 		lwsProc:addWindow(lwsWin)
-		lwsWin.ephemeral = true
+		lwsWin:setMode("ephemeral")
 		lwsWin:setType("menu")
 		lwsWin:setTheme(LyqydOS.window.theme)
 		process.focusWindow = lws
@@ -172,7 +172,7 @@ local function windowSelect()
 	local lwsProc = process.list[lws]
 	local lwsWin = window.new(19, 11, 1, 1, "Select Window", windowCompositor:newBuffer())
 	lwsProc:addWindow(lwsWin)
-	lwsWin.ephemeral = true
+	lwsWin:setMode("ephemeral")
 	lwsWin:setTheme(LyqydOS.window.theme)
 	lwsWin:setType("menu")
 	process.focusWindow = lws
@@ -323,43 +323,85 @@ while true do
 						if win.target.buffer == process.windowCompositor.bufferStack[i] and not win.minimized then
 							if event[3] >= win.x and event[3] <= win.x + win.w - 1 and event[4] >= win.y and event[4] <= win.y + win.h - 1 then
 								windowFound = true
-								if process.focusWindow ~= pID or j < #proc.windows then
+								if process.focusWindow ~= pID then
 									process.focusWindow = pID
 									proc:toFront(win)
-								end
-								local x, y = event[3] - win.x, event[4] - win.y
-								if x > 0 and x < win.w - 1 and y > 0 and y < win.h - 1 then
-									--mouse click resume
-									event[3], event[4] = x, y
-									proc:resume(event)
-								elseif y == 0 and event[2] == 2 then
-									--right click on window title bar, open window menu.
-									lwsProc:queue("window_action", pID, win)
-								elseif (win.windowType == "modal" or win.windowType == "window") and y == 0 and event[2] == 1 then
-									local function findTransformedX(position)
-										if position < 0 then
-											return win.w + position
-										elseif position > 0 then
-											return position - 1
+								elseif j < #proc.windows then
+									local modalFound = false
+									for k = #proc.windows, 1, -1 do
+										if proc.windows[k].mode == "modal" then
+											modalFound = true
+											break
+										elseif proc.windows[k].mode == "normal" then
+											break
 										end
 									end
-									if x == findTransformedX(win.decorations.closePos) then
-										--close window
-										lwsProc:queue("close_window", pID)
-									elseif win.windowType == "window" then
-										if x == findTransformedX(win.decorations.minPos) then
-											--minimize
-											win:minimize()
-											proc:toBack()
-										elseif x == findTransformedX(win.decorations.maxPos) then
-											if win.maximized then
-												win:restore()
-												proc:queue("window_resize")
-												proc:queue("term_resize")
+									if not modalFound then
+										--no modal window active in this application, so move window to top.
+										proc:toFront(win)
+									end
+								end
+								local x, y = event[3] - win.x, event[4] - win.y
+								if win.borderless then
+									--mouse click, resume.
+									x = x + 1
+									y = y + 1
+									if x > 0 and x < win.w + 1 and y > 0 and y < win.h + 1 then
+										event[3], event[4] = x, y
+										proc:resume(event)
+									end
+								else
+									if x > 0 and x < win.w - 1 and y > 0 and y < win.h - 1 then
+										--mouse click resume
+										event[3], event[4] = x, y
+										proc:resume(event)
+									elseif y == 0 and event[2] == 2 then
+										--right click on window title bar, open window menu.
+										lwsProc:queue("window_action", pID, win)
+									elseif (win.windowType == "modal" or win.windowType == "window") and y == 0 and event[2] == 1 then
+										local function findTransformedX(position)
+											if position < 0 then
+												return win.w + position
+											elseif position > 0 then
+												return position - 1
+											end
+										end
+										if x == findTransformedX(win.decorations.closePos) then
+											--close window
+											proc:queue("window_close", win)
+											if win.closable then
+												lwsProc:queue("close_window", pID, win)
+											end
+										elseif win.windowType == "window" then
+											if x == findTransformedX(win.decorations.minPos) then
+												--minimize
+												win:minimize()
+												local allMin = true
+												for k = 1, #proc.windows do
+													if proc.windows[k].minimized == false then
+														allMin = false
+													end
+												end
+												if allMin then
+													proc:toBack()
+												end
+											elseif x == findTransformedX(win.decorations.maxPos) then
+												if win.resizable then
+													if win.maximized then
+														win:restore()
+														proc:queue("window_resize")
+														proc:queue("term_resize")
+													else
+														win:maximize()
+														proc:queue("window_resize")
+														proc:queue("term_resize")
+													end
+												end
 											else
-												win:maximize()
-												proc:queue("window_resize")
-												proc:queue("term_resize")
+												watchMouseDragging = true
+												mouseDragAction = "move"
+												mouseStartX = event[3]
+												mouseStartY = event[4]
 											end
 										else
 											watchMouseDragging = true
@@ -367,24 +409,19 @@ while true do
 											mouseStartX = event[3]
 											mouseStartY = event[4]
 										end
-									else
+									elseif y == 0 and event[2] == 1 and win.windowType ~= "menu" and not proc.special then
+										--clicked on titlebar, set variables to see if we drag.
 										watchMouseDragging = true
 										mouseDragAction = "move"
 										mouseStartX = event[3]
 										mouseStartY = event[4]
+									elseif x == win.w - 1 and y == win.h - 1 and event[2] == 1 and not proc.special then
+										--clicked on lower right corner, resize.
+										watchMouseDragging = true
+										mouseDragAction = "resize"
+										mouseStartX = event[3]
+										mouseStartY = event[4]
 									end
-								elseif y == 0 and event[2] == 1 and win.windowType ~= "menu" and not proc.special then
-									--clicked on titlebar, set variables to see if we drag.
-									watchMouseDragging = true
-									mouseDragAction = "move"
-									mouseStartX = event[3]
-									mouseStartY = event[4]
-								elseif x == win.w - 1 and y == win.h - 1 and event[2] == 1 and not proc.special then
-									--clicked on lower right corner, resize.
-									watchMouseDragging = true
-									mouseDragAction = "resize"
-									mouseStartX = event[3]
-									mouseStartY = event[4]
 								end
 							end
 						end

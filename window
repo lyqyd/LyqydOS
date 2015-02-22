@@ -357,10 +357,11 @@ local Window = {
 					end
 				elseif #buf.text[1] < buf.sizeX then
 					--make wider.
+					local expand = buf.sizeX - #buf.text[1]
 					for i = 1, #buf.text do
-						buf.text[i] = buf.text[i]..string.rep(" ", buf.sizeX - #buf.text[i])
-						buf.textColor[i] = buf.textColor[i]..string.rep(buf.curTextColor, buf.sizeX - #buf.textColor[i])
-						buf.backColor[i] = buf.backColor[i]..string.rep(buf.curBackColor, buf.sizeX - #buf.backColor[i])
+						buf.text[i] = buf.text[i]..string.rep(" ", expand)
+						buf.textColor[i] = buf.textColor[i]..string.rep(buf.curTextColor, expand)
+						buf.backColor[i] = buf.backColor[i]..string.rep(buf.curBackColor, expand)
 					end
 				end
 				self.w = w
@@ -443,6 +444,9 @@ local Window = {
 		self:setTheme(self.theme)
 		self:draw()
 	end,
+	setMode = function(self, mode)
+		self.mode = mode
+	end,
 	setCaption = function(self, text)
 		self.caption = text
 		self:draw()
@@ -465,6 +469,8 @@ function new(w, h, x, y, caption, target)
 		--clean is normal window, standard includes _MX controls, modal includes X control only.
 		windowType = "clean",
 		theme = "standard",
+		--mode is normal, ephemeral or modal
+		mode = "normal",
 		decorations = {
 			ul = {"+", "0", "f"},
 			ur = {"+", "0", "f"},
@@ -489,6 +495,7 @@ function new(w, h, x, y, caption, target)
 		borderless = false,
 		resizable = true,
 		movable = true,
+		closable = true,
 		compatibility = false,
 	}
 	if win.target.setBounds then win.target.setBounds(win.x, win.y, win.x + win.w - 1, win.y + win.h - 1) end

@@ -93,7 +93,7 @@ local function runProgram()
 		win = window.new(30, 3, 2, 2, "Run Program", windowCompositor:newBuffer())
 	end
 	dProc:addWindow(win)
-	win.ephemeral = true
+	win:setMode("ephemeral")
 	win:setType("menu")
 	win:setTheme(LyqydOS.window.theme)
 	process.focusWindow = desk
@@ -196,12 +196,15 @@ local function recentPrograms()
 		win = window.new(30, 10, 2, 2, "Recent Programs", windowCompositor:newBuffer())
 	end
 	dProc:addWindow(win)
-	win.ephemeral = true
+	win:setMode("ephemeral")
 	win:setType("menu")
 	win:setTheme(LyqydOS.window.theme)
+	win.borderless = true
+	win:resize(win.w, win.h)
 	process.focusWindow = desk
 
 	local _old = term.redirect(win.redirect)
+	term.setBackgroundColor(term.isColor() and colors.gray or colors.black)
 	local success, selection = pcall(menu.select, recents)
 	--clean up window
 	if _old then
@@ -238,7 +241,7 @@ while true do
 			if process.list[i] and #process.list[i].windows >= 1 then
 				local proc = process.list[i]
 				for j = #proc.windows, 1, -1 do
-					if not proc.windows[j].ephemeral then
+					if proc.windows[j].mode ~= "ephemeral" then
 						local tBarEntry = {pID = i, text = proc.windows[j].caption}
 						table.insert(titlebarItems, tBarEntry)
 						break

@@ -206,7 +206,7 @@ local Process = {
 			return false
 		else
 			for i = 1, #self.windows do
-				if self.windows[i].ephemeral and (i < #self.windows or self.id ~= process.focusWindow) then
+				if self.windows[i].mode == "ephemeral" and (i < #self.windows or self.id ~= process.focusWindow) then
 					--kill the individual window
 					local proc = process.getFromName("lws")
 					if proc then
