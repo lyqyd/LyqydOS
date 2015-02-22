@@ -183,7 +183,7 @@ elseif process and process.id() then
 					term.setBackgroundColor(newDesktopBackground)
 					term.write(string.rep(" ", 26))
 				end
-				if newDesktopImage then
+				if #newDesktopImage > 0 then
 					local image = newDesktopImage
 					local x, y = 26, 8
 					local background = {}
@@ -402,6 +402,8 @@ elseif process and process.id() then
 						local dProc = process.getFromName("desktop")
 						if dProc then
 							dProc:queue("set_property", "background", newDesktopBackground, newDesktopImage)
+							LyqydOS.desktop.background = newDesktopBackground
+							LyqydOS.desktop.backgroundImage = newDesktopImage
 						end
 					end
 				end
