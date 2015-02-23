@@ -306,7 +306,7 @@ local Window = {
 			if y >= 1 and y + self.h - 1 <= ylim then
 				self.y = y
 			end
-			self:draw()
+			if not self.deferDraw then self:draw() end
 			return true
 		else
 			return nil, "must specify x and y"
@@ -365,7 +365,7 @@ local Window = {
 					end
 				end
 				self.w = w
-				self:draw()
+				if not self.deferDraw then self:draw() end
 				return true
 			else
 				return nil, "size too small"
@@ -392,7 +392,7 @@ local Window = {
 				return nil, "Invalid theme"
 			end
 		end
-		self:draw()
+		if not self.deferDraw then self:draw() end
 	end,
 	setDecorations = function(self, decoration)
 		if not decoration then
@@ -410,7 +410,7 @@ local Window = {
 		else
 			return nil, "Invalid decoration"
 		end
-		self:draw()
+		if not self.deferDraw then self:draw() end
 	end,
 	maximize = function(self)
 		self.normalSize = {x = self.x, y = self.y, w = self.w, h = self.h}
@@ -420,7 +420,7 @@ local Window = {
 	end,
 	minimize = function(self)
 		self.minimized = true
-		self:draw()
+		if not self.deferDraw then self:draw() end
 	end,
 	fullscreen = function(self)
 		self:maximize()
@@ -428,7 +428,7 @@ local Window = {
 	end,
 	unMinimize = function(self)
 		self.minimized = false
-		self:draw()
+		if not self.deferDraw then self:draw() end
 	end,
 	restore = function(self)
 		self.maximized = false
@@ -442,14 +442,14 @@ local Window = {
 	setType = function(self, winType)
 		self.windowType = winType
 		self:setTheme(self.theme)
-		self:draw()
+		if not self.deferDraw then self:draw() end
 	end,
 	setMode = function(self, mode)
 		self.mode = mode
 	end,
 	setCaption = function(self, text)
 		self.caption = text
-		self:draw()
+		if not self.deferDraw then self:draw() end
 	end,
 }
 
@@ -517,7 +517,7 @@ function new(w, h, x, y, caption, target)
 		if type(k) == "string" and type(v) == "function" then
 			win.redirect[k] = function(...)
 				local result = {_redirect[k](...)}
-				win:draw()
+				if not win.deferDraw then win:draw() end
 				return unpack(result)
 			end
 		else

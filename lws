@@ -85,15 +85,19 @@ local function windowAction(pID, win)
 						if p1 == 200 then
 							--up
 							win:move(win.x, win.y - 1)
+							win:draw()
 						elseif p1 == 203 then
 							--left
 							win:move(win.x - 1, win.y)
+							win:draw()
 						elseif p1 == 205 then
 							--right
 							win:move(win.x + 1, win.y)
+							win:draw()
 						elseif p1 == 208 then
 							--down
 							win:move(win.x, win.y + 1)
+							win:draw()
 						elseif p1 == 28 then
 							--enter
 							break
@@ -101,6 +105,7 @@ local function windowAction(pID, win)
 					elseif e == "mouse_click" and p1 == 1 then
 						--mouse click
 						win:move(p2, p3)
+						win:draw()
 						break
 					end
 				end
@@ -142,6 +147,7 @@ local function windowAction(pID, win)
 					win:minimize()
 					--also move the window to the bottom of the buffer stack.
 					proc:toBack()
+					win:draw()
 				end
 			elseif selection == 5 then
 				--maximize
@@ -388,10 +394,12 @@ while true do
 														win:restore()
 														proc:queue("window_resize")
 														proc:queue("term_resize")
+														win:draw()
 													else
 														win:maximize()
 														proc:queue("window_resize")
 														proc:queue("term_resize")
+														win:draw()
 													end
 												end
 											else
@@ -442,6 +450,7 @@ while true do
 				proc.windows[#proc.windows]:move(proc.windows[#proc.windows].x + (event[3] - mouseStartX), proc.windows[#proc.windows].y + (event[4] - mouseStartY))
 				mouseStartX = event[3]
 				mouseStartY = event[4]
+				proc.windows[#proc.windows]:draw()
 			elseif mouseDragAction == "resize" then
 				proc.windows[#proc.windows]:resize(proc.windows[#proc.windows].w + (event[3] - mouseStartX), proc.windows[#proc.windows].h + (event[4] - mouseStartY))
 				mouseStartX = event[3]
@@ -539,6 +548,7 @@ while true do
 				lwsProc:queue("close_window", process.focusWindow)
 				process.focusWindow = startProcess
 			end
+			win.deferDraw = true
 			if focus then
 				process.focusWindow = focus
 			end

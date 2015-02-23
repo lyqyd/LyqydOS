@@ -167,6 +167,9 @@ local Process = {
 		local active = process.activeProcess
 		process.activeProcess = self.id
 		passback = {coroutine.resume(self.thread, unpack(event))}
+		for _, win in ipairs(self.windows) do
+			win:draw()
+		end
 		process.windowCompositor:draw()
 		process.activeProcess = active
 
