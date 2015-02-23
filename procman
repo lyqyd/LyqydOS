@@ -103,16 +103,20 @@ end
 
 local function findHook(event)
 	local ref = process.eventHooks
-	local results = {}
+	local _results = {}
 	for i = 1, #event do
 		if ref[event[i]] then
 			if type(ref[event[i]]) == "table" then
 				for k, v in pairs(ref[event[i]].__hooks) do
-					table.insert(results, v)
+					_results[v] = true
 				end
 				ref = ref[event[i]]
 			end
 		end
+	end
+	local results = {}
+	for k, v in pairs(_results) do
+		table.insert(results, k)
 	end
 	return unpack(results)
 end
@@ -123,9 +127,11 @@ local function distributeEvent(event)
 	elseif event[1] == "key" or event[1] == "char" then
 		if process.eventHooks.redraw then
 			--events should fall through to desktop if there is no focus window.
-			local pID = findHook({"redraw"})
-			if pID and process.list[pID] then
-				process.list[pID]:resume(event)
+			local procs = {findHook({"redraw"})}
+			for _, pID in ipairs(procs) do
+				if pID and process.list[pID] then
+					process.list[pID]:resume(event)
+				end
 			end
 		end
 	end
@@ -156,23 +162,29 @@ while true do
 	end
 	--build title bar items if a desktop is present.
 	if process.eventHooks.redraw then
-		local pID = findHook({"redraw"})
-		if pID and process.list[pID] then
-			process.list[pID]:resume({"redraw"})
+		local procs = {findHook({"redraw"})}
+		for _, pID in ipairs(procs) do
+			if pID and process.list[pID] then
+				process.list[pID]:resume({"redraw"})
+			end
 		end
 	end
 
 	local event = {coroutine.yield()}
 
-	--process event hooks, like lws and desktop use for hotkeys.
+	--process event hooks, like lws and desktop use for hotkeys, otherwise distribute it.
 	if process.eventHooks[event[1]] then
-		local pID = findHook(event)
-		if pID and process.list[pID] then
-			event = {process.list[pID]:resume(event)}
+		local procs = {findHook(event)}
+		if #procs >= 1 then
+			for _, pID in ipairs(procs) do
+				if pID and process.list[pID] then
+					event = {process.list[pID]:resume(event)}
+				end
+			end
+		else
+			distributeEvent(event)
 		end
-	end
-
-	if #event > 0 then
+	else
 		distributeEvent(event)
 	end
 end
