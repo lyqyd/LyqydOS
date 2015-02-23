@@ -37,31 +37,34 @@ local function tablify(baseTable, keyTable)
 	if #keyTable > 1 then
 		local key = table.remove(keyTable, 1)
 		if not baseTable[key] then
-			baseTable[key] = {}
+			baseTable[key] = {__hooks = {}}
 		elseif type(baseTable[key]) ~= "table" then
 			return false
 		end
 		return tablify(baseTable[key], keyTable)
 	elseif #keyTable == 1 then
+		if not baseTable[keyTable[1]] then
+			baseTable[keyTable[1]] = {__hooks = {}}
+		end
 		return baseTable, keyTable[1]
 	end
 end
 
-local function changeHookActual(hookMask, val)
+local function changeHookActual(hookMask, val, add)
 	local ref, key = tablify(process.eventHooks, hookMask)
-	if ref and (not val or not ref[key]) then
-		ref[key] = val
+	if add then
+		ref[key].__hooks[val] = val
 	else
-		return false
+		ref[key].__hooks[val] = nil
 	end
 end
 
 function addHook(hookMask)
-	return changeHookActual(hookMask, process.id())
+	return changeHookActual(hookMask, process.id(), true)
 end
 
 function removeHook(hookMask)
-	return changeHookActual(hookMask)
+	return changeHookActual(hookMask, process.id(), false)
 end
 
 function setFocus(num)

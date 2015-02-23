@@ -103,19 +103,18 @@ end
 
 local function findHook(event)
 	local ref = process.eventHooks
+	local results = {}
 	for i = 1, #event do
 		if ref[event[i]] then
 			if type(ref[event[i]]) == "table" then
+				for k, v in pairs(ref[event[i]].__hooks) do
+					table.insert(results, v)
+				end
 				ref = ref[event[i]]
-			elseif type(ref[event[i]]) == "number" then
-				return ref[event[i]]
-			else
-				return false
 			end
-		else
-			return false
 		end
 	end
+	return unpack(results)
 end
 
 local function distributeEvent(event)
