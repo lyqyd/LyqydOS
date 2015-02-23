@@ -43,8 +43,8 @@ local function windowAction(pID, win)
 	if process.list[process.focusWindow] and not process.list[process.focusWindow].special then
 		local parent = process.focusWindow
 		local proc = process.list[parent]
-		local lws = process.id()
-		local lwsProc = process.list[lws]
+		local lwsProc = process.getFromName("lws")
+		local thisProc = process.this()
 		local x, y
 		if win.minimized then
 			x, y = 1, 2
@@ -52,11 +52,11 @@ local function windowAction(pID, win)
 			x, y = win.x, win.y + 1
 		end
 		local lwsWin = window.new(15, 9, x, y, "Action Menu", process.windowCompositor:newBuffer())
-		lwsProc:addWindow(lwsWin)
+		thisProc:addWindow(lwsWin)
 		lwsWin:setMode("ephemeral")
 		lwsWin:setType("menu")
 		lwsWin:setTheme(LyqydOS.window.theme)
-		process.focusWindow = lws
+		process.focusWindow = process.id()
 		local _old = term.redirect(lwsWin.redirect)
 		local success, selection = pcall(menu.select, {"Restore", "Move", "Resize", "Minimize", "Maximize", "Close", "Cancel"})
 		if _old then
@@ -64,7 +64,7 @@ local function windowAction(pID, win)
 		else
 			term.restore()
 		end
-		lwsProc:removeWindow(lwsWin)
+		thisProc:removeWindow(lwsWin)
 
 		if success then
 			if selection == 1 then
@@ -153,12 +153,9 @@ local function windowAction(pID, win)
 				end
 			elseif selection == 6 then
 				--close
-				saveDimensions(proc)
-				win:destroy()
-				process.list[parent] = false
-				process.focusWindow = nextWindow(1)
-				if process.list[process.focusWindow] then
-					process.list[process.focusWindow]:toFront()
+				proc:queue("window_close", win)
+				if win.closable then
+					lwsProc:queue("close_window", pID, win)
 				end
 			end
 			process.focusWindow = parent
