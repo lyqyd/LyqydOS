@@ -489,7 +489,8 @@ while true do
 					saveDimensions(proc)
 					proc:kill()
 				else
-					proc.windows[event[3]]:destroy()
+					proc:removeWindow(event[3])
+					event[3]:destroy()
 				end
 			else
 				saveDimensions(proc)
