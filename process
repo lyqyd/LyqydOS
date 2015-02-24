@@ -3,35 +3,8 @@ list = {}
 focusWindow = nil
 activeProcess = nil
 windowCompositor = {}
-redirectStack = {}
 nullRedirect = framebuffer.new()
 eventHooks = {}
-
-local oldTredirect = term.redirect
-local oldTrestore = term.restore
-
-local function newTredirect(target)
-	if term.current then
-		table.insert(process.redirectStack, target)
-		return oldTredirect(target)
-	else
-		oldTrestore()
-		table.insert(process.redirectStack, target)
-		oldTredirect(target)
-	end
-end
-
-local function newTrestore()
-	if #process.redirectStack > 1 then
-		if term.current then
-			oldTredirect(table.remove(process.redirectStack))
-		else
-			oldTrestore()
-			table.remove(process.redirectStack)
-			oldTredirect(process.redirectStack[#process.redirectStack])
-		end
-	end
-end
 
 local function tablify(baseTable, keyTable)
 	if #keyTable > 1 then
@@ -153,16 +126,7 @@ local Process = {
 		end
 
 		--redirect to window's current position in its redirect stack
-		local _old = term.redirect(self.redirect[#self.redirect])
-
-		--copy redirect stack to global table
-		process.redirectStack = {}
-		for i = 1, #self.redirect do
-			process.redirectStack[i] = self.redirect[i]
-		end
-
-		rawset(term, "redirect", newTredirect)
-		rawset(term, "restore", newTrestore)
+		local _old = term.redirect(self.redirect)
 
 		local active = process.activeProcess
 		process.activeProcess = self.id
@@ -173,19 +137,9 @@ local Process = {
 		process.windowCompositor:draw()
 		process.activeProcess = active
 
-		--restore correct redirection level and save redirect stack for resume.
-		rawset(term, "redirect", oldTredirect)
-		rawset(term, "restore", oldTrestore)
-
-		self.redirect = {}
-		for i=1, #process.redirectStack do
-			self.redirect[i] = process.redirectStack[i]
-		end
-		if _old then
-			term.redirect(_old)
-		else
-			term.restore()
-		end
+		self.redirect = term.current()
+		
+		term.redirect(_old)
 
 		--handle filters being sent back in passback.
 		if passback[1] and passback[2] then
@@ -216,7 +170,7 @@ local Process = {
 					--kill the individual window
 					local proc = process.getFromName("lws")
 					if proc then
-						proc:resume({"close_window", self.id, i})
+						proc:resume({"close_window", self.id, self.windows[i]})
 					else
 						error("no lws", 2)
 					end
@@ -344,12 +298,12 @@ function new(func, path, win, redirect)
 
 	if win then
 		table.insert(proc.windows, win)
-		proc.redirect = {win.redirect}
+		proc.redirect = win.redirect
 		process.focusWindow = #process.list
 	elseif redirect then
-		proc.redirect = {redirect}
+		proc.redirect = redirect
 	else
-		proc.redirect = {process.nullRedirect}
+		proc.redirect = process.nullRedirect
 	end
 	
 	setmetatable(proc, pmeta)

@@ -1,64 +1,64 @@
-local function drawMenu(menuTable, cursor, offset)
+local function drawMenu(menuTable, cursor, offset, colors)
 	local xlim, ylim = term.getSize()
+	local sT = term.isColor() and colors[1] or colors.black
+	local sB = term.isColor() and colors[2] or colors.white
+	local nT = term.isColor() and colors[3] or colors.white
+	local nB = term.isColor() and colors[4] or colors.black
 	if xlim < 3 or (ylim < 3 and #menuTable > 2) then
-		return nil, "Not enough space to draw menu!"
+		return nil, "Not enought space to draw menu!"
 	end
+	term.setBackgroundColor(nB)
+	term.setTextColor(nT)
 	term.clear()
 	offset = offset or 1
-	term.setCursorPos(3, 1)
-	if offset > 1 then
-		term.write("/\\")
-	else
-		term.write(string.sub(menuTable[1], 1, xlim - 2))
-	end
-	for i=1, math.min(ylim - 2,#menuTable - 1) do
-		term.setCursorPos(3, i + 1)
-		term.write(string.sub(menuTable[offset + i], 1, xlim - 2))
-	end
-	if #menuTable >= ylim then
-		term.setCursorPos(3, ylim)
-		if #menuTable > offset + ylim - 1 then
-			term.write("\\/")
+	for i = 1, math.min(ylim, #menuTable) do
+		term.setCursorPos(1, i)
+		if i == 1 and offset > 1 then
+			term.write(" /\\")
+		elseif i == ylim and #menuTable > offset + ylim - 1 then
+			term.write(" \\/")
 		else
-			term.write(string.sub(menuTable[#menuTable], 1, xlim - 2))
+			if i == (cursor - offset + 1) then
+				term.setTextColor(sT)
+				term.setBackgroundColor(sB)
+			else
+				term.setTextColor(nT)
+				term.setBackgroundColor(nB)
+			end
+			local text = string.sub(menuTable[offset + i - 1], 1, xlim - 2)
+			term.write(" "..text..string.rep(" ", xlim - #text - 1))
 		end
 	end
-	term.setCursorPos(1, cursor - offset + 1)
-	term.write(">")
 end
 
-function select(menuTable)
+
+function select(menuTable, selText, selBack, normText, normBack)
+	local colors = {selText or colors.white, selBack or colors.blue, normText or colors.white, normBack or colors.gray}
 	local cursor, offset = 1, 1
-	drawMenu(menuTable, cursor, offset)
+	drawMenu(menuTable, cursor, offset, colors)
 	while true do
 		local e, p1, p2, p3 = os.pullEvent()
 		if e == "key" then
 			--up
 			if p1 == 200 then
 				if cursor - offset + 1 > 2 or (cursor > 1 and offset ==  1) then
-					term.setCursorPos(1, cursor - offset + 1)
-					term.write(" ")
 					cursor = cursor - 1
-					term.setCursorPos(1, cursor - offset + 1)
-					term.write(">")
+					drawMenu(menuTable, cursor, offset, colors)
 				elseif cursor - offset + 1 == 2 and offset > 1 then
 					offset = offset - 1
 					cursor = cursor - 1
-					drawMenu(menuTable, cursor, offset)
+					drawMenu(menuTable, cursor, offset, colors)
 				end
 			--down
 			elseif p1 == 208 then
 				_, ylim = term.getSize()
 				if cursor < #menuTable and (cursor - offset + 1 < ylim - 1 or #menuTable <= ylim or (cursor == #menuTable - 1 and cursor - offset + 1 == ylim - 1)) then
-					term.setCursorPos(1, cursor - offset + 1)
-					term.write(" ")
 					cursor = cursor + 1
-					term.setCursorPos(1, cursor - offset + 1)
-					term.write(">")
+					drawMenu(menuTable, cursor, offset, colors)
 				elseif cursor < #menuTable and cursor - offset + 1 == ylim - 1 then
 					offset = offset + 1
 					cursor = cursor + 1
-					drawMenu(menuTable, cursor, offset)
+					drawMenu(menuTable, cursor, offset, colors)
 				end
 			elseif p1 == 28 then
 				return cursor
@@ -70,18 +70,18 @@ function select(menuTable)
 					--scroll up.
 					offset = offset - 1
 					cursor = offset + 1
-					drawMenu(menuTable, cursor, offset)
+					drawMenu(menuTable, cursor, offset, colors)
 				elseif offset + ylim - 1 < #menuTable and p3 == ylim then
 					--scroll down.
 					offset = offset + 1
 					cursor = offset + ylim - 2
-					drawMenu(menuTable, cursor, offset)
+					drawMenu(menuTable, cursor, offset, colors)
 				else
 					return p3 + offset - 1
 				end
 			end
-		elseif e == "window_resize" then
-			drawMenu(menuTable, cursor, offset)
+		elseif e == "term_resize" then
+			drawMenu(menuTable, cursor, offset, colors)
 		end
 	end
 end

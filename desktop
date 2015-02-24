@@ -199,8 +199,7 @@ local function recentPrograms()
 	win:setMode("ephemeral")
 	win:setType("menu")
 	win:setTheme(LyqydOS.window.theme)
-	win.borderless = true
-	win:resize(win.w, win.h)
+	win:setBorderless(true)
 	process.focusWindow = desk
 
 	local _old = term.redirect(win.redirect)
@@ -330,6 +329,7 @@ while true do
 						local win = proc.windows[#proc.windows]
 						proc:toFront()
 						if win.minimized then win:unMinimize() end
+						win:draw()
 						if event[2] == 2 then
 							--they right-clicked, so let's also display the window action menu.
 							process.getFromName("lws"):queue("window_action", process.focusWindow, win)

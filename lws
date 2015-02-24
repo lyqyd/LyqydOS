@@ -40,7 +40,7 @@ end
 
 local function windowAction(pID, win)
 	--index 2 should be the pID and 3 should be the window, forward compat for child windows.
-	if process.list[process.focusWindow] and not process.list[process.focusWindow].special then
+	if process.list[process.focusWindow] then
 		local parent = process.focusWindow
 		local proc = process.list[parent]
 		local lwsProc = process.getFromName("lws")
@@ -76,6 +76,7 @@ local function windowAction(pID, win)
 				elseif win.minimized then
 					win:unMinimize()
 					proc:toFront(win)
+					win:draw()
 				end
 			elseif selection == 2 then
 				--move
@@ -371,7 +372,9 @@ while true do
 					proc:resume(event)
 				elseif y == 0 and event[2] == 2 then
 					--right click on window title bar, open window menu.
-					lwsProc:queue("window_action", pID, win)
+					if win.mode ~= "ephemeral" then
+						lwsProc:queue("window_action", pID, win)
+					end
 				elseif (win.windowType == "modal" or win.windowType == "window") and y == 0 and event[2] == 1 then
 					local function findTransformedX(position)
 						if position < 0 then
@@ -399,6 +402,7 @@ while true do
 							if allMin then
 								proc:toBack()
 							end
+							win:draw()
 						elseif x == findTransformedX(win.decorations.maxPos) then
 							if win.resizable then
 								if win.maximized then
