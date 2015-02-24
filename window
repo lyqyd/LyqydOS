@@ -451,6 +451,13 @@ local Window = {
 		self.caption = text
 		if not self.deferDraw then self:draw() end
 	end,
+	setBorderless = function(self, mode)
+		self.borderless = mode
+		local resizable = self.resizable
+		self.resizable = true
+		self:resize(self.w, self.h)
+		self.resizable = resizable
+	end,
 }
 
 local wmetatable = {
@@ -535,9 +542,8 @@ end
 --compatibility with CC 1.6 window API.
 function create(parent, x, y, width, height, visible)
 	local win = window.new(width, height, x, y, "", parent)
-	win.borderless = true
 	win.compatibility = true
-	win:resize(width, height)
+	win:setBorderless(true)
 	if not visible then
 		win:minimize()
 	end

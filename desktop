@@ -199,8 +199,7 @@ local function recentPrograms()
 	win:setMode("ephemeral")
 	win:setType("menu")
 	win:setTheme(LyqydOS.window.theme)
-	win.borderless = true
-	win:resize(win.w, win.h)
+	win:setBorderless(true)
 	process.focusWindow = desk
 
 	local _old = term.redirect(win.redirect)
