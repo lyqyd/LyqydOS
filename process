@@ -23,6 +23,20 @@ local function tablify(baseTable, keyTable)
 	end
 end
 
+local directedEvents = {}
+
+function getNextDirectedEvent()
+	local proc,event
+	if #directedEvents>0 then
+		proc,event=unpack(table.remove(directedEvents,1))
+	end
+	return proc,event
+end
+
+function directedEventsWaiting()
+	return #directedEvents>0
+end
+
 local function changeHookActual(hookMask, val, add)
 	local ref, key = tablify(process.eventHooks, hookMask)
 	if add then
@@ -138,7 +152,7 @@ local Process = {
 		process.activeProcess = active
 
 		self.redirect = term.current()
-		
+
 		term.redirect(_old)
 
 		--handle filters being sent back in passback.
@@ -180,7 +194,8 @@ local Process = {
 		return true
 	end,
 	queue = function(self, ...)
-		table.insert(self.eventQueue, {...})
+		--table.insert(self.eventQueue, {...})
+		table.insert(directedEvents,{self,{...}})
 		return true
 	end,
 	kill = function(self)
@@ -289,7 +304,6 @@ function new(func, path, win, redirect)
 		thread = coroutine.create(func),
 		path = path,
 		name = fs.getName(path),
-		eventQueue = {},
 		windows = {},
 	}
 
@@ -305,7 +319,7 @@ function new(func, path, win, redirect)
 	else
 		proc.redirect = process.nullRedirect
 	end
-	
+
 	setmetatable(proc, pmeta)
 
 	proc:resume({})

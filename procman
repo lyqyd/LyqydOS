@@ -149,17 +149,14 @@ end
 windowCompositor:draw()
 
 while true do
-	--process individually-queued events.
-	for pID, proc in pairs(process.list) do
-		if proc then
-			proc:check()
-			if #proc.eventQueue >= 1 then
-				repeat
-					proc:resume(table.remove(proc.eventQueue, 1))
-				until #proc.eventQueue == 0
-			end
+	--process directed events, queued for specific processes
+	while process.directedEventsWaiting() do
+		local proc,event=process.getNextDirectedEvent()
+		if proc:check() then
+			proc:resume(event)
 		end
 	end
+
 	--build title bar items if a desktop is present.
 	if process.eventHooks.redraw then
 		local procs = {findHook({"redraw"})}
