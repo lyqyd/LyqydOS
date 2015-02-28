@@ -149,6 +149,11 @@ end
 windowCompositor:draw()
 
 while true do
+	--check all processes to clean up ephemeral windows and such.
+	for pID, proc in ipairs(process.list) do
+		if proc then proc:check() end
+	end
+
 	--process directed events, queued for specific processes
 	while process.directedEventsWaiting() do
 		local proc,event=process.getNextDirectedEvent()
