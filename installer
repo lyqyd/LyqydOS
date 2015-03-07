@@ -42,7 +42,7 @@ if #args >= 1 then
 	end
 else
 	--get packman and use it.
-	if not fs.exists("/packman") and not fs.exists("/usr/bin/packman") then
+	if not fs.exists("/usr/bin/packman") then
 		local response = http and http.get("https://raw.github.com/lyqyd/cc-packman/master/packman")
 		if response then
 			if not fs.exists("/usr/bin") then fs.makeDir("/usr/bin") end
@@ -54,20 +54,6 @@ else
 				error("Could not write /usr/bin/packman")
 			end
 			response.close()
-			local response = http.get("https://raw.github.com/lyqyd/cc-packman/master/package")
-			if response then
-				if not fs.exists("/usr/apis") then fs.makeDir("/usr/apis") end
-				local handle = io.open("/usr/apis/package", "w")
-				if handle then
-					handle:write(response.readAll())
-					handle:close()
-				else
-					error("Could not write /usr/apis/package")
-				end
-				response.close()
-			else
-				error("Could not fetch package API")
-			end
 		else
 			error("Could not fetch packman")
 		end
