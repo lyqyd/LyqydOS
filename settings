@@ -1,5 +1,25 @@
 local args = {...}
 
+local function findHook(event)
+	local ref = process.eventHooks
+	local _results = {}
+	for i = 1, #event do
+		if ref[event[i]] then
+			if type(ref[event[i]]) == "table" then
+				for k, v in pairs(ref[event[i]].__hooks) do
+					_results[v] = true
+				end
+				ref = ref[event[i]]
+			end
+		end
+	end
+	local results = {}
+	for k, v in pairs(_results) do
+		table.insert(results, k)
+	end
+	return unpack(results)
+end
+
 local function setWindowTheme(theme)
 	if theme ~= LyqydOS.window.theme and window.themes[theme] then
 		local oldTheme = LyqydOS.window.theme
@@ -9,6 +29,7 @@ local function setWindowTheme(theme)
 				for i, win in ipairs(proc.windows) do
 					if win.theme == oldTheme then
 						win:setTheme(LyqydOS.window.theme)
+						win:draw()
 					end
 				end
 			end
@@ -19,7 +40,7 @@ end
 local function setDesktopTheme(theme)
 	if theme ~= LyqydOS.desktop.theme then
 		if process.eventHooks.redraw then
-			local dProc = process.list[process.eventHooks.redraw]
+			local dProc = process.list[(findHook({"redraw"}))]
 			dProc:queue("set_property", "theme", theme)
 			local event
 			while true do
@@ -31,6 +52,7 @@ local function setDesktopTheme(theme)
 					break
 				end
 			end
+			dProc:queue("redraw")
 		end
 	end
 end
@@ -404,6 +426,37 @@ elseif process and process.id() then
 							dProc:queue("set_property", "background", newDesktopBackground, newDesktopImage)
 							LyqydOS.desktop.background = newDesktopBackground
 							LyqydOS.desktop.backgroundImage = newDesktopImage
+						end
+
+						--Edit the /LyqydOS/.config file to set preferences.
+						local contents = {}
+						local handle = io.open(fs.combine(LyqydOS.folderPath, ".config"), "r")
+						if handle then
+							for line in handle:lines() do
+								table.insert(contents, line)
+							end
+							handle:close()
+						end
+						if #contents > 0 then
+							for i = #contents, 1, -1 do
+								local property, value = string.match(contents[i], "^%s*([^%s=]+)%s*=%s*([^%s=]+)")
+								if property and value then
+									if property == "LyqydOS.window.theme" or property == "LyqydOS.desktop.theme" or property == "LyqydOS.desktop.background" or property == "LyqydOS.desktop.backgroundImage" then
+										table.remove(contents, i)
+									end
+								end
+							end
+						end
+						table.insert(contents, 'LyqydOS.window.theme = "'..newWindowTheme..'"')
+						table.insert(contents, 'LyqydOS.desktop.theme = "'..newDesktopTheme..'"')
+						table.insert(contents, "LyqydOS.desktop.background = "..newDesktopBackground)
+						--table.insert(contents, "LyqydOS.desktop.backgroundImage = "..newDesktopImage)
+						handle = io.open(fs.combine(LyqydOS.folderPath, ".config"), "w")
+						if handle then
+							for _, line in ipairs(contents) do
+								handle:write(line.."\n")
+							end
+							handle:close()
 						end
 					end
 				end
