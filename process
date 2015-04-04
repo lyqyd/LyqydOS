@@ -1,4 +1,3 @@
-processTable = {}
 list = {}
 focus = nil
 active = nil
@@ -58,40 +57,6 @@ function setFocus(num)
 	focusWindow = num
 end
 
-function getWindow()
-	if process.activeProcess and process.list[process.activeProcess] and process.list[process.activeProcess].windows and #process.list[process.activeProcess].windows >= 1 then
-		return process.list[process.activeProcess].windows[#process.list[process.activeProcess].windows]
-	else
-		return nil, "No window!"
-	end
-end
-
-function setWindowProperty(window, parameters)
-	if type(window) == "string" then
-		--table.insert()
-	elseif type(window) == "table" then
-		for k, v in pairs(parameters) do
-			if window[k] then
-				window[k] = v
-			end
-		end
-	end
-end
-
-function nextWindow(default)
-	local nextBuf = process.windowCompositor.bufferStack[#process.windowCompositor.bufferStack]
-	for pID, proc in ipairs(process.list) do
-		if proc then
-			for i = 1, #proc.windows do
-				if proc.windows[i].target.buffer == nextBuf then
-					return pID
-				end
-			end
-		end
-	end
-	return default
-end
-
 function id()
 	if process.active and process.list[process.active] then
 		return process.active
@@ -105,6 +70,14 @@ function this()
 		return process.list[process.id()]
 	else
 		return nil, "No active process!"
+	end
+end
+
+function next()
+	for  i = #process.list, 1, -1 do
+		if process.list[i] then
+			return i
+		end
 	end
 end
 
@@ -212,7 +185,7 @@ local Process = {
 	remove = function(self)
 		process.list[self.id] = false
 		if self.id == process.focus then
-			process.focus = process.nextWindow()
+			process.focus = process.next()
 			if process.focus then
 				process.list[process.focus]:toFront()
 			end
@@ -290,7 +263,7 @@ local Process = {
 			until #intermediate == 0
 		end
 
-		process.focus = process.nextWindow(1)
+		process.focus = process.next()
 		if process.list[process.focus] then
 			process.list[process.focus]:toFront()
 		end

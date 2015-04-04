@@ -307,6 +307,29 @@ do
 			LyqydOS.shell.multishell.setFocus(n)
 		end
 	end
+	do
+		function process.getWindow()
+			if process.active and process.list[process.active] and process.list[process.active].windows and #process.list[process.active].windows >= 1 then
+				return process.list[process.active].windows[#process.list[process.active].windows]
+			else
+				return nil, "No window!"
+			end
+		end
+
+		function process.nextWindow(default)
+			local nextBuf = process.compositor.bufferStack[#process.compositor.bufferStack]
+			for pID, proc in ipairs(process.list) do
+				if proc then
+					for i = 1, #proc.windows do
+						if proc.windows[i].target.buffer == nextBuf then
+							return pID
+						end
+					end
+				end
+			end
+			return default
+		end
+	end
 end
 
 local lws = process.id()
