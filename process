@@ -1,7 +1,7 @@
 processTable = {}
 list = {}
-focusWindow = nil
 activeProcess = nil
+focus = nil
 compositor = {}
 nullRedirect = framebuffer.new()
 eventHooks = {}
@@ -180,7 +180,7 @@ local Process = {
 			return false
 		else
 			for i = 1, #self.windows do
-				if self.windows[i].mode == "ephemeral" and (i < #self.windows or self.id ~= process.focusWindow) then
+				if self.windows[i].mode == "ephemeral" and (i < #self.windows or self.id ~= process.focus) then
 					--kill the individual window
 					local proc = process.getFromName("lws")
 					if proc then
@@ -211,10 +211,10 @@ local Process = {
 	end,
 	remove = function(self)
 		process.list[self.id] = false
-		if self.id == process.focusWindow then
-			process.focusWindow = process.nextWindow()
-			if process.focusWindow then
-				process.list[process.focusWindow]:toFront()
+		if self.id == process.focus then
+			process.focus = process.nextWindow()
+			if process.focus then
+				process.list[process.focus]:toFront()
 			end
 		end
 	end,
@@ -290,9 +290,9 @@ local Process = {
 			until #intermediate == 0
 		end
 
-		process.focusWindow = process.nextWindow(1)
-		if process.list[process.focusWindow] then
-			process.list[process.focusWindow]:toFront()
+		process.focus = process.nextWindow(1)
+		if process.list[process.focus] then
+			process.list[process.focus]:toFront()
 		end
 	end,
 }
@@ -313,7 +313,7 @@ function new(func, path, win, redirect)
 	if win then
 		table.insert(proc.windows, win)
 		proc.redirect = win.redirect
-		process.focusWindow = #process.list
+		process.focus = #process.list
 	elseif redirect then
 		proc.redirect = redirect
 	else

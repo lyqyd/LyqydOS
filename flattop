@@ -65,7 +65,7 @@ local function addTerm()
 	local win = {redirect = redirect, target = redirect, destroy = function(self) removeTerm(self) end, caption = "lsh", setCaption = function(self, cap) self.caption = cap end}
 	local proc = process.new(function() shell.run("/LyqydOS/lsh") end, "lsh", win, redirect)
 	table.insert(terms, proc)
-	process.focusWindow = proc.id
+	process.focus = proc.id
 	focusTerm = proc
 end
 
@@ -86,7 +86,7 @@ while true do
 				elseif i == 1 then
 					focusTerm = terms[#terms]
 				end
-				process.focusWindow = focusTerm.id
+				process.focus = focusTerm.id
 				focusTerm:toFront()
 				break
 			end
@@ -99,7 +99,7 @@ while true do
 				elseif i == #terms then
 					focusTerm = terms[1]
 				end
-				process.focusWindow = focusTerm.id
+				process.focus = focusTerm.id
 				focusTerm:toFront()
 				break
 			end

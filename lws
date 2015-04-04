@@ -40,8 +40,8 @@ end
 
 local function windowAction(pID, win)
 	--index 2 should be the pID and 3 should be the window, forward compat for child windows.
-	if process.list[process.focusWindow] then
-		local parent = process.focusWindow
+	if process.list[process.focus] then
+		local parent = process.focus
 		local proc = process.list[parent]
 		local lwsProc = process.getFromName("lws")
 		local thisProc = process.this()
@@ -56,7 +56,7 @@ local function windowAction(pID, win)
 		lwsWin:setMode("ephemeral")
 		lwsWin:setType("menu")
 		lwsWin:setTheme(LyqydOS.window.theme)
-		process.focusWindow = process.id()
+		process.focus = process.id()
 		local _old = term.redirect(lwsWin.redirect)
 		local success, selection = pcall(menu.select, {"Restore", "Move", "Resize", "Minimize", "Maximize", "Close", "Cancel"})
 		if _old then
@@ -165,13 +165,13 @@ local function windowAction(pID, win)
 					lwsProc:queue("close_window", pID, win)
 				end
 			end
-			process.focusWindow = parent
+			process.focus = parent
 		end
 	end
 end
 
 local function windowSelect()
-	local oldFocus = process.focusWindow
+	local oldFocus = process.focus
 	local lws = process.id()
 	local lwsProc = process.list[lws]
 	local lwsWin = window.new(19, 11, 1, 1, "Select Window", windowCompositor:newBuffer())
@@ -179,7 +179,7 @@ local function windowSelect()
 	lwsWin:setMode("ephemeral")
 	lwsWin:setTheme(LyqydOS.window.theme)
 	lwsWin:setType("menu")
-	process.focusWindow = lws
+	process.focus = lws
 	local _old = term.redirect(lwsWin.redirect)
 	local pList, menuList = {}, {}
 	for tNum, tInfo in ipairs(process.list) do
@@ -201,13 +201,13 @@ local function windowSelect()
 	lwsProc:removeWindow(lwsWin)
 	if success then
 		if pList[selection] then
-			process.focusWindow = pList[selection]
-			local proc = process.list[process.focusWindow]
+			process.focus = pList[selection]
+			local proc = process.list[process.focus]
 			local win = proc.windows[#proc.windows]
 			if win.minimized then win:unMinimize() end
 			proc:toFront()
 		else
-			process.focusWindow = oldFocus
+			process.focus = oldFocus
 		end
 	end
 end
@@ -247,7 +247,7 @@ do
 		end
 
 		LyqydOS.shell.multishell.launch = function(env, path, ...)
-			local focus = process.focusWindow
+			local focus = process.focus
 			local args = {...}
 			local startProcess = process.id()
 			if path then
@@ -270,12 +270,12 @@ do
 				win:setTheme(LyqydOS.window.theme)
 				if max == "true" then win:maximize() end
 				process.new(function() os.run(env, fs.combine(LyqydOS.folderPath, "lsh"), path, unpack(args)) end, path, win)
-				if coroutine.status(process.list[process.focusWindow].thread) == "dead" then
-					process.getFromName("lws"):queue("close_window", process.focusWindow)
-					process.focusWindow = startProcess
+				if coroutine.status(process.list[process.focus].thread) == "dead" then
+					process.getFromName("lws"):queue("close_window", process.focus)
+					process.focus = startProcess
 				end
 				if focus then
-					process.focusWindow = focus
+					process.focus = focus
 				end
 			end
 		end
@@ -285,11 +285,11 @@ do
 		end
 
 		LyqydOS.shell.multishell.getFocus = function()
-			return process.focusWindow
+			return process.focus
 		end
 
 		LyqydOS.shell.multishell.setFocus = function(n)
-			process.focusWindow = n
+			process.focus = n
 		end
 
 		LyqydOS.shell.shell.openTab = function(...)
@@ -326,20 +326,20 @@ while true do
 	local event = {os.pullEventRaw()}
 	if not desktop then desktop = process.getFromName("desktop") end
 	if event[1] == "key" and event[2] == 61 then
-		if process.focusWindow and process.list[process.focusWindow] then
+		if process.focus and process.list[process.focus] then
 			lwsProc:queue("select_window")
 		end
 	elseif event[1] == "key" and event[2] == 62 then
-		if process.focusWindow and process.list[process.focusWindow] then
-			lwsProc:queue("window_action", process.focusWindow, process.list[process.focusWindow].windows[#process.list[process.focusWindow].windows])
+		if process.focus and process.list[process.focus] then
+			lwsProc:queue("window_action", process.focus, process.list[process.focus].windows[#process.list[process.focus].windows])
 		end
 		elseif event[1] == "mouse_click" then
 		watchMouseDragging = false
 		local windowFound = false
 		local pID, proc, winNum, win = findWindow(event[3], event[4])
 		if pID and proc and win then
-			if process.focusWindow ~= pID then
-				process.focusWindow = pID
+			if process.focus ~= pID then
+				process.focus = pID
 				proc:toFront(win)
 			elseif winNum < #proc.windows then
 				local modalFound = false
@@ -450,7 +450,7 @@ while true do
 	elseif event[1] == "mouse_drag" then
 		--mouse is dragging, see if we need to do something with windows.
 		if watchMouseDragging then
-			local proc = process.list[process.focusWindow]
+			local proc = process.list[process.focus]
 			if mouseDragAction == "move" then
 				proc.windows[#proc.windows]:move(proc.windows[#proc.windows].x + (event[3] - mouseStartX), proc.windows[#proc.windows].y + (event[4] - mouseStartY))
 				mouseStartX = event[3]
@@ -464,8 +464,8 @@ while true do
 				proc:queue("window_resize")
 				proc:queue("term_resize")
 			end
-		elseif process.list[process.focusWindow] and process.list[process.focusWindow].windows then
-			local proc = process.list[process.focusWindow]
+		elseif process.list[process.focus] and process.list[process.focus].windows then
+			local proc = process.list[process.focus]
 			local win = proc.windows[#proc.windows]
 			event[3] = event[3] - win.x
 			event[4] = event[4] - win.y
@@ -521,7 +521,7 @@ while true do
 		--3, start in background
 		local focus
 		if event[3] then
-			focus = process.focusWindow
+			focus = process.focus
 		end
 		local args = {}
 		for match in string.gmatch( event[2], "[^ \t]+" ) do
@@ -550,13 +550,13 @@ while true do
 			win:setTheme(LyqydOS.window.theme)
 			if max == "true" then win:maximize() end
 			process.new(function() shell.run("lsh", path, unpack(args)) end, path, win)
-			if coroutine.status(process.list[process.focusWindow].thread) == "dead" then
-				lwsProc:queue("close_window", process.focusWindow)
-				process.focusWindow = startProcess
+			if coroutine.status(process.list[process.focus].thread) == "dead" then
+				lwsProc:queue("close_window", process.focus)
+				process.focus = startProcess
 			end
 			win.deferDraw = true
 			if focus then
-				process.focusWindow = focus
+				process.focus = focus
 			end
 		end
 	end

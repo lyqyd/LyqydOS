@@ -96,7 +96,7 @@ local function runProgram()
 	win:setMode("ephemeral")
 	win:setType("menu")
 	win:setTheme(LyqydOS.window.theme)
-	process.focusWindow = desk
+	process.focus = desk
 
 	local _old = term.redirect(win.redirect)
 	term.setTextColor(colors.white)
@@ -200,7 +200,7 @@ local function recentPrograms()
 	win:setType("menu")
 	win:setTheme(LyqydOS.window.theme)
 	win:setBorderless(true)
-	process.focusWindow = desk
+	process.focus = desk
 
 	local _old = term.redirect(win.redirect)
 	term.setBackgroundColor(term.isColor() and colors.gray or colors.black)
@@ -322,17 +322,17 @@ while true do
 						--clicked on more, display the window choice dialog
 						process.getFromName("lws"):queue("select_window")
 					else
-						if process.focusWindow ~= titlebarItems[clickItem].pID then
-							process.focusWindow = titlebarItems[clickItem].pID
+						if process.focus ~= titlebarItems[clickItem].pID then
+							process.focus = titlebarItems[clickItem].pID
 						end
-						local proc = process.list[process.focusWindow]
+						local proc = process.list[process.focus]
 						local win = proc.windows[#proc.windows]
 						proc:toFront()
 						if win.minimized then win:unMinimize() end
 						win:draw()
 						if event[2] == 2 then
 							--they right-clicked, so let's also display the window action menu.
-							process.getFromName("lws"):queue("window_action", process.focusWindow, win)
+							process.getFromName("lws"):queue("window_action", process.focus, win)
 						end
 					end
 				end

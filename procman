@@ -73,7 +73,7 @@ if fs.exists(fs.combine(path, ".config")) then
 	dofile(fs.combine(path, ".config"))
 end
 
-process.focusWindow = nil
+process.focus = nil
 windowCompositor = compositor.new(term.current and term.current() or term.native)
 windowCompositor.deferDraw = true
 rawset(process, "compositor", windowCompositor)
@@ -122,8 +122,8 @@ local function findHook(event)
 end
 
 local function distributeEvent(event)
-	if process.list[process.focusWindow] then
-		process.list[process.focusWindow]:resume(event)
+	if process.list[process.focus] then
+		process.list[process.focus]:resume(event)
 	elseif event[1] == "key" or event[1] == "char" then
 		if process.eventHooks.redraw then
 			--events should fall through to desktop if there is no focus window.
@@ -138,7 +138,7 @@ local function distributeEvent(event)
 	--handle background processes.
 	if event[1] ~= "key" and event[1] ~= "char" and event[1] ~= "mouse_click" and event[1] ~= "mouse_drag" and event[1] ~= "mouse_scroll" and event[1] ~= "window_resize" and event[1] ~= "terminate" then
 		for pID, proc in ipairs(process.list) do
-			if pID ~= process.focusWindow and proc then
+			if pID ~= process.focus and proc then
 				proc:resume(event)
 			end
 		end
