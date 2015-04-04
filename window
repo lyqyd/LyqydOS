@@ -424,7 +424,7 @@ local Window = {
 	end,
 	fullscreen = function(self)
 		self:maximize()
-		self.borderless = true
+		self:setBorderless(true)
 	end,
 	unMinimize = function(self)
 		self.minimized = false
@@ -504,6 +504,7 @@ function new(w, h, x, y, caption, target)
 		movable = true,
 		closable = true,
 		compatibility = false,
+		deferDraw = false,
 	}
 	if win.target.setBounds then win.target.setBounds(win.x, win.y, win.x + win.w - 1, win.y + win.h - 1) end
 	local xlim, ylim = win.target.getSize()

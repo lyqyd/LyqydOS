@@ -31,8 +31,16 @@ if fs.exists(fs.combine(LyqydOS.folderPath, "themes/desktop")) and fs.isDir(fs.c
 end
 
 local deskID = process.id()
-local deskRedirect, bufNum = process.compositor:newBuffer()
+local deskWin.redirect, bufNum = process.compositor:newBuffer()
+local w, h = deskWin.redirect.getSize()
+local deskWin = window.new(w, h, 1, 1, "desktop", deskWin.redirect)
+deskWin.deferDraw = true,
+deskWin:setBorderless(true)
+deskWin.resizable = true,
+deskWin.movable = true,
+deskWin.closable = true,
 process.compositor:lockToBack(bufNum)
+process.this():addWindow(deskWin)
 
 process.addHook({"key", 59})
 process.addHook({"redraw"})
@@ -116,15 +124,15 @@ local function runProgram()
 end
 
 local function setBackground(color, image)
-	if deskRedirect.isColor() then
+	if deskWin.redirect.isColor() then
 		if color then
-			local x, y = deskRedirect.getSize()
+			local x, y = deskWin.redirect.getSize()
 			for i = 2, y do
-				deskRedirect.buffer.backColor[i] = string.rep(string.format("%x", math.floor(math.log(color) / math.log(2))), x)
+				deskWin.redirect.buffer.backColor[i] = string.rep(string.format("%x", math.floor(math.log(color) / math.log(2))), x)
 			end
 		end
 		if image and #image > 0 then
-			local x, y = deskRedirect.getSize()
+			local x, y = deskWin.redirect.getSize()
 			local background = {}
 			if fs.exists(image) then
 				local handle = io.open(image, "r")
@@ -138,16 +146,16 @@ local function setBackground(color, image)
 				backColor = string.format("%x", math.floor(math.log(backColor) / math.log(2)))
 				for i = 2, y do
 					if background[i - 1] then
-						deskRedirect.buffer.backColor[i] = background[i-1]..string.rep(backColor, x - #background[i-1])
+						deskWin.redirect.buffer.backColor[i] = background[i-1]..string.rep(backColor, x - #background[i-1])
 					else
-						deskRedirect.buffer.backColor[i] = string.rep(backColor, x)
+						deskWin.redirect.buffer.backColor[i] = string.rep(backColor, x)
 					end
 				end
 			end
 		end
 	else
-		deskRedirect.setBackgroundColor(colors.black)
-		deskRedirect.clear()
+		deskWin.redirect.setBackgroundColor(colors.black)
+		deskWin.redirect.clear()
 	end
 	process.list[deskID]:queue("redraw")
 end
@@ -219,12 +227,13 @@ end
 --set up initial view.
 local theme = themes[LyqydOS.desktop.theme]
 setBackground(LyqydOS.desktop.background, LyqydOS.desktop.backgroundImage)
-local x, y = deskRedirect.getSize()
-deskRedirect.buffer.text[1] = theme.titlebar[1].."LyqydOS"..string.rep(theme.titlebar[1], x - 8)
-if deskRedirect.isColor() then
-	deskRedirect.buffer.textColor[1] = theme.titlebar[2]..string.rep(theme.ostext[2], 7)..string.rep(theme.titlebar[2], x - 8)
-	deskRedirect.buffer.backColor[1] = theme.titlebar[3]..string.rep(theme.ostext[3], 7)..string.rep(theme.titlebar[3], x - 8)
+local x, y = deskWin.redirect.getSize()
+deskWin.redirect.buffer.text[1] = theme.titlebar[1].."LyqydOS"..string.rep(theme.titlebar[1], x - 8)
+if deskWin.redirect.isColor() then
+	deskWin.redirect.buffer.textColor[1] = theme.titlebar[2]..string.rep(theme.ostext[2], 7)..string.rep(theme.titlebar[2], x - 8)
+	deskWin.redirect.buffer.backColor[1] = theme.titlebar[3]..string.rep(theme.ostext[3], 7)..string.rep(theme.titlebar[3], x - 8)
 end
+deskWin:draw()
 
 local titlebarItems
 local tasksClickable
@@ -264,22 +273,23 @@ while true do
 			--taskText = taskText..str.."|"
 			tasksClickable = tasksClickable + 1
 		end
-		deskRedirect.buffer.text[1] = theme.titlebar[1].."LyqydOS"..theme.titlebar[1]
-		deskRedirect.buffer.textColor[1] = theme.titlebar[2]..string.rep(theme.ostext[2], 7)..theme.titlebar[2]
-		deskRedirect.buffer.backColor[1] = theme.titlebar[3]..string.rep(theme.ostext[3], 7)..theme.titlebar[3]
+		deskWin.redirect.buffer.text[1] = theme.titlebar[1].."LyqydOS"..theme.titlebar[1]
+		deskWin.redirect.buffer.textColor[1] = theme.titlebar[2]..string.rep(theme.ostext[2], 7)..theme.titlebar[2]
+		deskWin.redirect.buffer.backColor[1] = theme.titlebar[3]..string.rep(theme.ostext[3], 7)..theme.titlebar[3]
 		if #taskText > 0 then
-			deskRedirect.buffer.text[1] = deskRedirect.buffer.text[1]..theme.tasksep[1]
-			deskRedirect.buffer.textColor[1] = deskRedirect.buffer.textColor[1]..theme.tasksep[2]
-			deskRedirect.buffer.backColor[1] = deskRedirect.buffer.backColor[1]..theme.tasksep[3]
+			deskWin.redirect.buffer.text[1] = deskWin.redirect.buffer.text[1]..theme.tasksep[1]
+			deskWin.redirect.buffer.textColor[1] = deskWin.redirect.buffer.textColor[1]..theme.tasksep[2]
+			deskWin.redirect.buffer.backColor[1] = deskWin.redirect.buffer.backColor[1]..theme.tasksep[3]
 			for i = 1, #taskText do
-				deskRedirect.buffer.text[1] = deskRedirect.buffer.text[1]..taskText[i]..theme.tasksep[1]
-				deskRedirect.buffer.textColor[1] = deskRedirect.buffer.textColor[1]..string.rep(theme.tasktext[2], #taskText[i])..theme.tasksep[2]
-				deskRedirect.buffer.backColor[1] = deskRedirect.buffer.backColor[1]..string.rep(theme.tasktext[3], #taskText[i])..theme.tasksep[3]
+				deskWin.redirect.buffer.text[1] = deskWin.redirect.buffer.text[1]..taskText[i]..theme.tasksep[1]
+				deskWin.redirect.buffer.textColor[1] = deskWin.redirect.buffer.textColor[1]..string.rep(theme.tasktext[2], #taskText[i])..theme.tasksep[2]
+				deskWin.redirect.buffer.backColor[1] = deskWin.redirect.buffer.backColor[1]..string.rep(theme.tasktext[3], #taskText[i])..theme.tasksep[3]
 			end
 		end
-		deskRedirect.buffer.text[1] = deskRedirect.buffer.text[1]..string.rep(theme.titlebar[1], x - #deskRedirect.buffer.text[1])
-		deskRedirect.buffer.textColor[1] = deskRedirect.buffer.textColor[1]..string.rep(theme.titlebar[2], x - #deskRedirect.buffer.textColor[1])
-		deskRedirect.buffer.backColor[1] = deskRedirect.buffer.backColor[1]..string.rep(theme.titlebar[3], x - #deskRedirect.buffer.backColor[1])
+		deskWin.redirect.buffer.text[1] = deskWin.redirect.buffer.text[1]..string.rep(theme.titlebar[1], x - #deskWin.redirect.buffer.text[1])
+		deskWin.redirect.buffer.textColor[1] = deskWin.redirect.buffer.textColor[1]..string.rep(theme.titlebar[2], x - #deskWin.redirect.buffer.textColor[1])
+		deskWin.redirect.buffer.backColor[1] = deskWin.redirect.buffer.backColor[1]..string.rep(theme.titlebar[3], x - #deskWin.redirect.buffer.backColor[1])
+		deskWin:draw()
 	elseif event[1] == "set_property" then
 		if event[2] == "background" then
 			setBackground(event[3], event[4])
@@ -336,7 +346,7 @@ while true do
 			end
 		end
 	elseif event[1] == "service_stop" then
-		process.compositor:removeBuffer(deskRedirect.buffer)
+		process.compositor:removeBuffer(deskRedirect)
 		process.removeHook({"key", 59})
 	end
 end
