@@ -1,7 +1,7 @@
 processTable = {}
 list = {}
-activeProcess = nil
 focus = nil
+active = nil
 compositor = {}
 nullRedirect = framebuffer.new()
 eventHooks = {}
@@ -93,8 +93,8 @@ function nextWindow(default)
 end
 
 function id()
-	if process.activeProcess and process.list[process.activeProcess] then
-		return process.activeProcess
+	if process.active and process.list[process.active] then
+		return process.active
 	else
 		return nil, "No active process!"
 	end
@@ -142,14 +142,14 @@ local Process = {
 		--redirect to window's current position in its redirect stack
 		local _old = term.redirect(self.redirect)
 
-		local active = process.activeProcess
-		process.activeProcess = self.id
+		local active = process.active
+		process.active = self.id
 		passback = {coroutine.resume(self.thread, unpack(event))}
 		for _, win in ipairs(self.windows) do
 			win:draw()
 		end
-		process.activeProcess = active
 		process.compositor:draw()
+		process.active = active
 
 		self.redirect = term.current()
 

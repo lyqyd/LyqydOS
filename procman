@@ -1,4 +1,4 @@
-if process and process.activeProcess ~= nil then return end
+if process and process.active ~= nil then return end
 
 local path
 
