@@ -100,6 +100,20 @@ local Compositor = {
 		end
 		return false
 	end,
+	unlock = function(self, pos)
+		if pos <= self.locked.bottom then
+			table.insert(self.bufferStack, self.locked.bottom, (table.remove(self.bufferStack, pos)))
+			self.locked.bottom = self.locked.bottom - 1
+			if not self.deferDraw then self:draw() end
+			return true
+		elseif pos > #self.bufferStack - self.locked.top then
+			table.insert(self.bufferStack, #self.bufferStack - self.locked.top + 1, (table.remove(self.bufferStack, pos)))
+			self.locked.top = self.locked.top - 1
+			if not self.deferDraw then self:draw() end
+			return true
+		end
+		return false
+	end,
 	removeBuffer = function(self, buffer)
 		local pos
 		for i = 1, #self.bufferStack do
