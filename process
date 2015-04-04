@@ -247,20 +247,14 @@ local Process = {
 				end
 			end
 
-			local intermediate = {}
-
 			for i = 1, #self.windows do
 				for j = 1, #process.compositor.bufferStack do
 					if self.windows[i].target.buffer == process.compositor.bufferStack[j] then
-						table.insert(intermediate, table.remove(process.compositor.bufferStack, j))
+						process.compositor:toBack(j)
 						break
 					end
 				end
 			end
-
-			repeat
-				table.insert(process.compositor.bufferStack, 2, table.remove(intermediate))
-			until #intermediate == 0
 		end
 
 		process.focus = process.next()

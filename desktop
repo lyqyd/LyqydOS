@@ -31,11 +31,8 @@ if fs.exists(fs.combine(LyqydOS.folderPath, "themes/desktop")) and fs.isDir(fs.c
 end
 
 local deskID = process.id()
-local deskRedirect = process.compositor:newBuffer()
-if #process.compositor.bufferStack > 1 then
-	--move desktop to bottom
-	table.insert(process.compositor.bufferStack, 1, table.remove(process.compositor.bufferStack))
-end
+local deskRedirect, bufNum = process.compositor:newBuffer()
+process.compositor:lockToBack(bufNum)
 
 process.addHook({"key", 59})
 process.addHook({"redraw"})

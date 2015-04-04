@@ -14,9 +14,11 @@ local Compositor = {
 			end
 		end
 
-		table.insert(self.bufferStack, redirect.buffer)
+		local bufferNum = #self.bufferStack - self.locked.top + 1,
 
-		return redirect
+		table.insert(self.bufferStack, bufferNum, redirect.buffer)
+
+		return redirect, num
 	end,
 	draw = function(self, mode)
 		if #self.bufferStack > 0 then
@@ -69,16 +71,50 @@ local Compositor = {
 		end
 	end,
 	toFront = function(self, pos)
-		table.insert(self.bufferStack, (table.remove(self.bufferStack, pos)))
-		if not self.deferDraw then self:draw() end
+		if pos > self.locked.bottom and pos <= #self.bufferStack - self.locked.top then
+			table.insert(self.bufferStack, #self.bufferStack - self.locked.top + 1, (table.remove(self.bufferStack, pos)))
+			if not self.deferDraw then self:draw() end
+			return true
+		end
+		return false
+	end,
+	toBack = function(self, pos)
+		if pos > self.locked.bottom and pos <= #self.bufferStack - self.locked.top then
+			table.insert(self.bufferStack, self.locked.bottom + 1, (table.remove(self.bufferStack, pos)))
+			if not self.deferDraw then self:draw() end
+			return true
+		end
+		return false
+	end,
+	lockToFront = function(self, pos)
+		if self:toFront(pos) then
+			self.locked.top = self.locked.top + 1
+			return true
+		end
+		return false
+	end,
+	lockToBack = function(self, pos)
+		if self:toBack(pos) then
+			self.locked.bottom = self.locked.bottom + 1
+			return true
+		end
+		return false
 	end,
 	removeBuffer = function(self, buffer)
-		local pos = nil
+		local pos
 		for i = 1, #self.bufferStack do
 			if self.bufferStack[i] == buffer then
-				table.remove(self.bufferStack, i)
+				pos = i
 				break
 			end
+		end
+		if pos then
+			if self.locked.bottom > 0 and pos <= self.locked.bottom then
+				self.locked.bottom = self.locked.bottom - 1
+			elseif self.locked.top > 0 and pos >= #self.bufferStack - self.locked.top + 1 then
+				self.locked.top = self.locked.top - 1
+			end
+			table.remove(self.bufferStack, pos)
 		end
 		if not self.deferDraw then self:draw() end
 	end,
@@ -93,7 +129,11 @@ function new(target)
 		bufferStack = {},
 		target = target or term.native,
 		currentBuffer = {text = {}, textColor = {}, backColor = {}},
-		deferDraw = false
+		deferDraw = false,
+		locked = {
+			top = 0,
+			bottom = 0,
+		},
 	}
 	setmetatable( comp, cmetatable )
 	if comp.target.getSize() then
