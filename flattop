@@ -31,8 +31,8 @@ if fs.exists("/LyqydOS/themes/desktop") and fs.isDir("/LyqydOS/themes/desktop") 
 end
 
 local deskID = process.id()
-local deskRedirect = process.windowCompositor:newBuffer()
-deskRedirect.setBounds(1, process.windowCompositor.y, process.windowCompositor.x, process.windowCompositor.y)
+local deskRedirect = process.compositor:newBuffer()
+deskRedirect.setBounds(1, process.compositor.y, process.compositor.x, process.compositor.y)
 local x, y = deskRedirect.getSize()
 
 --new term, previous term, next term keys.
@@ -45,7 +45,7 @@ local terms = {}
 local focusTerm = nil
 
 local function removeTerm(win)
-	process.windowCompositor:removeBuffer(win.target.buffer)
+	process.compositor:removeBuffer(win.target.buffer)
 	for i = 1, #terms do
 		if terms[i].windows[1] == win then
 			table.remove(terms, i)
@@ -56,12 +56,12 @@ local function removeTerm(win)
 end
 
 local function addTerm()
-	local redirect = framebuffer.new(process.windowCompositor.x, process.windowCompositor.y - 1, process.windowCompositor.target.isColor())
+	local redirect = framebuffer.new(process.compositor.x, process.compositor.y - 1, process.compositor.target.isColor())
 	redirect.buffer.minX = 1
-	redirect.buffer.maxX = process.windowCompositor.x
+	redirect.buffer.maxX = process.compositor.x
 	redirect.buffer.minY = 1
-	redirect.buffer.maxY = process.windowCompositor.y - 1
-	table.insert(process.windowCompositor.bufferStack, redirect.buffer)
+	redirect.buffer.maxY = process.compositor.y - 1
+	table.insert(process.compositor.bufferStack, redirect.buffer)
 	local win = {redirect = redirect, target = redirect, destroy = function(self) removeTerm(self) end, caption = "lsh", setCaption = function(self, cap) self.caption = cap end}
 	local proc = process.new(function() shell.run("/LyqydOS/lsh") end, "lsh", win, redirect)
 	table.insert(terms, proc)

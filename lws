@@ -51,7 +51,7 @@ local function windowAction(pID, win)
 		else
 			x, y = win.x, win.y + 1
 		end
-		local lwsWin = window.new(15, 9, x, y, "Action Menu", process.windowCompositor:newBuffer())
+		local lwsWin = window.new(15, 9, x, y, "Action Menu", process.compositor:newBuffer())
 		thisProc:addWindow(lwsWin)
 		lwsWin:setMode("ephemeral")
 		lwsWin:setType("menu")
@@ -213,11 +213,11 @@ local function windowSelect()
 end
 
 local function findWindow(x, y)
-	for i = #process.windowCompositor.bufferStack, 1, -1 do
+	for i = #process.compositor.bufferStack, 1, -1 do
 		for pID, proc in ipairs(process.list) do
 			if proc then
 				for j, win in ipairs(proc.windows) do
-					if win.target.buffer == process.windowCompositor.bufferStack[i] and not win.minimized then
+					if win.target.buffer == process.compositor.bufferStack[i] and not win.minimized then
 						if x >= win.x and x <= win.x + win.w - 1 and y >= win.y and y <= win.y + win.h - 1 then
 							return pID, proc, j, win
 						end
@@ -263,8 +263,8 @@ do
 					end
 					winDims:close()
 				end
-				local win = window.new(w, h, x, y, fs.getName(path), process.windowCompositor:newBuffer())
-				if process.windowCompositor.target.isColor() then
+				local win = window.new(w, h, x, y, fs.getName(path), process.compositor:newBuffer())
+				if process.compositor.target.isColor() then
 					win:setType("window")
 				end
 				win:setTheme(LyqydOS.window.theme)
@@ -543,8 +543,8 @@ while true do
 				end
 				winDims:close()
 			end
-			local win = window.new(w, h, x, y, fs.getName(path), process.windowCompositor:newBuffer())
-			if process.windowCompositor.target.isColor() then
+			local win = window.new(w, h, x, y, fs.getName(path), process.compositor:newBuffer())
+			if process.compositor.target.isColor() then
 				win:setType("window")
 			end
 			win:setTheme(LyqydOS.window.theme)

@@ -76,7 +76,7 @@ end
 process.focusWindow = nil
 windowCompositor = compositor.new(term.current and term.current() or term.native)
 windowCompositor.deferDraw = true
-rawset(process, "windowCompositor", windowCompositor)
+rawset(process, "compositor", windowCompositor)
 
 do
 	local x, y = term.getSize()

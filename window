@@ -375,8 +375,8 @@ local Window = {
 		end
 	end,
 	destroy = function(self)
-		if process and process.windowCompositor then
-			process.windowCompositor:removeBuffer(self.target.buffer)
+		if process and process.compositor then
+			process.compositor:removeBuffer(self.target.buffer)
 		end
 	end,
 	setTheme = function(self, theme)

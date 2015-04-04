@@ -2,7 +2,7 @@ processTable = {}
 list = {}
 focusWindow = nil
 activeProcess = nil
-windowCompositor = {}
+compositor = {}
 nullRedirect = framebuffer.new()
 eventHooks = {}
 
@@ -148,8 +148,8 @@ local Process = {
 		for _, win in ipairs(self.windows) do
 			win:draw()
 		end
-		process.windowCompositor:draw()
 		process.activeProcess = active
+		process.compositor:draw()
 
 		self.redirect = term.current()
 
@@ -254,9 +254,9 @@ local Process = {
 			end
 		end
 		for i = 1, #self.windows do
-			for j = 1, #process.windowCompositor.bufferStack do
-				if process.windowCompositor.bufferStack[j] == self.windows[i].target.buffer then
-					process.windowCompositor:toFront(j)
+			for j = 1, #process.compositor.bufferStack do
+				if process.compositor.bufferStack[j] == self.windows[i].target.buffer then
+					process.compositor:toFront(j)
 					break
 				end
 			end
@@ -277,16 +277,16 @@ local Process = {
 			local intermediate = {}
 
 			for i = 1, #self.windows do
-				for j = 1, #process.windowCompositor.bufferStack do
-					if self.windows[i].target.buffer == process.windowCompositor.bufferStack[j] then
-						table.insert(intermediate, table.remove(process.windowCompositor.bufferStack, j))
+				for j = 1, #process.compositor.bufferStack do
+					if self.windows[i].target.buffer == process.compositor.bufferStack[j] then
+						table.insert(intermediate, table.remove(process.compositor.bufferStack, j))
 						break
 					end
 				end
 			end
 
 			repeat
-				table.insert(process.windowCompositor.bufferStack, 2, table.remove(intermediate))
+				table.insert(process.compositor.bufferStack, 2, table.remove(intermediate))
 			until #intermediate == 0
 		end
 

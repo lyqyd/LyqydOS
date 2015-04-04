@@ -329,7 +329,7 @@ elseif process and process.id() then
 					if event[4] == 3 then
 						--clicked Window Theme drop-down
 						ephemeralWinMode = "windowTheme"
-						ephemeralWin = window.new(16, #winThemes + 2, win.x + 29, win.y + 2, "Choose Theme", process.windowCompositor:newBuffer())
+						ephemeralWin = window.new(16, #winThemes + 2, win.x + 29, win.y + 2, "Choose Theme", process.compositor:newBuffer())
 						ephemeralWin.ephemeral = true
 						ephemeralWin:setType("menu")
 						ephemeralWin:setTheme(LyqydOS.window.theme)
@@ -356,7 +356,7 @@ elseif process and process.id() then
 					elseif event[4] == 6 then
 						--clicked Desktop Theme drop-down
 						ephemeralWinMode = "deskTheme"
-						ephemeralWin = window.new(16, #deskThemes + 2, win.x + 29, win.y + 5, "Choose Theme", process.windowCompositor:newBuffer())
+						ephemeralWin = window.new(16, #deskThemes + 2, win.x + 29, win.y + 5, "Choose Theme", process.compositor:newBuffer())
 						ephemeralWin.ephemeral = true
 						ephemeralWin:setType("menu")
 						ephemeralWin:setTheme(LyqydOS.window.theme)
@@ -383,7 +383,7 @@ elseif process and process.id() then
 					elseif event[4] == 9 then
 						--clicked Background Color drop-down
 						ephemeralWinMode = "deskColor"
-						ephemeralWin = window.new(16, 8, win.x + 29, win.y + 8, "Choose Color", process.windowCompositor:newBuffer())
+						ephemeralWin = window.new(16, 8, win.x + 29, win.y + 8, "Choose Color", process.compositor:newBuffer())
 						ephemeralWin.ephemeral = true
 						ephemeralWin:setType("menu")
 						ephemeralWin:setTheme(LyqydOS.window.theme)
