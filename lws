@@ -236,6 +236,9 @@ local mouseStartY = nil
 local mouseDragAction = nil
 process.addHook({"key", 61})
 process.addHook({"key", 62})
+--injection magic table, localized here for use later.
+local procTable = process.this().getmetatable().__index
+local oldPcheck, oldPkill
 process.addHook({"mouse_click"})
 process.addHook({"mouse_drag"})
 process.addHook({"mouse_scroll"})
@@ -343,7 +346,7 @@ do
 		end
 
 		--injection magic.
-		local procTable = process.this().getmetatable().__index
+		
 
 		function procTable.addWindow(self, win)
 			local newWindow = true
@@ -420,7 +423,8 @@ do
 			end
 		end
 
-		local oldPcheck = procTable.check
+		--localized above to allow resetting later.
+		oldPcheck = procTable.check
 
 		function procTable.check(self)
 			if not oldPcheck(self) then return lwsProc:queue("close_window", self.id) end
@@ -432,7 +436,8 @@ do
 			end
 		end
 
-		local oldPkill = procTable.kill
+		--localized above to allow resetting later,
+		oldPkill = procTable.kill
 
 		function procTable.kill(self)
 			if self.windows then
@@ -631,6 +636,13 @@ while true do
 		process.removeHook({"mouse_click"})
 		process.removeHook({"mouse_drag"})
 		process.removeHook({"mouse_scroll"})
+		--clean up injected methods:
+		procTable.addWindow = nil
+		procTable.removeWindow = nil
+		procTable.toFront = nil
+		procTable.toBack = nil
+		procTable.check = oldPcheck
+		procTable.kill = oldPkill
 		return
 	elseif event[1] == "start_program" then
 		--2, program path
