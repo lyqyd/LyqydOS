@@ -228,6 +228,18 @@ local function findWindow(x, y)
 	end
 end
 
+local lws = process.id()
+local lwsProc = process.list[lws]
+local watchMouseDragging = false
+local mouseStartX = nil
+local mouseStartY = nil
+local mouseDragAction = nil
+process.addHook({"key", 61})
+process.addHook({"key", 62})
+process.addHook({"mouse_click"})
+process.addHook({"mouse_drag"})
+process.addHook({"mouse_scroll"})
+
 do
 	if LyqydOS.shell and LyqydOS.shell.multishell then
 		LyqydOS.shell.multishell.getTitle = function(n)
@@ -329,20 +341,111 @@ do
 			end
 			return default
 		end
+
+		--injection magic.
+		local procTable = process.this().getmetatable().__index
+
+		function procTable.addWindow(self, win)
+			local newWindow = true
+			for i = 1, #self.windows do
+				if self.windows[i] == win then
+					newWindow = false
+					break
+				end
+			end
+			if newWindow then
+				table.insert(self.windows, win)
+			end
+		end
+
+		function procTable.removeWindow(self, win)
+			local winFound = false
+			for i = 1, #self.windows do
+				if self.windows[i] == win then
+					table.remove(self.windows, i)
+					winFound = true
+					break
+				end
+			end
+			if winFound then
+				win:destroy()
+			end
+		end
+
+		function procTable.toFront(self, win)
+			--win is optional, if not specified will maintain order of windows.
+			if win then
+				for i = 1, #self.windows do
+					if self.windows[i] == win then
+						table.insert(self.windows, table.remove(self.windows, i))
+						break
+					end
+				end
+			end
+			for i = 1, #self.windows do
+				for j = 1, #process.compositor.bufferStack do
+					if process.compositor.bufferStack[j] == self.windows[i].target.buffer then
+						process.compositor:toFront(j)
+						break
+					end
+				end
+			end
+		end
+
+		function procTable.toBack(self, win)
+			--win is optional, will move that window to behind the rest of them, as well as moving the whole set to the bottom of the stack.
+			if #self.windows >= 1 then
+				if win then
+					for i = 1, #self.windows do
+						if self.windows[i] == win then
+							table.insert(self.windows, 1, table.remove(self.windows, i))
+							break
+						end
+					end
+				end
+
+				for i = 1, #self.windows do
+					for j = 1, #process.compositor.bufferStack do
+						if self.windows[i].target.buffer == process.compositor.bufferStack[j] then
+							process.compositor:toBack(j)
+							break
+						end
+					end
+				end
+			end
+
+			process.focus = process.next()
+			if process.list[process.focus] then
+				process.list[process.focus]:toFront()
+			end
+		end
+
+		local oldPcheck = procTable.check
+
+		function procTable.check(self)
+			if not oldPcheck(self) then return lwsProc:queue("close_window", self.id) end
+			for i = 1, #self.windows do
+				if self.windows[i].mode == "ephemeral" and (i < #self.windows or self.id ~= process.focus) then
+					--kill the individual window
+					lwsProc:resume({"close_window", self.id, self.windows[i]})
+				end
+			end
+		end
+
+		local oldPkill = procTable.kill
+
+		function procTable.kill(self)
+			if self.windows then
+				for _, win in ipairs(self.windows) do
+					if win.destroy then
+						win:destroy()
+					end
+				end
+			end
+			return oldPkill(self)
+		end
 	end
 end
-
-local lws = process.id()
-local lwsProc = process.list[lws]
-local watchMouseDragging = false
-local mouseStartX = nil
-local mouseStartY = nil
-local mouseDragAction = nil
-process.addHook({"key", 61})
-process.addHook({"key", 62})
-process.addHook({"mouse_click"})
-process.addHook({"mouse_drag"})
-process.addHook({"mouse_scroll"})
 
 while true do
 	local event = {os.pullEventRaw()}

@@ -139,46 +139,22 @@ local Process = {
 
 		--former checkProcess function.
 		if not self:check() then
-			local proc = process.getFromName("lws")
-			if proc then
-				proc:queue("close_window", self.id)
-			else
-				self:kill()
-			end
+			self:kill()
 		end
 		return unpack(passback, 2)
 	end,
 	check = function(self)
 		if coroutine.status(self.thread) == "dead" then
 			return false
-		else
-			for i = 1, #self.windows do
-				if self.windows[i].mode == "ephemeral" and (i < #self.windows or self.id ~= process.focus) then
-					--kill the individual window
-					local proc = process.getFromName("lws")
-					if proc then
-						proc:resume({"close_window", self.id, self.windows[i]})
-					else
-						error("no lws", 2)
-					end
-				end
-			end
 		end
 		return true
 	end,
 	queue = function(self, ...)
-		--table.insert(self.eventQueue, {...})
 		table.insert(directedEvents,{self,{...}})
 		return true
 	end,
 	kill = function(self)
-		if self.windows then
-			for _, win in ipairs(self.windows) do
-				if win.destroy then
-					win:destroy()
-				end
-			end
-		end
+		--intended to be overriden for cleanup purposes by the UI system.
 		self:remove()
 		return true
 	end,
@@ -189,77 +165,6 @@ local Process = {
 			if process.focus then
 				process.list[process.focus]:toFront()
 			end
-		end
-	end,
-	addWindow = function(self, win)
-		local newWindow = true
-		for i = 1, #self.windows do
-			if self.windows[i] == win then
-				newWindow = false
-				break
-			end
-		end
-		if newWindow then
-			table.insert(self.windows, win)
-		end
-	end,
-	removeWindow = function(self, win)
-		local winFound = false
-		for i = 1, #self.windows do
-			if self.windows[i] == win then
-				table.remove(self.windows, i)
-				winFound = true
-				break
-			end
-		end
-		if winFound then
-			win:destroy()
-		end
-	end,
-	toFront = function(self, win)
-		--win is optional, if not specified will maintain order of windows.
-		if win then
-			for i = 1, #self.windows do
-				if self.windows[i] == win then
-					table.insert(self.windows, table.remove(self.windows, i))
-					break
-				end
-			end
-		end
-		for i = 1, #self.windows do
-			for j = 1, #process.compositor.bufferStack do
-				if process.compositor.bufferStack[j] == self.windows[i].target.buffer then
-					process.compositor:toFront(j)
-					break
-				end
-			end
-		end
-	end,
-	toBack = function(self, win)
-		--win is optional, will move that window to behind the rest of them, as well as moving the whole set to the bottom of the stack.
-		if #self.windows >= 1 then
-			if win then
-				for i = 1, #self.windows do
-					if self.windows[i] == win then
-						table.insert(self.windows, 1, table.remove(self.windows, i))
-						break
-					end
-				end
-			end
-
-			for i = 1, #self.windows do
-				for j = 1, #process.compositor.bufferStack do
-					if self.windows[i].target.buffer == process.compositor.bufferStack[j] then
-						process.compositor:toBack(j)
-						break
-					end
-				end
-			end
-		end
-
-		process.focus = process.next()
-		if process.list[process.focus] then
-			process.list[process.focus]:toFront()
 		end
 	end,
 }
