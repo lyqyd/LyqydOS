@@ -121,6 +121,18 @@ local function findHook(event)
 	return unpack(results)
 end
 
+--table of player input generated events.
+local input_events = {
+	key = true,
+	key_up = true,
+	char = true,
+	mouse_click = true,
+	mouse_drag = true,
+	mouse_scroll = true,
+	mouse_up = true,
+	terminate = true,
+}
+
 local function distributeEvent(event)
 	if process.list[process.focus] then
 		process.list[process.focus]:resume(event)
@@ -136,7 +148,7 @@ local function distributeEvent(event)
 		end
 	end
 	--handle background processes.
-	if event[1] ~= "key" and event[1] ~= "char" and event[1] ~= "mouse_click" and event[1] ~= "mouse_drag" and event[1] ~= "mouse_scroll" and event[1] ~= "window_resize" and event[1] ~= "terminate" then
+	if not input_events[event[1]] then
 		for pID, proc in ipairs(process.list) do
 			if pID ~= process.focus and proc then
 				proc:resume(event)
