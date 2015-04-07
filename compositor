@@ -14,11 +14,11 @@ local Compositor = {
 			end
 		end
 
-		local bufferNum = #self.bufferStack - self.locked.top + 1,
+		local bufferNum = #self.bufferStack - self.locked.top + 1
 
 		table.insert(self.bufferStack, bufferNum, redirect.buffer)
 
-		return redirect, num
+		return redirect, bufferNum
 	end,
 	draw = function(self, mode)
 		if #self.bufferStack > 0 then
@@ -72,7 +72,8 @@ local Compositor = {
 	end,
 	toFront = function(self, pos)
 		if pos > self.locked.bottom and pos <= #self.bufferStack - self.locked.top then
-			table.insert(self.bufferStack, #self.bufferStack - self.locked.top + 1, (table.remove(self.bufferStack, pos)))
+			local newPos = #self.bufferStack - self.locked.top
+			table.insert(self.bufferStack, newPos, (table.remove(self.bufferStack, pos)))
 			if not self.deferDraw then self:draw() end
 			return true
 		end

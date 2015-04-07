@@ -112,21 +112,20 @@ local Process = {
 			if not resumeProcess then return unpack(event) end
 		end
 
-		--redirect to window's current position in its redirect stack
-		local _old = term.redirect(self.redirect)
-
 		local active = process.active
 		process.active = self.id
+
+		--redirect to window's current position in its redirect stack
+		local _old = term.redirect(self.redirect)
 		passback = {coroutine.resume(self.thread, unpack(event))}
+		self.redirect = term.current()
+		term.redirect(_old)
+
 		for _, win in ipairs(self.windows) do
 			win:draw()
 		end
 		process.compositor:draw()
 		process.active = active
-
-		self.redirect = term.current()
-
-		term.redirect(_old)
 
 		--handle filters being sent back in passback.
 		if passback[1] and passback[2] then

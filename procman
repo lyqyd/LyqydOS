@@ -81,6 +81,7 @@ rawset(process, "compositor", windowCompositor)
 do
 	local x, y = term.getSize()
 	process.nullRedirect = framebuffer.new(x, y, term.isColor())
+	process.nullRedirect = peripheral.wrap("top")
 end
 
 do

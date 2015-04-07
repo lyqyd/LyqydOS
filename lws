@@ -1,3 +1,10 @@
+local function log(level, message)
+	local proc = process.getFromName("monitor")
+	if proc then
+		proc:queue("service_message", level, process.id(), message)
+	end
+end
+
 local function saveDimensions(proc)
 	--saves window dimensions when closing windows
 	if proc.path and proc.windows and #proc.windows > 0 then
@@ -216,7 +223,8 @@ local function findWindow(x, y)
 	for i = #process.compositor.bufferStack, 1, -1 do
 		for pID, proc in ipairs(process.list) do
 			if proc then
-				for j, win in ipairs(proc.windows) do
+				for j = #proc.windows, 1, -1 do
+					local win = proc.windows[j]
 					if win.target.buffer == process.compositor.bufferStack[i] and not win.minimized then
 						if x >= win.x and x <= win.x + win.w - 1 and y >= win.y and y <= win.y + win.h - 1 then
 							return pID, proc, j, win
@@ -235,7 +243,7 @@ local mouseStartX = nil
 local mouseStartY = nil
 local mouseDragAction = nil
 --injection magic table, localized here for use later.
-local procTable = process.this().getmetatable().__index
+local procTable = getmetatable(process.this()).__index
 local oldPcheck, oldPkill
 process.addHook({"char"})
 process.addHook({"key"})
@@ -350,8 +358,6 @@ do
 		end
 
 		--injection magic.
-		
-
 		function procTable.addWindow(self, win)
 			local newWindow = true
 			for i = 1, #self.windows do
@@ -438,6 +444,7 @@ do
 					lwsProc:resume({"close_window", self.id, self.windows[i]})
 				end
 			end
+			return true
 		end
 
 		--localized above to allow resetting later,
@@ -472,7 +479,7 @@ while true do
 				process.list[process.focus]:resume(event)
 			end
 		end
-	elseif event[1] == "key_up" or event[1] == "char" and not process.eventHooks.[event[1]][event[2]] then
+	elseif event[1] == "key_up" or event[1] == "char" and not process.eventHooks[event[1]][event[2]] then
 		if process.focus and process.list[process.focus] then
 			process.list[process.focus]:resume(event)
 		end
