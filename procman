@@ -193,7 +193,7 @@ while true do
 		if #procs >= 1 then
 			for _, pID in ipairs(procs) do
 				if pID and process.list[pID] then
-					event = {process.list[pID]:resume(event)}
+					process.list[pID]:resume(event)
 				end
 			end
 		else
