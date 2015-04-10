@@ -36,11 +36,14 @@ local w, h = redirect.getSize()
 local deskWin = window.new(w, h, 1, 1, "desktop", redirect)
 deskWin.deferDraw = true
 deskWin:setBorderless(true)
-deskWin.resizable = true
-deskWin.movable = true
-deskWin.closable = true
+deskWin.minimizable = false
+deskWin.resizable = false
+deskWin.movable = false
+deskWin.closable = false
 process.compositor:lockToBack(bufNum)
-process.this():addWindow(deskWin)
+local deskProc = process.this()
+deskProc:addWindow(deskWin)
+deskProc.windows.selectable = false
 
 process.addHook({"key", 59})
 process.addHook({"redraw"})
@@ -243,7 +246,7 @@ while true do
 	if event[1] == "redraw" then
 		titlebarItems = {}
 		for i=1, #process.list do
-			if i ~= process.id() and process.list[i] and #process.list[i].windows >= 1 then
+			if i ~= process.id() and process.list[i] and process.list[i].windows and #process.list[i].windows >= 1 then
 				local proc = process.list[i]
 				for j = #proc.windows, 1, -1 do
 					if proc.windows[j].mode ~= "ephemeral" then
