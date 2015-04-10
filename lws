@@ -189,10 +189,10 @@ local function windowSelect()
 	process.focus = lws
 	local _old = term.redirect(lwsWin.redirect)
 	local pList, menuList = {}, {}
-	for tNum, tInfo in ipairs(process.list) do
-		if tInfo and tInfo.windows and #tInfo.windows > 0 then
-			table.insert(pList, tNum)
-			table.insert(menuList, tInfo.windows[#tInfo.windows].caption)
+	for pID, proc in ipairs(process.list) do
+		if proc and proc.windows and proc.windows.selectable and #proc.windows > 0 then
+			table.insert(pList, pID)
+			table.insert(menuList, proc.windows[#proc.windows].caption)
 		end
 	end
 	--removes self from list of running programs.
@@ -222,7 +222,7 @@ end
 local function findWindow(x, y)
 	for i = #process.compositor.bufferStack, 1, -1 do
 		for pID, proc in ipairs(process.list) do
-			if proc then
+			if proc and proc.windows then
 				for j = #proc.windows, 1, -1 do
 					local win = proc.windows[j]
 					if win.target.buffer == process.compositor.bufferStack[i] and not win.minimized then
@@ -244,7 +244,7 @@ local mouseStartY = nil
 local mouseDragAction = nil
 --injection magic table, localized here for use later.
 local procTable = getmetatable(process.this()).__index
-local oldPcheck, oldPkill
+local oldPcheck, oldPkill, oldPsetup, oldPpost
 process.addHook({"char"})
 process.addHook({"key"})
 --process.addHook({"key", 61})
@@ -438,10 +438,12 @@ do
 
 		function procTable.check(self)
 			if not oldPcheck(self) then return lwsProc:queue("close_window", self.id) end
-			for i = 1, #self.windows do
-				if self.windows[i].mode == "ephemeral" and (i < #self.windows or self.id ~= process.focus) then
-					--kill the individual window
-					lwsProc:resume({"close_window", self.id, self.windows[i]})
+			if self.windows then
+				for i = 1, #self.windows do
+					if self.windows[i].mode == "ephemeral" and (i < #self.windows or self.id ~= process.focus) then
+						--kill the individual window
+						lwsProc:resume({"close_window", self.id, self.windows[i]})
+					end
 				end
 			end
 			return true
@@ -459,6 +461,38 @@ do
 				end
 			end
 			return oldPkill(self)
+		end
+
+		oldPsetup = procTable.setup
+
+		function procTable.setup(self, ...)
+			local args = {...}
+			self.windows = {
+				selectable = true,
+			}
+
+			if args[2] then
+				table.insert(self.windows, args[2])
+				self.redirect = args[2].redirect
+				process.focus = #process.list
+			elseif args[3] then
+				self.redirect = args[3]
+			else
+				self.redirect = process.nullRedirect
+			end
+
+			return oldPsetup(self, unpack(args))
+		end
+
+		oldPpost = procTable.post
+
+		function procTable.post(self)
+			if self.windows then
+				for _, win in ipairs(self.windows) do
+					win:draw()
+				end
+			end
+			return oldPpost(self)
 		end
 	end
 end
@@ -677,6 +711,8 @@ while true do
 		procTable.toBack = nil
 		procTable.check = oldPcheck
 		procTable.kill = oldPkill
+		procTable.setup = oldPsetup
+		procTable.post = oldPpost
 		return
 	elseif event[1] == "start_program" then
 		--2, program path

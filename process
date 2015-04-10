@@ -38,10 +38,12 @@ end
 
 local function changeHookActual(hookMask, val, add)
 	local ref, key = tablify(process.eventHooks, hookMask)
-	if add then
-		ref[key].__hooks[val] = val
-	else
-		ref[key].__hooks[val] = nil
+	if ref then
+		if add then
+			ref[key].__hooks[val] = val
+		else
+			ref[key].__hooks[val] = nil
+		end
 	end
 end
 
@@ -115,16 +117,17 @@ local Process = {
 		local active = process.active
 		process.active = self.id
 
+		self:pre()
+
 		--redirect to window's current position in its redirect stack
 		local _old = term.redirect(self.redirect)
 		passback = {coroutine.resume(self.thread, unpack(event))}
 		self.redirect = term.current()
 		term.redirect(_old)
 
-		for _, win in ipairs(self.windows) do
-			win:draw()
-		end
+		self:post()
 		process.compositor:draw()
+		
 		process.active = active
 
 		--handle filters being sent back in passback.
@@ -140,6 +143,7 @@ local Process = {
 		if not self:check() then
 			self:kill()
 		end
+
 		return unpack(passback, 2)
 	end,
 	check = function(self)
@@ -166,32 +170,38 @@ local Process = {
 			end
 		end
 	end,
+	setup = function(self, ...)
+		--intended to be overriden for setup purposes.
+	end,
+	pre = function(self)
+		--intended to be overriden for extensions
+	end,
+	post = function(self)
+		--intended to be overriden for extensions
+	end,
 }
 
 local pmeta = {__index = Process}
 
-function new(func, path, win, redirect)
+function new(func, path, redirect, ...)
 	local proc = {
 		thread = coroutine.create(func),
 		path = path,
 		name = fs.getName(path),
-		windows = {},
 	}
 
 	table.insert(process.list, proc)
 	proc.id = #process.list
 
-	if win then
-		table.insert(proc.windows, win)
-		proc.redirect = win.redirect
-		process.focus = #process.list
-	elseif redirect then
+	if redirect then
 		proc.redirect = redirect
 	else
 		proc.redirect = process.nullRedirect
 	end
 
 	setmetatable(proc, pmeta)
+
+	proc:setup(path, redirect, ...)
 
 	proc:resume({})
 	return proc
