@@ -413,16 +413,19 @@ local Window = {
 		if not self.deferDraw then self:draw() end
 	end,
 	maximize = function(self)
+		if not self.resizable then return nil, "not resizable" end
 		self.normalSize = {x = self.x, y = self.y, w = self.w, h = self.h}
 		self:move(1, 1)
 		self.maximized = true
 		self:resize(self.target.getSize())
 	end,
 	minimize = function(self)
+		if not self.minimizable then return nil, "not minimizable" end
 		self.minimized = true
 		if not self.deferDraw then self:draw() end
 	end,
 	fullscreen = function(self)
+		if not self.resizable then return nil, "not resizable" end
 		self:maximize()
 		self:setBorderless(true)
 	end,
@@ -431,6 +434,7 @@ local Window = {
 		if not self.deferDraw then self:draw() end
 	end,
 	restore = function(self)
+		if not self.resizable then return nil, "not resizable" end
 		self.maximized = false
 		if self.borderless then
 			self.borderless = false
@@ -500,6 +504,7 @@ function new(w, h, x, y, caption, target)
 		maximized = false,
 		minimized = false,
 		borderless = false,
+		minimizable = true,
 		resizable = true,
 		movable = true,
 		closable = true,
