@@ -1,0 +1,105 @@
+local monitorBuffers = {}
+local sides = {}
+
+_G.monman = {buff = monitorBuffers, sides = sides}
+
+local function log(level, message)
+	local proc = process.getFromName("service")
+	if proc then
+		proc:queue("service_message", level, process.id(), message)
+	end
+end
+
+local oldPeripheralCall = peripheral.call
+
+local function rawWrap(side)
+	local methods = peripheral.getMethods(side)
+	local result = {}
+	for _, method in ipairs(methods) do
+		result[method] = function(...)
+			return oldPeripheralCall(side, method, ...)
+		end
+	end
+	return result
+end
+
+local function newMonitorBuffer(pID, side)
+	local x, y = oldPeripheralCall(side, "getSize")
+	local color = oldPeripheralCall(side, "isColor")
+	local redirect = framebuffer.new(x, y, color)
+	redirect.setTextScale = function(scale)
+		oldPeripheralCall(side, "setTextScale", scale)
+		local oldBuf = monitorBuffers[pID][side]
+		monitorBuffers[pID][side] = newMonitorBuffer(pID, side)
+		monitorBuffers[pID][side].buffer.textScale = scale
+		if oldBuf.buffer.sizeX > monitorBuffers[pID][side].buffer.sizeX then
+			for i = 1, math.min(monitorBuffers[pID][side].buffer.sizeY, oldBuf.buffer.sizeY) do
+				oldBuf.buffer.text[i] = string.sub(oldBuf.buffer.text[i], 1, monitorBuffers[pID][side].buffer.sizeX)
+				oldBuf.buffer.textColor[i] = string.sub(oldBuf.buffer.textColor[i], 1, monitorBuffers[pID][side].buffer.sizeX)
+				oldBuf.buffer.backColor[i] = string.sub(oldBuf.buffer.backColor[i], 1, monitorBuffers[pID][side].buffer.sizeX)
+			end
+		elseif oldBuf.buffer.sizeX < monitorBuffers[pID][side].buffer.sizeX then
+			local diff = monitorBuffers[pID][side].buffer.sizeX - oldBuf.buffer.sizeX
+			oldBuf.buffer.text[i] = oldBuf.buffer.text[i]..string.rep(" ", diff)
+			oldBuf.buffer.textColor[i] = oldBuf.buffer.textColor[i]..string.rep(oldBuf.buffer.curTextColor, diff)
+			oldBuf.buffer.backColor[i] = oldBuf.buffer.backColor[i]..string.rep(oldBuf.buffer.curBackColor, diff)
+		end
+		monitorBuffers[pID][side].render(oldBuf.buffer)
+		monitorBuffers[pID][side].setTextColor(2 ^ tonumber(oldBuf.buffer.curTextColor, 16))
+		monitorBuffers[pID][side].setBackgroundColor(2 ^ tonumber(oldBuf.buffer.curBackColor, 16))
+		monitorBuffers[pID][side].setCursorPos(oldBuf.buffer.cursorX, oldBuf.buffer.cursorY)
+		monitorBuffers[pID][side].setCursorBlink(oldBuf.buffer.cursorBlink)
+	end
+	return redirect
+end
+
+peripheral.call = function(side, func, ...)
+	if peripheral.getType(side) == "monitor" then
+		local pID, proc = process.id(), process.this()
+		if not proc then return oldPeripheralCall(side, func, ...) end
+		sides[side] = true
+		if not monitorBuffers[pID] then monitorBuffers[pID] = {} end
+		if not monitorBuffers[pID][side] then
+			oldPeripheralCall(side, "setTextScale", 1)
+			monitorBuffers[pID][side] = newMonitorBuffer(pID, side)
+			monitorBuffers[pID][side].buffer.textScale = 1
+		end
+		return monitorBuffers[pID][side][func](...)
+	else
+		return oldPeripheralCall(side, func, ...)
+	end
+end
+
+process.addHook({"redraw"})
+process.addHook({"monitor_touch"})
+
+while true do
+	local event = {os.pullEvent()}
+	if event[1] == "redraw" then
+		local toRemove = {}
+		for pID, sides in pairs(monitorBuffers) do
+			if not process.list[pID] and sides then
+				log("info", "removing buffers for dead process "..pID)
+				table.insert(toRemove, pID)
+			end
+		end
+		for _, pID in ipairs(toRemove) do
+			monitorBuffers[pID] = false
+		end
+		for side in pairs(sides) do
+			if monitorBuffers[process.focus] and monitorBuffers[process.focus][side] then
+				sides[side] = process.focus
+			end
+			if sides[side] and process.list[sides[side]] then
+				local old = term.redirect(rawWrap(side))
+				oldPeripheralCall(side, "setTextScale", monitorBuffers[sides[side]][side].buffer.textScale)
+				framebuffer.draw(monitorBuffers[sides[side]][side].buffer)
+				term.redirect(old)
+			end
+		end
+	elseif event[1] == "monitor_touch" then
+		if sides[event[2]] and process.list[sides[event[2]]] then
+			process.list[sides[event[2]]]:queue(event)
+		end
+	end
+end

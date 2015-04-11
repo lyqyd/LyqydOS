@@ -1,10 +1,3 @@
-local function log(level, message)
-	local proc = process.getFromName("monitor")
-	if proc then
-		proc:queue("service_message", level, process.id(), message)
-	end
-end
-
 local function saveDimensions(proc)
 	--saves window dimensions when closing windows
 	if proc.path and proc.windows and #proc.windows > 0 then
