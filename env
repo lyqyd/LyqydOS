@@ -492,7 +492,7 @@ do
 	end
 end
 
---Rednet modifications.
+--Redstone modifications.
 do
 	local oldrs = {}
 	for k, v in pairs(rs) do
