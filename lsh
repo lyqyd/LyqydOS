@@ -17,6 +17,7 @@ local exit = false
 local dir = parentShell and parentShell.dir() or ""
 local path = parentShell and parentShell.path() or ".:/rom/programs"
 local aliases = parentShell and parentShell.aliases() or {}
+local tCompletionInfo = (parentShell and parentShell.getCompletionInfo and parentShell.getCompletionInfo()) or {}
 local programStack = {}
 
 local shell = {}
@@ -191,7 +192,7 @@ function shell.programs(all)
 			local list = fs.list(_path)
 			for n, file in pairs(list) do
 				if not fs.isDir(fs.combine(_path, file)) and (all or string.sub(file, 1, 1) ~= ".") then
-					items[ sFile ] = true
+					items[sFile] = true
 				end
 			end
 		end
@@ -205,6 +206,99 @@ function shell.programs(all)
 	return itemList
 end
 
+local function completeProgram(line)
+	if string.sub(line, 1, 1) == "/" then
+	    -- Add programs from the root
+	    return fs.complete(line, "", true, false)
+
+    else
+        local tResults = {}
+        local tSeen = {}
+
+        -- Add aliases
+        for sAlias, sCommand in pairs(tAliases) do
+            if #sAlias > #line and string.sub(sAlias, 1, #line) == line then
+                local sResult = string.sub(sAlias, #line + 1)
+                if not tSeen[sResult] then
+                    table.insert(tResults, sResult)
+                    tSeen[sResult] = true
+                end
+            end
+        end
+
+        -- Add programs from the path
+        local programs = shell.programs()
+        for n=1,#programs do
+            local program = programs[n]
+            if #program > #line and string.sub(program, 1, #line) == line then
+                local sResult = string.sub(program, #line + 1)
+                if not tSeen[sResult] then
+                    table.insert(tResults, sResult)
+                    tSeen[sResult] = true
+                end
+            end
+        end
+
+        -- Sort and return
+        table.sort(tResults)
+        return tResults
+    end
+end
+
+local function completeProgramArgument(program, nArgument, line)
+    local tInfo = tCompletionInfo[program]
+    if tInfo then
+        return tInfo.fnComplete(shell, nArgument, line)
+    end
+    return nil
+end
+
+function shell.complete(line)
+    if #line > 0 then
+        local tWords = tokenise(line)
+        local nIndex = #tWords
+        if string.sub(line, #line, #line) == " " then
+            nIndex = nIndex + 1
+        end
+        if nIndex == 1 then
+            local sBit = tWords[1] or ""
+            local sPath = shell.resolveProgram(sBit)
+            if tCompletionInfo[sPath] then
+                return {" "}
+            else
+                local tResults = completeProgram(sBit)
+                for n=1,#tResults do
+                    local sResult = tResults[n]
+                    local sPath = shell.resolveProgram(sBit .. sResult)
+                    if tCompletionInfo[sPath] then
+                        tResults[n] = sResult .. " "
+                    end
+                end
+                return tResults
+            end
+
+        elseif nIndex > 1 then
+            local sPath = shell.resolveProgram(tWords[1])
+            return completeProgramArgument(sPath , nIndex - 1, tWords[nIndex] or "")
+
+        end
+    end
+	return nil
+end
+
+function shell.completeProgram(program)
+    return completeProgram(program)
+end
+
+function shell.setCompletionFunction(program, fnComplete)
+    tCompletionInfo[program] = {
+        fnComplete = fnComplete
+   }
+end
+
+function shell.getCompletionInfo()
+    return tCompletionInfo
+end
 
 function shell.getRunningProgram()
 	if #programStack > 0 then
@@ -244,7 +338,7 @@ end
 local function customRead(history)
 	term.setCursorBlink(true)
 
-    local sLine = ""
+    local line = ""
 	local nHistoryPos = nil
 	local nPos = 0
 	
@@ -258,15 +352,15 @@ local function customRead(history)
 		end
 			
 		term.setCursorPos(sx, sy)
-		term.write(string.sub( sLine, nScroll + 1 ))
-		term.write(string.rep(" ", w - (#sLine - nScroll) - sx))
+		term.write(string.sub(line, nScroll + 1))
+		term.write(string.rep(" ", w - (#line - nScroll) - sx))
 		term.setCursorPos(sx + nPos - nScroll, sy)
 	end
 	
 	while true do
 		local sEvent, param = os.pullEvent()
 		if sEvent == "char" then
-			sLine = string.sub(sLine, 1, nPos)..param..string.sub(sLine, nPos + 1)
+			line = string.sub(line, 1, nPos)..param..string.sub(line, nPos + 1)
 			nPos = nPos + 1
 			redraw()
 			
@@ -284,7 +378,7 @@ local function customRead(history)
 				
 			elseif param == keys.right then
 				-- Right				
-				if nPos < string.len(sLine) then
+				if nPos < string.len(line) then
 					nPos = nPos + 1
 					redraw()
 				end
@@ -311,10 +405,10 @@ local function customRead(history)
 					end
 					
 					if nHistoryPos then
-                    	sLine = history[nHistoryPos]
-                    	nPos = string.len( sLine ) 
+                    	line = history[nHistoryPos]
+                    	nPos = string.len(line) 
                     else
-						sLine = ""
+						line = ""
 						nPos = 0
 					end
 					redraw()
@@ -322,7 +416,7 @@ local function customRead(history)
 			elseif param == keys.backspace then
 				-- Backspace
 				if nPos > 0 then
-					sLine = string.sub( sLine, 1, nPos - 1 ) .. string.sub( sLine, nPos + 1 )
+					line = string.sub(line, 1, nPos - 1) .. string.sub(line, nPos + 1)
 					nPos = nPos - 1
 					redraw()
 				end
@@ -331,13 +425,13 @@ local function customRead(history)
 				nPos = 0
 				redraw()
 			elseif param == keys.delete then
-				if nPos < string.len(sLine) then
-					sLine = string.sub( sLine, 1, nPos ) .. string.sub( sLine, nPos + 2 )				
+				if nPos < string.len(line) then
+					line = string.sub(line, 1, nPos) .. string.sub(line, nPos + 2)				
 					redraw()
 				end
 			elseif param == keys["end"] then
 				-- End
-				nPos = string.len(sLine)
+				nPos = string.len(line)
 				redraw()
 			elseif param == keys.tab then
 				--tab autocomplete.
@@ -346,11 +440,11 @@ local function customRead(history)
 		end
 	end
 	
-	term.setCursorBlink( false )
-	term.setCursorPos( w + 1, sy )
+	term.setCursorBlink(false)
+	term.setCursorPos(w + 1, sy)
 	print()
 	
-	return sLine
+	return line
 end
 
 if parentShell == nil then
