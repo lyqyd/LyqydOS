@@ -1,19 +1,26 @@
-local versionNumber = 3.0
+local versionNumber = 3.1
 
 local args = {...}
 
 if #args >= 1 then
 	if args[1] == "setup" then
-		--write sane default window sizes
-		if not fs.exists("/LyqydOS/.lyqwin") then
-			local handle = io.open("/LyqydOS/.lyqwin", "w")
-			if handle then
-				handle:write([[1,1,9,4,false,rom/programs/reboot]].."\n")
-				handle:write([[1,1,9,4,false,rom/programs/shutdown]].."\n")
-				handle:write([[1,1,19,9,true,rom/programs/color/paint]].."\n")
-				handle:close()
-				--if installer is being run from packman
-				if packman then packman.addFile("/LyqydOS/.lyqwin") end
+		--sane default window sizes
+		local lyqwin = [[
+1,1,9,4,false,rom/programs/reboot
+1,1,9,4,false,rom/programs/shutdown
+1,1,19,9,true,rom/programs/color/paint
+3,3,47,15,false,rom/programs/shell
+2,2,47,15,false,rom/programs/lua
+]]
+		if packman then
+			packman.addFile("/LyqydOS/.lyqwin", lyqwin)
+		else
+			if not fs.exists("/LyqydOS/.lyqwin") then
+				local handle = io.open("/LyqydOS/.lyqwin", "w")
+				if handle then
+					handle:write(lyqwin)
+					handle:close()
+				end
 			end
 		end
 		print("Run LyqydOS on startup? (y/N)")
@@ -35,10 +42,17 @@ if #args >= 1 then
 			end
 		end
 	elseif args[1] == "remove" then
-		if fs.exists("/LyqydOS/.config") then fs.delete("/LyqydOS/.config") end
-		if fs.exists("/LyqydOS/.lyqrunhistory") then fs.delete("/LyqydOS/.lyqrunhistory") end
-		if fs.exists("/LyqydOS/.lyqshellrunhistory") then fs.delete("/LyqydOS/.lyqshellrunhistory") end
-		if fs.exists("/LyqydOS/.lyqwin") then fs.delete("/LyqydOS/.lyqwin") end
+		if packman then
+			packman.removeFile("/LyqydOS/.config")
+			packman.removeFile("/LyqydOS/.lyqrunhistory")
+			packman.removeFile("/LyqydOS/.lyqshellrunhistory")
+			packman.removeFile("/LyqydOS/.lyqwin")
+		else
+			if fs.exists("/LyqydOS/.config") then fs.delete("/LyqydOS/.config") end
+			if fs.exists("/LyqydOS/.lyqrunhistory") then fs.delete("/LyqydOS/.lyqrunhistory") end
+			if fs.exists("/LyqydOS/.lyqshellrunhistory") then fs.delete("/LyqydOS/.lyqshellrunhistory") end
+			if fs.exists("/LyqydOS/.lyqwin") then fs.delete("/LyqydOS/.lyqwin") end
+		end
 	end
 else
 	--get packman and use it.
