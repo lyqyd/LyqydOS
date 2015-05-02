@@ -198,13 +198,15 @@ local Window = {
 					outputBuffer.textColor[i] = string.rep("0", prelineBuffer)..self.decorations.ul[2]..string.rep(self.decorations.top[2], self.w - 2)..self.decorations.ur[2]..string.rep("0", postlineBuffer)
 					outputBuffer.backColor[i] = string.rep("f", prelineBuffer)..self.decorations.ul[3]..string.rep(self.decorations.top[3], self.w - 2)..self.decorations.ur[3]..string.rep("f", postlineBuffer)
 					if self.caption then
-						local captionLength = self.w - (self.decorations.captionSize[1] - 1) - (math.abs(self.decorations.captionSize[2]) - 1)
+						local captionLength = math.max(self.w - (self.decorations.captionSize[1] - 1) - (math.abs(self.decorations.captionSize[2]) - 1), 0)
 						local caption = string.sub(self.caption, 1, captionLength)
 						local preCapSize = self.x + self.decorations.captionSize[1] - 2
 						local postCapStart = maxX - (maxX - (self.x + self.w)) - (math.abs(self.decorations.captionSize[2]) - 1)
-						outputBuffer.text[i] = string.sub(outputBuffer.text[i], 1, preCapSize)..caption..string.rep(self.decorations.top[1], captionLength - #caption)..string.sub(outputBuffer.text[i], postCapStart)
-						outputBuffer.textColor[i] = string.sub(outputBuffer.textColor[i], 1, preCapSize)..string.rep(self.decorations.caption[2], #caption)..string.rep(self.decorations.top[2], captionLength - #caption)..string.sub(outputBuffer.textColor[i], postCapStart)
-						outputBuffer.backColor[i] = string.sub(outputBuffer.backColor[i], 1, preCapSize)..string.rep(self.decorations.caption[3], #caption)..string.rep(self.decorations.top[3], captionLength - #caption)..string.sub(outputBuffer.backColor[i], postCapStart)
+						if captionLength > 0 and preCapSize + 1 < postCapStart then
+							outputBuffer.text[i] = string.sub(outputBuffer.text[i], 1, preCapSize)..caption..string.rep(self.decorations.top[1], captionLength - #caption)..string.sub(outputBuffer.text[i], postCapStart)
+							outputBuffer.textColor[i] = string.sub(outputBuffer.textColor[i], 1, preCapSize)..string.rep(self.decorations.caption[2], #caption)..string.rep(self.decorations.top[2], captionLength - #caption)..string.sub(outputBuffer.textColor[i], postCapStart)
+							outputBuffer.backColor[i] = string.sub(outputBuffer.backColor[i], 1, preCapSize)..string.rep(self.decorations.caption[3], #caption)..string.rep(self.decorations.top[3], captionLength - #caption)..string.sub(outputBuffer.backColor[i], postCapStart)
+						end
 					end
 					if self.windowType == "modal" or self.windowType == "window" then
 						if not drawDecoration(self.decorations.close, self.decorations.closePos, i) then
