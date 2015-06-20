@@ -228,7 +228,6 @@ do
 	LyqydOS.fs = {}
 	LyqydOS.fs.raw = oldfs
 	LyqydOS.fs.mounts = {}
-	LyqydOS.fs.tempFiles = {}
 
 	LyqydOS.fs.canMountToPath = function(path)
 		if string.sub(path, 1, 1) ~= "/" then
@@ -319,16 +318,24 @@ do
 			omnt.mount.move(getRelativePath(origin, omnt), getRelativePath(destination, omnt))
 		elseif omnt then
 			--the origin file has a mount point.
-			omnt.mount.get(getRelativePath(origin, omnt), "/LyqydOS/.temp")
+			local data = omnt.mount.get(getRelativePath(origin, omnt))
 			if dmnt then
-				dmnt.mount.put( "/LyqydOS/.temp", getRelativePath(destination, dmnt))
+				dmnt.mount.put(data, getRelativePath(destination, dmnt))
 			else
-				oldfs.move("/LyqydOS/.temp", destination)
+				local handle = oldfs.open(destination, "w")
+				if handle then
+					handle.write(data)
+					handle.close()
+				end
 			end
 			omnt.mount.delete(getRelativePath(origin, omnt))
 		elseif dmnt then
 			--the origin file does not have a mount point, but the destination does.
-			dmnt.mount.put(origin, getRelativePath(destination, dmnt))
+			local handle = oldfs.open(origin, "r")
+			if handle then
+				dmnt.mount.put(handle.readAll(), getRelativePath(destination, dmnt))
+				handle.close()
+			end
 			oldfs.delete(origin)
 		else
 			oldfs.move(origin, destination)
@@ -343,74 +350,26 @@ do
 			omnt.mount.copy(getRelativePath(origin, omnt), getRelativePath(destination, omnt))
 		elseif omnt then
 			--the origin file has a mount point.
-			omnt.mount.get(getRelativePath(origin, omnt), "/LyqydOS/.temp")
+			local data = omnt.mount.get(getRelativePath(origin, omnt))
 			if dmnt then
-				dmnt.mount.put( "/LyqydOS/.temp", getRelativePath(destination, dmnt))
+				dmnt.mount.put(data, getRelativePath(destination, dmnt))
 			else
-				oldfs.copy("/LyqydOS/.temp", destination)
+				local handle = oldfs.open(destination, "w")
+				if handle then
+					handle.write(data)
+					handle.close()
+				end
 			end
 		elseif dmnt then
 			--the origin file does not have a mount point, but the destination does.
-			dmnt.mount.put(origin, getRelativePath(destination, dmnt))
+			local handle = oldfs.open(origin, "r")
+			if handle then
+				dmnt.mount.put(handle.readAll(), getRelativePath(destination, dmnt))
+				handle.close()
+			end
 		else
 			oldfs.copy(origin, destination)
 		end
-	end
-
-	local function fillPath(path, mountPath)
-		if string.sub(path, 1, 1) ~= "/" then path = "/"..path end
-		if string.sub(mountPath, 1, 1) ~= "/" then mountPath = "/"..mountPath end
-		local paths = {}
-		local pathCursor = "/"..oldfs.getDir(path)
-		while pathCursor ~= mountPath do
-			table.insert(paths, pathCursor)
-			pathCursor = "/"..oldfs.getDir(pathCursor)
-		end
-		for i = #paths, 1, -1 do
-			oldfs.makeDir(paths[i])
-		end
-		return paths
-	end
-
-	local function reservePaths(mount, pathTable)
-		if not mount.tempfolders then mount.tempfolders = {} end
-		for i = #pathTable, 1, -1 do
-			if mount.tempfolders[pathTable[i]] then
-				mount.tempfolders[pathTable[i]] = mount.tempfolders[pathTable[i]] + 1
-			else
-				mount.tempfolders[pathTable[i]] = 1
-			end
-			if mount.tempfolders[pathTable[i]] == 1 then
-				oldfs.makeDir(pathTable[i])
-			end
-		end
-	end
-
-	local function freePaths(mount, pathTable)
-		if not mount.tempfolders then error("cannot free folders already freed") end
-		for i = #pathTable, 1, -1 do
-			if mount.tempfolders[pathTable[i]] then
-				mount.tempfolders[pathTable[i]] = mount.tempfolders[pathTable[i]] - 1
-			else
-				error("cannot free folder already freed")
-			end
-			if mount.tempfolders[pathTable[i]] == 0 then
-				oldfs.delete(pathTable[i])
-			end
-		end
-	end
-
-	local function reserveFile()
-		local fileNum = 0
-		repeat
-			fileNum = fileNum + 1
-		until LyqydOS.fs.tempFiles[fileNum] == nil
-		LyqydOS.fs.tempFiles[fileNum] = true
-		return fileNum
-	end
-
-	local function freeFile(num)
-		LyqydOS.fs.tempFiles[num] = nil
 	end
 
 	fs.open = function(path, mode)
