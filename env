@@ -417,59 +417,45 @@ do
 		local mount = getMount(path)
 		if mount then
 			if mode == "r" or mode == "rb" then
-				local folders = fillPath(path, mount.path)
-				reservePaths(mount, folders)
-				local fileNum = reserveFile()
-				mount.mount.get(getRelativePath(path, mount), "/LyqydOS/.temp"..fileNum)
-				oldfs.move("/LyqydOS/.temp"..fileNum, path)
-				freeFile(fileNum)
-				local handle = oldfs.open(path, mode)
-				if handle then
-					local oldHandleClose = handle.close
-					handle.close = function()
-						oldHandleClose()
-						oldfs.delete(path)
-						freePaths(mount, folders)
-					end
-				end
+				local data = mount.mount.get(getRelativePath(path, mount))
+				local seek = 0
+				local handle = {
+					readLine = function()
+						if seek <= #data then
+							local line, seek = string.match(data, "([^\n]-)\r?\n()", seek)
+							return line
+						end
+					end,
+					readAll = function()
+						if seek <= #data then
+							local line, seek = string.match(data, "(.*)()", seek)
+							return line
+						end
+					end,
+					close = function()
+						seek = #data + 1
+					end,
+				}
 				return handle
-			elseif mode == "w" or mode == "wb" then
-				local folders = fillPath(path, mount.path)
-				reservePaths(mount, folders)
-				local handle = oldfs.open(path, mode)
-				if handle then
-					local oldHandleClose = handle.close
-					handle.close = function()
-						oldHandleClose()
-						local fileNum = reserveFile()
-						oldfs.move(path, "/LyqydOS/.temp"..fileNum)
-						mount.mount.put("/LyqydOS/.temp"..fileNum, getRelativePath(path, mount))
-						oldfs.delete("/LyqydOS/.temp"..fileNum)
-						freeFile(fileNum)
-						freePaths(mount, folders)
-					end
+			elseif mode == "w" or mode == "wb" or mode == "a" or mode == "ab" then
+				local data = ""
+				if mode == "a" or mode == "ab" then
+					data = mount.mount.get(getRelativePath(path, mount))
 				end
-				return handle
-			elseif mode == "a" or mode == "ab" then
-				local folders = fillPath(path, mount.path)
-				reservePaths(mount, folders)
-				local fileNum = reserveFile()
-				mount.mount.get(getRelativePath(path, mount), "/LyqydOS/.temp"..fileNum)
-				oldfs.move("/LyqydOS/.temp"..fileNum, path)
-				freeFile(fileNum)
-				local handle = oldfs.open(path, mode)
-				if handle then
-					local oldHandleClose = handle.close
-					handle.close = function()
-						oldHandleClose()
-						local fileNum = reserveFile()
-						oldfs.move(path, "/LyqydOS/.temp"..fileNum)
-						mount.mount.put("/LyqydOS/.temp"..fileNum, getRelativePath(path, mount))
-						oldfs.delete("/LyqydOS/.temp"..fileNum)
-						freeFile(fileNum)
-						freePaths(mount, folders)
-					end
-				end
+				local handle = {
+					writeLine = function(str)
+						data = data..str.."\n"
+					end,
+					write = function(str)
+						data = data..str
+					end,
+					flush = function()
+						mount.mount.put(getRelativePath(path, mount), data)
+					end,
+					close = function()
+						mount.mount.put(getRelativePath(path, mount), data)
+					end,
+				}
 				return handle
 			end
 		else
