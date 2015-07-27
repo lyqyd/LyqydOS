@@ -1,4 +1,4 @@
-local versionNumber = 3.1
+local versionNumber = 3.2
 
 local args = {...}
 
@@ -73,5 +73,5 @@ else
 		end
 		shell.run("/usr/bin/packman fetch")
 	end
-	shell.run("/usr/bin/packman force install lyqydos")
+	shell.run("/usr/bin/packman fetch force install lyqydos")
 end
