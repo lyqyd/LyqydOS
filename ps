@@ -1,8 +1,11 @@
 if process and process.active then
-	print("PID  NAME")
+	local output = io.output()
+	if not output.bFileHandle then
+		print("PID  NAME")
+	end
 	for pID, pInfo in ipairs(process.list) do
 		if pInfo then
-			print(string.rep(" ", 3 - #tostring(pID))..pID.."  "..fs.getName(pInfo.path))
+			io.write(string.rep(" ", 3 - #tostring(pID))..pID.."  "..fs.getName(pInfo.path).."\n")
 		end
 	end
 end

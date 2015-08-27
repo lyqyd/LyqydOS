@@ -6,7 +6,7 @@ do
 	--current path discovery, set up shell paths.
 	local procPath = shell.getRunningProgram()
 	path = fs.getDir and fs.getDir(procPath) or string.match(procPath, "^(.*)/"..fs.getName(procPath).."$")
-	shell.setPath("/"..path..":"..shell.path())
+	shell.setPath(shell.path()..":".."/"..path)
 	if fs.exists("/usr/apis") and fs.isDir("/usr/apis") then shell.setPath(shell.path()..":/usr/apis") end
 	if fs.exists("/usr/bin") and fs.isDir("/usr/bin") then shell.setPath(shell.path()..":/usr/bin") end
 end
