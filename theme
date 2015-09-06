@@ -1,0 +1,88 @@
+local themes = {}
+
+local function validateTypes(tab, ref)
+	for k, v in pairs(ref) do
+		if not tab[k] then return false end
+		if type(tab[k]) ~= type(ref[k]) then return false end
+		if type(tab[k]) == table then
+			if not validateTypes(tab[k], v) then return false end
+		end
+	end
+	return true
+end
+
+local Theme = {
+	add = function(self, name, newTheme)
+		if self.themes[name] then return nil, "already exists" end
+		local default = self.themes[self.default]
+		if validateTypes(newTheme, default) then
+			self.themes[name] = newTheme
+			return true
+		else
+			return nil, "invalid theme"
+		end
+	end,
+	get = function(self, name)
+		if name then
+			return self.themes[name]
+		else
+			return self.themes[self.default]
+		end
+	end,
+	remove = function(self, name)
+		if self.default == name then return nil, "cannot remove default theme" end
+		self.themes[name] = nil
+		return true
+	end,
+	setDefault = function(self, name)
+		if not self.themes[name] then return nil, "new default must exist" end
+		self.default = name
+		return true
+	end,
+}
+
+local tmeta = {__index = Theme}
+
+function newSet(name, themeName, default)
+	if themes[name] then return nil, "already exists" end
+	local t = {
+		name = name,
+		themes = {[themeName] = default},
+		default = themeName,
+	}
+
+	setmetatable(t, tmeta)
+	themes[name] = t
+	return t
+end
+
+function getSet(category)
+	return themes[category]
+end
+
+function add(category, name, newTheme)
+	local t = themes[category]
+	if t then
+		return t:add(name, newTheme)
+	else
+		return nil, "no such category"
+	end
+end
+
+function get(category, name)
+	local t = themes[category]
+	if t then
+		return t:get(name)
+	else
+		return nil, "no such category"
+	end
+end
+
+function remove(category, name)
+	local t = themes[category]
+	if t then
+		return t:remove(name)
+	else
+		return nil, "no such category"
+	end
+end

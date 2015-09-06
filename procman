@@ -25,6 +25,7 @@ local function load(api)
 	end
 end
 
+if not theme and not load("theme") then return end
 if not framebuffer and not load("framebuffer") then return end
 if not compositor and not load("compositor") then return end
 if not menu and not load("menu") then return end
@@ -59,11 +60,23 @@ end
 
 if fs.exists(fs.combine(path, "themes/window")) and fs.isDir(fs.combine(path, "themes/window")) then
 	for _, name in pairs(fs.list(fs.combine(path, "themes/window"))) do
-		local theme, err = configuration.load(fs.combine(fs.combine(path, "themes/window"), name))
-		if theme then
-			window.themes[name] = theme
+		local themeData, err = configuration.load(fs.combine(fs.combine(path, "themes/window"), name))
+		if themeData then
+			theme.add("window", name, themeData)
 		else
 			print("Could not load window theme "..name.."\n"..err)
+			sleep(1)
+		end
+	end
+end
+
+if fs.exists(fs.combine(path, "themes/desktop")) and fs.isDir(fs.combine(path, "themes/desktop")) then
+	for _, name in pairs(fs.list(fs.combine(path, "themes/desktop"))) do
+		local themeData, err = configuration.load(fs.combine(fs.combine(path, "themes/desktop"), name))
+		if themeData then
+			theme.add("desktop", name, themeData)
+		else
+			print("Could not load desktop theme "..name.."\n"..err)
 			sleep(1)
 		end
 	end

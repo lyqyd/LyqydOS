@@ -1,31 +1,31 @@
-local themes = {
-	standard = {
-		titlebar = {"=", "0", "f"},
-		ostext = {" ", "0", "f"},
-		tasktext = {" ", "0", "f"},
-		tasksep = {"|", "0", "f"},
-	},
-	pretty = {
-		titlebar = {" ", "0", "8"},
-		ostext = {" ", "b", "8"},
-		tasktext = {" ", "f", "8"},
-		tasksep = {"|", "f", "8"},
-	}
+
+local standard = {
+	titlebar = {"=", "0", "f"},
+	ostext = {" ", "0", "f"},
+	tasktext = {" ", "0", "f"},
+	tasksep = {"|", "0", "f"},
 }
 
-if fs.exists(fs.combine(LyqydOS.folderPath, "themes/desktop")) and fs.isDir(fs.combine(LyqydOS.folderPath, "themes/desktop")) then
-	for _, name in pairs(fs.list(fs.combine(LyqydOS.folderPath, "themes/desktop"))) do
-		local file = fs.combine(fs.combine(LyqydOS.folderPath, "themes/desktop"), name)
-		local env = {}
-		local fn, err = loadfile(file)
-		if fn then
-			setfenv(fn, env)
-			fn()
-			--copy into desktop themes
-			themes[name] = {}
-			for k, v in pairs(env) do
-				themes[name][k] = v
-			end
+local pretty = {
+	titlebar = {" ", "0", "8"},
+	ostext = {" ", "b", "8"},
+	tasktext = {" ", "f", "8"},
+	tasksep = {"|", "f", "8"},
+}
+
+
+local themes = theme.newSet("desktop", "standard", standard)
+themes:add("pretty", pretty)
+
+local path = fs.combine(LyqydOS.folderPath, "themes/desktop")
+if fs.exists(path) and fs.isDir(path) then
+	for _, name in pairs(fs.list(path)) do
+		local themeData, err = configuration.load(fs.combine(path, name))
+		if themeData then
+			themes:add(name, themeData)
+		else
+			print("Could not load desktop theme "..name.."\n"..err)
+			sleep(1)
 		end
 	end
 end
@@ -228,13 +228,13 @@ local function recentPrograms()
 end
 
 --set up initial view.
-local theme = themes[LyqydOS.desktop.theme]
+local deskTheme = themes.themes[LyqydOS.desktop.theme]
 setBackground(LyqydOS.desktop.background, LyqydOS.desktop.backgroundImage)
 local x, y = deskWin.redirect.getSize()
-deskWin.redirect.buffer.text[1] = theme.titlebar[1].."LyqydOS"..string.rep(theme.titlebar[1], x - 8)
+deskWin.redirect.buffer.text[1] = deskTheme.titlebar[1].."LyqydOS"..string.rep(deskTheme.titlebar[1], x - 8)
 if deskWin.redirect.isColor() then
-	deskWin.redirect.buffer.textColor[1] = theme.titlebar[2]..string.rep(theme.ostext[2], 7)..string.rep(theme.titlebar[2], x - 8)
-	deskWin.redirect.buffer.backColor[1] = theme.titlebar[3]..string.rep(theme.ostext[3], 7)..string.rep(theme.titlebar[3], x - 8)
+	deskWin.redirect.buffer.textColor[1] = deskTheme.titlebar[2]..string.rep(deskTheme.ostext[2], 7)..string.rep(deskTheme.titlebar[2], x - 8)
+	deskWin.redirect.buffer.backColor[1] = deskTheme.titlebar[3]..string.rep(deskTheme.ostext[3], 7)..string.rep(deskTheme.titlebar[3], x - 8)
 end
 deskWin:draw()
 
@@ -276,29 +276,29 @@ while true do
 			--taskText = taskText..str.."|"
 			tasksClickable = tasksClickable + 1
 		end
-		deskWin.redirect.buffer.text[1] = theme.titlebar[1].."LyqydOS"..theme.titlebar[1]
-		deskWin.redirect.buffer.textColor[1] = theme.titlebar[2]..string.rep(theme.ostext[2], 7)..theme.titlebar[2]
-		deskWin.redirect.buffer.backColor[1] = theme.titlebar[3]..string.rep(theme.ostext[3], 7)..theme.titlebar[3]
+		deskWin.redirect.buffer.text[1] = deskTheme.titlebar[1].."LyqydOS"..deskTheme.titlebar[1]
+		deskWin.redirect.buffer.textColor[1] = deskTheme.titlebar[2]..string.rep(deskTheme.ostext[2], 7)..deskTheme.titlebar[2]
+		deskWin.redirect.buffer.backColor[1] = deskTheme.titlebar[3]..string.rep(deskTheme.ostext[3], 7)..deskTheme.titlebar[3]
 		if #taskText > 0 then
-			deskWin.redirect.buffer.text[1] = deskWin.redirect.buffer.text[1]..theme.tasksep[1]
-			deskWin.redirect.buffer.textColor[1] = deskWin.redirect.buffer.textColor[1]..theme.tasksep[2]
-			deskWin.redirect.buffer.backColor[1] = deskWin.redirect.buffer.backColor[1]..theme.tasksep[3]
+			deskWin.redirect.buffer.text[1] = deskWin.redirect.buffer.text[1]..deskTheme.tasksep[1]
+			deskWin.redirect.buffer.textColor[1] = deskWin.redirect.buffer.textColor[1]..deskTheme.tasksep[2]
+			deskWin.redirect.buffer.backColor[1] = deskWin.redirect.buffer.backColor[1]..deskTheme.tasksep[3]
 			for i = 1, #taskText do
-				deskWin.redirect.buffer.text[1] = deskWin.redirect.buffer.text[1]..taskText[i]..theme.tasksep[1]
-				deskWin.redirect.buffer.textColor[1] = deskWin.redirect.buffer.textColor[1]..string.rep(theme.tasktext[2], #taskText[i])..theme.tasksep[2]
-				deskWin.redirect.buffer.backColor[1] = deskWin.redirect.buffer.backColor[1]..string.rep(theme.tasktext[3], #taskText[i])..theme.tasksep[3]
+				deskWin.redirect.buffer.text[1] = deskWin.redirect.buffer.text[1]..taskText[i]..deskTheme.tasksep[1]
+				deskWin.redirect.buffer.textColor[1] = deskWin.redirect.buffer.textColor[1]..string.rep(deskTheme.tasktext[2], #taskText[i])..deskTheme.tasksep[2]
+				deskWin.redirect.buffer.backColor[1] = deskWin.redirect.buffer.backColor[1]..string.rep(deskTheme.tasktext[3], #taskText[i])..deskTheme.tasksep[3]
 			end
 		end
-		deskWin.redirect.buffer.text[1] = deskWin.redirect.buffer.text[1]..string.rep(theme.titlebar[1], x - #deskWin.redirect.buffer.text[1])
-		deskWin.redirect.buffer.textColor[1] = deskWin.redirect.buffer.textColor[1]..string.rep(theme.titlebar[2], x - #deskWin.redirect.buffer.textColor[1])
-		deskWin.redirect.buffer.backColor[1] = deskWin.redirect.buffer.backColor[1]..string.rep(theme.titlebar[3], x - #deskWin.redirect.buffer.backColor[1])
+		deskWin.redirect.buffer.text[1] = deskWin.redirect.buffer.text[1]..string.rep(deskTheme.titlebar[1], x - #deskWin.redirect.buffer.text[1])
+		deskWin.redirect.buffer.textColor[1] = deskWin.redirect.buffer.textColor[1]..string.rep(deskTheme.titlebar[2], x - #deskWin.redirect.buffer.textColor[1])
+		deskWin.redirect.buffer.backColor[1] = deskWin.redirect.buffer.backColor[1]..string.rep(deskTheme.titlebar[3], x - #deskWin.redirect.buffer.backColor[1])
 		deskWin:draw()
 	elseif event[1] == "set_property" then
 		if event[2] == "background" then
 			setBackground(event[3], event[4])
 		elseif event[2] == "theme" then
-			if themes[event[3]] then
-				theme = themes[event[3]]
+			if themes.themes[event[3]] then
+				deskTheme = themes.themes[event[3]]
 				os.queueEvent("property_changed", process.id(), unpack(event))
 			else
 				os.queueEvent("property_refused", process.id(), unpack(event))

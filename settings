@@ -1,5 +1,8 @@
 local args = {...}
 
+local winThemeSet = theme.getSet("window")
+local deskThemeSet = theme.getSet("desktop")
+
 local function findHook(event)
 	local ref = process.eventHooks
 	local _results = {}
@@ -20,10 +23,10 @@ local function findHook(event)
 	return unpack(results)
 end
 
-local function setWindowTheme(theme)
-	if theme ~= LyqydOS.window.theme and window.themes[theme] then
+local function setWindowTheme(newTheme)
+	if newTheme ~= LyqydOS.window.theme and winThemeSet.themes[newTheme] then
 		local oldTheme = LyqydOS.window.theme
-		LyqydOS.window.theme = theme
+		LyqydOS.window.theme = newTheme
 		for pID, proc in pairs(process.list) do
 			if proc and proc.windows then
 				for i, win in ipairs(proc.windows) do
@@ -40,7 +43,7 @@ end
 local function setDesktopTheme(theme)
 	if theme ~= LyqydOS.desktop.theme then
 		if process.eventHooks.redraw then
-			local dProc = process.list[(findHook({"redraw"}))]
+			local dProc = process.getFromName("desktop")
 			dProc:queue("set_property", "theme", theme)
 			local event
 			while true do
@@ -93,7 +96,8 @@ elseif process and process.id() then
 	local settingsProc = process.this()
 	local win = process.getWindow()
 	local winThemes, deskThemes, colorMap = {}, {}, {}
-	for k, v in pairs(window.themes) do table.insert(winThemes, k) end
+	for k, v in pairs(winThemeSet.themes) do table.insert(winThemes, k) end
+	for k, v in pairs(deskThemeSet.themes) do table.insert(deskThemes, k) end
 	win:setCaption("settings")
 	--resize window to correct size
 	local w = 47
@@ -130,40 +134,6 @@ elseif process and process.id() then
 		captiveWin:setType("window")
 	end
 
-	local themes = {
-		standard = {
-			titlebar = {"=", "0", "f"},
-			ostext = {" ", "0", "f"},
-			tasktext = {" ", "0", "f"},
-			tasksep = {"|", "0", "f"},
-		},
-		pretty = {
-			titlebar = {" ", "0", "8"},
-			ostext = {" ", "b", "8"},
-			tasktext = {" ", "f", "8"},
-			tasksep = {"|", "f", "8"},
-		}
-	}
-
-	if fs.exists("/LyqydOS/themes/desktop") and fs.isDir("/LyqydOS/themes/desktop") then
-		for _, name in pairs(fs.list("/LyqydOS/themes/desktop")) do
-			local file = fs.combine("/LyqydOS/themes/desktop", name)
-			local env = {}
-			local fn, err = loadfile(file)
-			if fn then
-				setfenv(fn, env)
-				fn()
-				--copy into desktop themes
-				themes[name] = {}
-				for k, v in pairs(env) do
-					themes[name][k] = v
-				end
-			end
-		end
-	end
-
-	for k, v in pairs(themes) do table.insert(deskThemes, k) end
-
 	local function drawFakeDesktop()
 		local function charToColor(char)
 			return 2 ^ tonumber(char, 16)
@@ -171,7 +141,7 @@ elseif process and process.id() then
 		do
 			--redirect to buffer inside captive compositor
 			local _old = term.redirect(canvas)
-			local theme = themes[newDesktopTheme]
+			local theme = deskThemeSet.themes[newDesktopTheme]
 
 			do
 				--draw title bar
@@ -416,6 +386,7 @@ elseif process and process.id() then
 					if event[3] >= 5 and event[3] <= 12 then
 						--clicked Revert
 						newWindowTheme, newDesktopTheme = LyqydOS.window.theme, LyqydOS.desktop.theme
+						captiveWin:setTheme(newWindowTheme)
 						newDesktopBackground, newDesktopImage = LyqydOS.desktop.background, LyqydOS.desktop.backgroundImage
 					elseif event[3] >= 17 and event[3] <= 23 then
 						--clicked Apply
