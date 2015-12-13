@@ -322,18 +322,26 @@ do
 			if dmnt then
 				dmnt.mount.put(data, getRelativePath(destination, dmnt))
 			else
-				local handle = oldfs.open(destination, "w")
+				local handle = oldfs.open(destination, "wb")
 				if handle then
-					handle.write(data)
+					for i = 1, #data do
+						handle.write(data[i])
+					end
 					handle.close()
 				end
 			end
 			omnt.mount.delete(getRelativePath(origin, omnt))
 		elseif dmnt then
 			--the origin file does not have a mount point, but the destination does.
-			local handle = oldfs.open(origin, "r")
+			local handle = oldfs.open(origin, "rb")
 			if handle then
-				dmnt.mount.put(handle.readAll(), getRelativePath(destination, dmnt))
+				local data = {}
+				local num = handle.read()
+				while num do
+					table.insert(data, num)
+					num = handle.read()
+				end
+				dmnt.mount.put(data, getRelativePath(destination, dmnt))
 				handle.close()
 			end
 			oldfs.delete(origin)
@@ -354,17 +362,25 @@ do
 			if dmnt then
 				dmnt.mount.put(data, getRelativePath(destination, dmnt))
 			else
-				local handle = oldfs.open(destination, "w")
+				local handle = oldfs.open(destination, "wb")
 				if handle then
-					handle.write(data)
+					for i = 1, #data do
+						handle.write(data[i])
+					end
 					handle.close()
 				end
 			end
 		elseif dmnt then
 			--the origin file does not have a mount point, but the destination does.
-			local handle = oldfs.open(origin, "r")
+			local handle = oldfs.open(origin, "rb")
 			if handle then
-				dmnt.mount.put(handle.readAll(), getRelativePath(destination, dmnt))
+				local data = {}
+				local num = handle.read()
+				while num do
+					table.insert(data, num)
+					num = handle.read()
+				end
+				dmnt.mount.put(data, getRelativePath(destination, dmnt))
 				handle.close()
 			end
 		else
@@ -375,8 +391,8 @@ do
 	fs.open = function(path, mode)
 		local mount = getMount(path)
 		if mount then
-			if mode == "r" or mode == "rb" then
-				local data = mount.mount.get(getRelativePath(path, mount))
+			if mode == "r" then
+				local data = string.char(unpack(mount.mount.get(getRelativePath(path, mount))))
 				local seek = 0
 				local handle = {
 					readLine = function()
@@ -396,23 +412,73 @@ do
 					end,
 				}
 				return handle
-			elseif mode == "w" or mode == "wb" or mode == "a" or mode == "ab" then
-				local data = ""
-				if mode == "a" or mode == "ab" then
-					data = mount.mount.get(getRelativePath(path, mount))
-				end
+			elseif mode == "rb" then
+				local data = mount.mount.get(getRelativePath(path, mount))
+				local seek = 0
 				local handle = {
-					writeLine = function(str)
-						data = data..str.."\n"
-					end,
-					write = function(str)
-						data = data..str
-					end,
-					flush = function()
-						mount.mount.put(getRelativePath(path, mount), data)
+					read = function()
+						if seek < #data then
+							seek = seek + 1
+							return data[seek]
+						end
 					end,
 					close = function()
-						mount.mount.put(getRelativePath(path, mount), data)
+						seek = #data
+					end
+				}
+				return handle
+			elseif mode == "w" or mode == "a" then
+				local data = ""
+				if mode == "a" then
+					data = string.char(unpack(mount.mount.get(getRelativePath(path, mount))))
+				end
+				local open = true
+				local handle = {
+					writeLine = function(str)
+						if open then
+							data = data..str.."\n"
+						end
+					end,
+					write = function(str)
+						if open then
+							data = data..str
+						end
+					end,
+					flush = function()
+						if open then
+							mount.mount.put(getRelativePath(path, mount), {string.byte(data, 1, -1)})
+						end
+					end,
+					close = function()
+						if open then
+							mount.mount.put(getRelativePath(path, mount), {string.byte(data, 1, -1)})
+							open = false
+						end
+					end,
+				}
+				return handle
+			elseif mode == "wb" or mode == "ab" then
+				local data = {}
+				if mode == "ab" then
+					data = mount.mount.get(getRelativePath(path, mount))
+				end
+				local open = true
+				local handle = {
+					write = function(num)
+						if open then
+							data[#data + 1] = num
+						end
+					end,
+					flush = function()
+						if open then
+							mount.mount.put(getRelativePath(path, mount), data)
+						end
+					end,
+					close = function()
+						if open then
+							mount.mount.put(getRelativePath(path, mount), data)
+							open = false
+						end
 					end,
 				}
 				return handle
