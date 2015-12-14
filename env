@@ -320,7 +320,7 @@ do
 			--the origin file has a mount point.
 			local data = omnt.mount.get(getRelativePath(origin, omnt))
 			if dmnt then
-				dmnt.mount.put(data, getRelativePath(destination, dmnt))
+				dmnt.mount.put(getRelativePath(destination, dmnt), data)
 			else
 				local handle = oldfs.open(destination, "wb")
 				if handle then
@@ -341,7 +341,7 @@ do
 					table.insert(data, num)
 					num = handle.read()
 				end
-				dmnt.mount.put(data, getRelativePath(destination, dmnt))
+				dmnt.mount.put(getRelativePath(destination, dmnt), data)
 				handle.close()
 			end
 			oldfs.delete(origin)
@@ -360,7 +360,7 @@ do
 			--the origin file has a mount point.
 			local data = omnt.mount.get(getRelativePath(origin, omnt))
 			if dmnt then
-				dmnt.mount.put(data, getRelativePath(destination, dmnt))
+				dmnt.mount.put(getRelativePath(destination, dmnt), data)
 			else
 				local handle = oldfs.open(destination, "wb")
 				if handle then
@@ -380,7 +380,7 @@ do
 					table.insert(data, num)
 					num = handle.read()
 				end
-				dmnt.mount.put(data, getRelativePath(destination, dmnt))
+				dmnt.mount.put(getRelativePath(destination, dmnt), data)
 				handle.close()
 			end
 		else
@@ -397,13 +397,15 @@ do
 				local handle = {
 					readLine = function()
 						if seek <= #data then
-							local line, seek = string.match(data, "([^\n]-)\r?\n()", seek)
+							local line, newSeek = string.match(data, "([^\n]-)\r?\n()", seek)
+							seek = newSeek
 							return line
 						end
 					end,
 					readAll = function()
 						if seek <= #data then
-							local line, seek = string.match(data, "(.*)()", seek)
+							local line, newSeek = string.match(data, "(.*)()", seek)
+							seek = newSeek
 							return line
 						end
 					end,
