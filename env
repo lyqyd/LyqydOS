@@ -278,6 +278,15 @@ do
 		return string.match(path, "^"..mount.path.."(.*)")
 	end
 
+	local function yield()
+		local key = tostring({})
+		os.queueEvent("vfs_yield", key)
+		local event, val
+		repeat
+			event, val = os.pullEvent()
+		until event == "vfs_yield" and val == key
+	end
+
 	local fsTransformTable = {
 		"list",
 		"exists",
@@ -326,6 +335,7 @@ do
 				if handle then
 					for i = 1, #data do
 						handle.write(data[i])
+						if i % 1000 == 0 then yield() end
 					end
 					handle.close()
 				end
@@ -340,6 +350,7 @@ do
 				while num do
 					table.insert(data, num)
 					num = handle.read()
+					if #data % 1000 == 0 then yield() end
 				end
 				dmnt.mount.put(getRelativePath(destination, dmnt), data)
 				handle.close()
@@ -366,6 +377,7 @@ do
 				if handle then
 					for i = 1, #data do
 						handle.write(data[i])
+						if i % 1000 == 0 then yield() end
 					end
 					handle.close()
 				end
@@ -379,6 +391,7 @@ do
 				while num do
 					table.insert(data, num)
 					num = handle.read()
+					if #data % 1000 == 0 then yield() end
 				end
 				dmnt.mount.put(getRelativePath(destination, dmnt), data)
 				handle.close()
@@ -397,15 +410,15 @@ do
 				local handle = {
 					readLine = function()
 						if seek <= #data then
-							local line, newSeek = string.match(data, "([^\n]-)\r?\n()", seek)
-							seek = newSeek
+							local line
+							line, seek = string.match(data, "([^\n]-)\r?\n()", seek)
 							return line
 						end
 					end,
 					readAll = function()
 						if seek <= #data then
-							local line, newSeek = string.match(data, "(.*)()", seek)
-							seek = newSeek
+							local line
+							line, seek = string.match(data, "(.*)()", seek)
 							return line
 						end
 					end,
