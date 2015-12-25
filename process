@@ -117,7 +117,7 @@ local Process = {
 		local active = process.active
 		process.active = self.id
 
-		self:pre()
+		self:pre(event)
 
 		--redirect to process' current target.
 		local _old = term.redirect(self.redirect)
@@ -170,7 +170,7 @@ local Process = {
 	setup = function(self, ...)
 		--intended to be overriden for setup purposes.
 	end,
-	pre = function(self)
+	pre = function(self, event)
 		--intended to be overriden for extensions
 	end,
 	post = function(self)
