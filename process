@@ -119,7 +119,7 @@ local Process = {
 
 		self:pre()
 
-		--redirect to window's current position in its redirect stack
+		--redirect to process' current target.
 		local _old = term.redirect(self.redirect)
 		passback = {coroutine.resume(self.thread, unpack(event))}
 		self.redirect = term.current()
