@@ -165,9 +165,6 @@ local Process = {
 		process.list[self.id] = false
 		if self.id == process.focus then
 			process.focus = process.next()
-			if process.focus then
-				process.list[process.focus]:toFront()
-			end
 		end
 	end,
 	setup = function(self, ...)
