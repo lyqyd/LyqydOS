@@ -1,0 +1,33 @@
+local queue = {}
+local chunkSize = 1000
+
+local function copyTable(origin, destination, offset, length)
+	for i = offset + 1, math.max(offset + length, #origin) do
+		destination[i] = origin[i]
+	end
+end
+
+--lvfs_queue event; event name, file handle, data.
+
+while true do
+	local event = {os.pullEvent()}
+	if event[1] == "lvfs_queue" then
+		for i = 1, #event[3], chunkSize do
+			local newItem = {data = {}, handle = event[2]}
+			copyTable(event[3], newItem.data, i, chunkSize)
+			table.insert(queue, newItem)
+		end
+		table.insert(queue, {handle = event[2], close = true})
+		process.this():queue("lvfs_process")
+	elseif event[1] == "lvfs_process" and #queue >= 1 then
+		local item = table.remove(queue, 1)
+		if item.close then
+			item.handle.close()
+		else
+			for i = 1, chunkSize do
+				item.handle.write(item.data[i])
+			end
+		end
+		process.this():queue("lvfs_process")
+	end
+end
