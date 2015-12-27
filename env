@@ -409,9 +409,9 @@ do
 				local seek = 0
 				local handle = {
 					readLine = function()
-						if seek <= #data then
+						if seek < #data then
 							local line
-							line, seek = string.match(data, "([^\n]-)\r?\n()", seek)
+							line, seek = string.match(data, "([^\n]*)\r?\n-()", seek + 1)
 							return line
 						end
 					end,
