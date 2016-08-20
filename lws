@@ -237,7 +237,7 @@ local mouseStartY = nil
 local mouseDragAction = nil
 --injection magic table, localized here for use later.
 local procTable = getmetatable(process.this()).__index
-local oldPcheck, oldPkill, oldPsetup, oldPpost
+local oldPcheck, oldPkill, oldPremove, oldPsetup, oldPpost
 process.addHook({"char"})
 process.addHook({"key"})
 --process.addHook({"key", 61})
@@ -454,6 +454,15 @@ do
 				end
 			end
 			return oldPkill(self)
+		end
+
+		oldPremove = procTable.remove
+
+		function procTable.remove(self)
+			oldPremove(self)
+			if process.focus then
+				process.list[process.focus]:toFront()
+			end
 		end
 
 		oldPsetup = procTable.setup

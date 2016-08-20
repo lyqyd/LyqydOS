@@ -117,9 +117,9 @@ local Process = {
 		local active = process.active
 		process.active = self.id
 
-		self:pre()
+		self:pre(event)
 
-		--redirect to window's current position in its redirect stack
+		--redirect to process' current target.
 		local _old = term.redirect(self.redirect)
 		passback = {coroutine.resume(self.thread, unpack(event))}
 		self.redirect = term.current()
@@ -165,15 +165,12 @@ local Process = {
 		process.list[self.id] = false
 		if self.id == process.focus then
 			process.focus = process.next()
-			if process.focus then
-				process.list[process.focus]:toFront()
-			end
 		end
 	end,
 	setup = function(self, ...)
 		--intended to be overriden for setup purposes.
 	end,
-	pre = function(self)
+	pre = function(self, event)
 		--intended to be overriden for extensions
 	end,
 	post = function(self)

@@ -1,0 +1,36 @@
+local queue = {}
+local chunkSize = 1000
+
+local function copyTable(origin, destination, offset, length)
+	for i = offset, math.min(offset - 1 + length, #origin) do
+		table.insert(destination, origin[i])
+	end
+end
+
+--lvfs_queue event; event name, file handle, data, <optional>pID.
+
+while true do
+	local event = {os.pullEvent()}
+	if event[1] == "lvfs_queue" then
+		for i = 1, #event[3], chunkSize do
+			local newItem = {data = {}, handle = event[2]}
+			copyTable(event[3], newItem.data, i, chunkSize)
+			table.insert(queue, newItem)
+		end
+		table.insert(queue, {handle = event[2], close = true, pID = event[4]})
+		process.this():queue("lvfs_process")
+	elseif event[1] == "lvfs_process" and #queue >= 1 then
+		local item = table.remove(queue, 1)
+		if item.close then
+			item.handle.close()
+			if item.pID and process.list[item.pID] then -- have requested to be notified when handle is closed
+				process.list[item.pID]:queue("lvfs_close", item.handle)
+			end
+		else
+			for i = 1, #item.data do
+				item.handle.write(item.data[i])
+			end
+		end
+		process.this():queue("lvfs_process")
+	end
+end
