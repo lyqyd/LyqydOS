@@ -1,4 +1,4 @@
-local versionNumber = 3.2
+local versionNumber = 3.3
 
 local args = {...}
 
@@ -19,24 +19,21 @@ if #args >= 1 then
 1,3,26,16,false,rom/programs/shell
 1,4,26,16,false,rom/programs/lua
 ]]
-		if packman then
-			packman.addFile("/LyqydOS/.lyqwin", lyqwin)
+		if pocket then lyqwin = lyqwinPocket end
+		if pack then
+			pack.addFile("/LyqydOS/.lyqwin", lyqwin)
 		else
 			if not fs.exists("/LyqydOS/.lyqwin") then
 				local handle = io.open("/LyqydOS/.lyqwin", "w")
 				if handle then
-					if pocket then
-						handle:write(lyqwinPocket)
-					else
-						handle:write(lyqwin)
-					end
+					handle:write(lyqwin)
 					handle:close()
 				end
 			end
 		end
 		print("Run LyqydOS on startup? (y/N)")
 		term.write("> ")
-		local input = read()
+		local input = io.read()
 		if #input > 0 then
 			input = string.lower(string.sub(input, 1, 1))
 			if input == "y" then
@@ -53,11 +50,11 @@ if #args >= 1 then
 			end
 		end
 	elseif args[1] == "remove" then
-		if packman then
-			packman.removeFile("/LyqydOS/.config")
-			packman.removeFile("/LyqydOS/.lyqrunhistory")
-			packman.removeFile("/LyqydOS/.lyqshellrunhistory")
-			packman.removeFile("/LyqydOS/.lyqwin")
+		if pack then
+			pack.removeFile("/LyqydOS/.config")
+			pack.removeFile("/LyqydOS/.lyqrunhistory")
+			pack.removeFile("/LyqydOS/.lyqshellrunhistory")
+			pack.removeFile("/LyqydOS/.lyqwin")
 		else
 			if fs.exists("/LyqydOS/.config") then fs.delete("/LyqydOS/.config") end
 			if fs.exists("/LyqydOS/.lyqrunhistory") then fs.delete("/LyqydOS/.lyqrunhistory") end
