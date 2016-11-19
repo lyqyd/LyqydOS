@@ -79,7 +79,9 @@ else
 		else
 			error("Could not fetch packman")
 		end
+		shell.run("/usr/bin/packman bootstrap")
+	else
 		shell.run("/usr/bin/packman fetch")
 	end
-	shell.run("/usr/bin/packman fetch force install lyqydos")
+	shell.run("/usr/bin/packman force install lyqydos")
 end
