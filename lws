@@ -749,7 +749,7 @@ while true do
 			end
 			win:setTheme(LyqydOS.window.theme)
 			if max == "true" then win:maximize() end
-			process.new(function() shell.run("lsh", path, unpack(args)) end, shell.resolve("lsh"), nil, win)
+			process.new(function() shell.run("lsh", path, unpack(args)) end, shell.resolveProgram("lsh"), nil, win)
 			if coroutine.status(process.list[process.focus].thread) == "dead" then
 				lwsProc:queue("close_window", process.focus)
 				process.focus = startProcess
