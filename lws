@@ -289,7 +289,7 @@ do
 				end
 				win:setTheme(LyqydOS.window.theme)
 				if max == "true" then win:maximize() end
-				process.new(function() os.run(env, shell.resolveProgram("lsh"), path, unpack(args)) end, path, nil, win)
+				process.new(function() os.run(env, shell.resolveProgram("lsh"), path, unpack(args)) end, shell.resolveProgram("lsh"), nil, win)
 				if coroutine.status(process.list[process.focus].thread) == "dead" then
 					process.getFromName("lws"):queue("close_window", process.focus)
 					process.focus = startProcess
@@ -749,7 +749,7 @@ while true do
 			end
 			win:setTheme(LyqydOS.window.theme)
 			if max == "true" then win:maximize() end
-			process.new(function() shell.run("lsh", path, unpack(args)) end, path, nil, win)
+			process.new(function() shell.run("lsh", path, unpack(args)) end, shell.resolve("lsh"), nil, win)
 			if coroutine.status(process.list[process.focus].thread) == "dead" then
 				lwsProc:queue("close_window", process.focus)
 				process.focus = startProcess
