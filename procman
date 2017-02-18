@@ -54,9 +54,9 @@ _G.LyqydOS = {
 
 --set up environment.
 dofile(shell.resolveProgram("env"))
-if fs.exists(fs.combine(path, "metafs")) then
+--[[if fs.exists(fs.combine(path, "metafs")) then
 	dofile(fs.combine(path, "metafs"))
-end
+end]]
 
 if fs.exists(fs.combine(path, "themes/window")) and fs.isDir(fs.combine(path, "themes/window")) then
 	for _, name in pairs(fs.list(fs.combine(path, "themes/window"))) do
