@@ -169,9 +169,10 @@ while true do
 
 	--process directed events, queued for specific processes
 	while process.directedEventsWaiting() do
-		local proc,event=process.getNextDirectedEvent()
-		if proc:check() then
-			proc:resume(event)
+		local pid, event = process.getNextDirectedEvent()
+		if pid and process.list[pid] then
+			local proc = process.list[pid]
+			if proc:check() then proc:resume(event) end
 		end
 	end
 

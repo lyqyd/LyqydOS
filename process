@@ -25,15 +25,15 @@ end
 local directedEvents = {}
 
 function getNextDirectedEvent()
-	local proc,event
-	if #directedEvents>0 then
-		proc,event=unpack(table.remove(directedEvents,1))
+	local pid, event
+	if #directedEvents > 0 then
+		pid, event = unpack(table.remove(directedEvents, 1))
 	end
-	return proc,event
+	return pid, event
 end
 
 function directedEventsWaiting()
-	return #directedEvents>0
+	return #directedEvents > 0
 end
 
 local function changeHookActual(hookMask, val, add)
@@ -121,11 +121,11 @@ local Process = {
 
 		--redirect to process' current target.
 		local _old = term.redirect(self.redirect)
-		passback = {coroutine.resume(self.thread, unpack(event))}
+		local passback = {coroutine.resume(self.thread, unpack(event))}
 		self.redirect = term.current()
 		term.redirect(_old)
 
-		self:post()
+		self:post(passback)
 		process.compositor:draw()
 		
 		process.active = active
@@ -153,7 +153,7 @@ local Process = {
 		return true
 	end,
 	queue = function(self, ...)
-		table.insert(directedEvents,{self,{...}})
+		table.insert(directedEvents, {self.id, {...}})
 		return true
 	end,
 	kill = function(self)
@@ -173,7 +173,7 @@ local Process = {
 	pre = function(self, event)
 		--intended to be overriden for extensions
 	end,
-	post = function(self)
+	post = function(self, passback)
 		--intended to be overriden for extensions
 	end,
 }

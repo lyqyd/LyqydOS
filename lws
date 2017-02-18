@@ -430,7 +430,7 @@ do
 		oldPcheck = procTable.check
 
 		function procTable.check(self)
-			if not oldPcheck(self) then return lwsProc:queue("close_window", self.id) end
+			if not oldPcheck(self) then lwsProc:queue("close_window", self.id); return false end
 			if self.windows then
 				for i = 1, #self.windows do
 					if self.windows[i].mode == "ephemeral" and (i < #self.windows or self.id ~= process.focus) then
@@ -488,13 +488,13 @@ do
 
 		oldPpost = procTable.post
 
-		function procTable.post(self)
+		function procTable.post(self, ...)
 			if self.windows then
 				for _, win in ipairs(self.windows) do
 					win:draw()
 				end
 			end
-			return oldPpost(self)
+			return oldPpost(self, ...)
 		end
 	end
 end
