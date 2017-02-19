@@ -592,3 +592,72 @@ do
 		end
 	end
 end
+
+--shell and multishell modifications
+do
+	LyqydOS.shell.multishell.getTitle = function(n)
+		if process.list[n] then
+			return process.list[n].name
+		end
+	end
+
+	LyqydOS.shell.multishell.setTitle = function(n, title)
+		if process.list[n] then
+			process.list[n].name = title
+		end
+	end
+
+	LyqydOS.shell.multishell.getCount = function()
+		return #process.list
+	end
+
+	LyqydOS.shell.multishell.launch = function(env, path, ...)
+		local args = {...}
+		if path then
+			local redirect, bufNum = process.compositor:newBuffer()
+			process.new(function() os.run(env, shell.resolveProgram("lsh"), path, unpack(args)) end, shell.resolveProgram("lsh"), redirect)
+			process.compositor:toBack(bufNum)
+			return #process.list
+		else
+			return false
+		end
+	end
+
+	LyqydOS.shell.multishell.getCurrent = function()
+		return process.id()
+	end
+
+	LyqydOS.shell.multishell.getFocus = function()
+		return process.focus
+	end
+
+	LyqydOS.shell.multishell.setFocus = function(n)
+		if process.list[n] then
+			local proc = process.list[n]
+			process.focus = n
+			--bring the buffer to the top
+			local buf = proc.firstRedirect.buffer
+			for i, layer in ipairs(process.compositor.bufferStack) do
+				if layer == buf then
+					process.compositor:toFront(i)
+					break
+				end
+			end
+		end
+	end
+
+	LyqydOS.shell.shell.openTab = function(...)
+		local env = {shell = LyqydOS.shell.shell, multishell = LyqydOS.shell.multishell}
+		local command = table.concat({...}, " ")
+		local args = {}
+		for match in string.gmatch(command, "[^ \t]+") do
+			table.insert(args, match)
+		end
+		local path = table.remove(args, 1)
+		return LyqydOS.shell.multishell.launch(env, path, unpack(args))
+	end
+
+	LyqydOS.shell.shell.switchTab = function(n)
+		LyqydOS.shell.multishell.setFocus(n)
+	end
+end
