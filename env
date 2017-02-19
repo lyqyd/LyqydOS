@@ -614,10 +614,11 @@ do
 	LyqydOS.shell.multishell.launch = function(env, path, ...)
 		local args = {...}
 		if path then
-			local redirect, bufNum = process.compositor:newBuffer()
+			local pid = #process.list + 1
+			local redirect, bufNum = process.compositor:newBuffer(pid)
 			process.new(function() os.run(env, shell.resolveProgram("lsh"), path, unpack(args)) end, shell.resolveProgram("lsh"), redirect)
 			process.compositor:toBack(bufNum)
-			return #process.list
+			return pid
 		else
 			return false
 		end

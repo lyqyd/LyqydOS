@@ -56,7 +56,7 @@ function removeHook(hookMask)
 end
 
 function setFocus(num)
-	focusWindow = num
+	focus = num
 end
 
 function id()
@@ -76,9 +76,10 @@ function this()
 end
 
 function next()
-	for  i = #process.list, 1, -1 do
-		if process.list[i] then
-			return i
+	for i = #process.compositor.bufferStack, 1, -1 do
+		local buf = process.compositor.bufferStack[i]
+		if buf.pid ~= process.focus then
+			return buf.pid
 		end
 	end
 end
@@ -126,7 +127,7 @@ local Process = {
 		term.redirect(_old)
 
 		self:post(passback)
-		process.compositor:draw()
+		--process.compositor:draw()
 		
 		process.active = active
 
@@ -163,6 +164,7 @@ local Process = {
 	end,
 	remove = function(self)
 		process.list[self.id] = false
+		process.compositor:removePid(self.id)
 		if self.id == process.focus then
 			process.focus = process.next()
 		end
@@ -195,6 +197,8 @@ function new(func, path, redirect, ...)
 	else
 		proc.redirect = process.nullRedirect
 	end
+
+	proc.firstRedirect = proc.redirect
 
 	setmetatable(proc, pmeta)
 

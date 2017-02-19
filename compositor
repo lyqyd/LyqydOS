@@ -1,5 +1,5 @@
 local Compositor = {
-	newBuffer = function(self)
+	newBuffer = function(self, pid)
 		local _redirect = framebuffer.new(self.x, self.y, self.target.isColor())
 		local redirect = {}
 		for k, v in pairs(_redirect) do
@@ -13,6 +13,8 @@ local Compositor = {
 				redirect[k] = _redirect[k]
 			end
 		end
+
+		redirect.buffer.pid = pid
 
 		local bufferNum = #self.bufferStack - self.locked.top + 1
 
@@ -132,6 +134,19 @@ local Compositor = {
 			table.remove(self.bufferStack, pos)
 		end
 		if not self.deferDraw then self:draw() end
+	end,
+	removePid = function(self, pid)
+		for i = #self.bufferStack, 1, -1 do
+			local buf = self.bufferStack[i]
+			if buf.pid == pid then
+				if self.locked.bottom > 0 and i <= self.locked.bottom then
+					self.locked.bottom = self.locked.bottom - 1
+				elseif self.locked.top > 0 and i >= #self.bufferStack - self.locked.top + 1 then
+					self.locked.top = self.locked.top - 1
+				end
+				table.remove(self.bufferStack, i)
+			end
+		end
 	end,
 }
 

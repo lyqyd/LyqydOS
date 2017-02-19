@@ -51,7 +51,7 @@ local function windowAction(pID, win)
 		else
 			x, y = win.x, win.y + 1
 		end
-		local lwsWin = window.new(15, 9, x, y, "Action Menu", process.compositor:newBuffer())
+		local lwsWin = window.new(15, 9, x, y, "Action Menu", process.compositor:newBuffer(process.id()))
 		thisProc:addWindow(lwsWin)
 		lwsWin:setMode("ephemeral")
 		lwsWin:setType("menu")
@@ -174,7 +174,7 @@ local function windowSelect()
 	local oldFocus = process.focus
 	local lws = process.id()
 	local lwsProc = process.list[lws]
-	local lwsWin = window.new(19, 11, 1, 1, "Select Window", windowCompositor:newBuffer())
+	local lwsWin = window.new(19, 11, 1, 1, "Select Window", windowCompositor:newBuffer(lws))
 	lwsProc:addWindow(lwsWin)
 	lwsWin:setMode("ephemeral")
 	lwsWin:setTheme(LyqydOS.window.theme)
@@ -283,7 +283,7 @@ do
 					end
 					winDims:close()
 				end
-				local win = window.new(w, h, x, y, fs.getName(path), process.compositor:newBuffer())
+				local win = window.new(w, h, x, y, fs.getName(path), process.compositor:newBuffer(#process.list + 1))
 				if process.compositor.target.isColor() then
 					win:setType("window")
 				end
@@ -743,7 +743,7 @@ while true do
 				end
 				winDims:close()
 			end
-			local win = window.new(w, h, x, y, fs.getName(path), process.compositor:newBuffer())
+			local win = window.new(w, h, x, y, fs.getName(path), process.compositor:newBuffer(#process.list + 1))
 			if process.compositor.target.isColor() then
 				win:setType("window")
 			end

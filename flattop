@@ -31,7 +31,7 @@ if fs.exists("/LyqydOS/themes/desktop") and fs.isDir("/LyqydOS/themes/desktop") 
 end
 
 local deskID = process.id()
-local deskRedirect = process.compositor:newBuffer()
+local deskRedirect = process.compositor:newBuffer(deskID)
 deskRedirect.setBounds(1, process.compositor.y, process.compositor.x, process.compositor.y)
 local x, y = deskRedirect.getSize()
 
@@ -64,6 +64,7 @@ local function addTerm()
 	table.insert(process.compositor.bufferStack, redirect.buffer)
 	local win = {redirect = redirect, target = redirect, destroy = function(self) removeTerm(self) end, caption = "lsh", setCaption = function(self, cap) self.caption = cap end}
 	local proc = process.new(function() shell.run("/LyqydOS/lsh") end, "lsh", win, redirect)
+	redirect.buffer.pid = #process.list
 	table.insert(terms, proc)
 	process.focus = proc.id
 	focusTerm = proc

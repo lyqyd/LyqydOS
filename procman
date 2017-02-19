@@ -100,6 +100,14 @@ do
 			handle:close()
 		end
 	end
+
+	if #process.compositor.bufferStack == 0 then
+		--no desktop of any sort, so start a shell instance
+		local pid = #process.list + 1
+		local redirect = process.compositor:newBuffer(pid)
+		process.new(function() return os.run({shell = LyqydOS.shell.shell, multishell = LyqydOS.shell.multishell}, shell.resolveProgram("lsh")) end, shell.resolveProgram("lsh"), redirect)
+		process.focus = pid
+	end
 end
 
 local function findHook(event)
@@ -159,7 +167,7 @@ local function distributeEvent(event)
 end
 
 --causes initial desktop and title bar to draw, if present.
-windowCompositor:draw()
+process.compositor:draw()
 
 while true do
 	--check all processes to clean up ephemeral windows and such.
@@ -185,6 +193,8 @@ while true do
 			end
 		end
 	end
+
+	process.compositor:draw()
 
 	local event = {coroutine.yield()}
 
