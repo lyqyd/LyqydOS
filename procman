@@ -47,7 +47,7 @@ _G.LyqydOS = {
 	},
 	shell = {
 		shell = shell,
-		multishell = multishell,
+		multishell = multishell or {},
 	},
 	folderPath = path,
 }
