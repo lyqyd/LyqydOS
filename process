@@ -4,6 +4,7 @@ active = nil
 compositor = {}
 nullRedirect = framebuffer.new()
 eventHooks = {}
+local unpack = unpack or table.unpack
 
 local function tablify(baseTable, keyTable)
 	if #keyTable > 1 then

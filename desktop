@@ -1,3 +1,4 @@
+local unpack = unpack or table.unpack
 
 local standard = {
 	titlebar = {"=", "0", "f"},

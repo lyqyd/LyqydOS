@@ -1,5 +1,7 @@
 if process and process.active ~= nil then return end
 
+local unpack = unpack or table.unpack
+
 local path
 
 do

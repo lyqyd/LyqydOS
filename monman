@@ -1,3 +1,5 @@
+local unpack = unpack or table.unpack
+
 local monitorBuffers = {}
 local sides = {}
 

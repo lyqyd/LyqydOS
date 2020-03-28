@@ -1,3 +1,5 @@
+local unpack = unpack or table.unpack
+
 local function saveDimensions(proc)
 	--saves window dimensions when closing windows
 	if proc.path and proc.windows and #proc.windows > 0 then

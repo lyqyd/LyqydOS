@@ -1,3 +1,5 @@
+local unpack = unpack or table.unpack
+
 local focus = "folders"
 --fileTable is a flat table, numerically indexed, of all files/folders in the system
 local fileTable

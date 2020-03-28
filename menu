@@ -1,3 +1,5 @@
+local unpack = unpack or table.unpack
+
 local function drawMenu(menuTable, cursor, offset, colors)
 	local xlim, ylim = term.getSize()
 	local sT = term.isColor() and colors[1] or colors.black

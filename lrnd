@@ -1,3 +1,5 @@
+local unpack = unpack or table.unpack
+
 local RN_BROADCAST = 65535
 local lyqydnet = false
 local rnReceivedMessages = {}

@@ -1,3 +1,5 @@
+local unpack = unpack or table.unpack
+
 local Compositor = {
 	newBuffer = function(self, pid)
 		local _redirect = framebuffer.new(self.x, self.y, self.target.isColor())
