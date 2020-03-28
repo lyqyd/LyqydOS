@@ -176,7 +176,7 @@ local function windowSelect()
 	local oldFocus = process.focus
 	local lws = process.id()
 	local lwsProc = process.list[lws]
-	local lwsWin = window.new(19, 11, 1, 1, "Select Window", windowCompositor:newBuffer(lws))
+	local lwsWin = window.new(19, 11, 1, 1, "Select Window", process.compositor:newBuffer(lws))
 	lwsProc:addWindow(lwsWin)
 	lwsWin:setMode("ephemeral")
 	lwsWin:setTheme(LyqydOS.window.theme)
@@ -469,18 +469,18 @@ do
 
 		oldPsetup = procTable.setup
 
-		function procTable.setup(self, ...)
+		function procTable.setup(self, path, redirect, ...)
 			local args = {...}
 			self.windows = {
 				selectable = true,
 			}
 
-			if args[3] then
-				table.insert(self.windows, args[3])
-				self.redirect = args[3].redirect
+			if args[1] then
+				table.insert(self.windows, args[1])
+				self.redirect = args[1].redirect
 				process.focus = #process.list
-			elseif args[2] then
-				self.redirect = args[2]
+			elseif redirect then
+				self.redirect = redirect
 			else
 				self.redirect = process.nullRedirect
 			end

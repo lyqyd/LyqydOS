@@ -97,10 +97,11 @@ local function runProgram()
 	local dProc = process.list[desk]
 	local win
 	if pocket then
-		win = window.new(26, 3, 1, 2, "Run Program", windowCompositor:newBuffer(desk))
+		win = window.new(26, 3, 1, 2, "Run Program", process.compositor:newBuffer(desk))
 	else
-		win = window.new(30, 3, 2, 2, "Run Program", windowCompositor:newBuffer(desk))
+		win = window.new(30, 3, 2, 2, "Run Program", process.compositor:newBuffer(desk))
 	end
+
 	dProc:addWindow(win)
 	win:setMode("ephemeral")
 	win:setType("menu")
@@ -200,9 +201,9 @@ local function recentPrograms()
 	local dProc = process.list[desk]
 	local win
 	if pocket then
-		win = window.new(26, 10, 1, 2, "Recent Programs", windowCompositor:newBuffer(desk))
+		win = window.new(26, 10, 1, 2, "Recent Programs", process.compositor:newBuffer(desk))
 	else
-		win = window.new(30, 10, 2, 2, "Recent Programs", windowCompositor:newBuffer(desk))
+		win = window.new(30, 10, 2, 2, "Recent Programs", process.compositor:newBuffer(desk))
 	end
 	dProc:addWindow(win)
 	win:setMode("ephemeral")

@@ -199,11 +199,11 @@ function new(func, path, redirect, ...)
 		proc.redirect = process.nullRedirect
 	end
 
-	proc.firstRedirect = proc.redirect
-
 	setmetatable(proc, pmeta)
 
 	proc:setup(path, redirect, ...)
+
+	proc.firstRedirect = proc.redirect
 
 	proc:resume({})
 	return proc

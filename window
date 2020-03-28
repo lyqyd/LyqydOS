@@ -159,7 +159,13 @@ local pretty = {
 }
 
 local themes = theme.newSet("window", "standard", standard)
-themes:add("pretty", pretty)
+if themes then
+	themes:add("pretty", pretty)
+else
+	themes = theme.getSet("window")
+	if not themes:get("standard") then themes:add("standard", standard) end
+	if not themes:get("pretty") then themes:add("pretty", pretty) end
+end
 
 local Window = {
 	draw = function(self, mode)
@@ -452,7 +458,7 @@ local Window = {
 	setType = function(self, winType)
 		self.windowType = winType
 		self:setTheme(self.theme)
-		if not self.deferDraw then self:draw() end
+		--setTheme draws the window if able
 	end,
 	setMode = function(self, mode)
 		self.mode = mode
@@ -482,8 +488,8 @@ function new(w, h, x, y, caption, target)
 		x = tonumber(x) or 1,
 		y = tonumber(y) or 1,
 		caption = caption or nil,
-		--windowType: clean, standard, modal
-		--clean is normal window, standard includes _MX controls, modal includes X control only.
+		--windowType: clean, window, modal
+		--clean is normal window, window includes _MX controls, modal includes X control only.
 		windowType = "clean",
 		theme = "standard",
 		--mode is normal, ephemeral or modal

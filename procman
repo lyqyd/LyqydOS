@@ -77,9 +77,8 @@ if fs.exists(fs.combine(path, ".config")) then
 end
 
 process.focus = nil
-windowCompositor = compositor.new(term.current and term.current() or term.native)
-windowCompositor.deferDraw = true
-rawset(process, "compositor", windowCompositor)
+process.compositor = compositor.new(term.current and term.current() or term.native)
+process.compositor.deferDraw = true
 
 do
 	local x, y = term.getSize()
